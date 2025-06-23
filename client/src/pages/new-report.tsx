@@ -200,7 +200,15 @@ export default function NewReport() {
         </div>
       </div>
 
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form 
+        onSubmit={form.handleSubmit(onSubmit)} 
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+            e.preventDefault();
+          }
+        }}
+        className="space-y-8"
+      >
         {/* Form Content */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Tank Information */}
@@ -213,6 +221,7 @@ export default function NewReport() {
                   <Input
                     id="reportNumber"
                     placeholder="RPT-2024-XXX"
+                    tabIndex={1}
                     {...form.register('reportNumber')}
                   />
                   {form.formState.errors.reportNumber && (
@@ -224,6 +233,7 @@ export default function NewReport() {
                   <Input
                     id="tankId"
                     placeholder="TANK-101A"
+                    tabIndex={2}
                     {...form.register('tankId')}
                   />
                   {form.formState.errors.tankId && (
@@ -253,6 +263,7 @@ export default function NewReport() {
                       id="diameter"
                       type="number"
                       placeholder="120"
+                      tabIndex={4}
                       {...form.register('diameter')}
                     />
                   </div>
