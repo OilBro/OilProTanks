@@ -11,6 +11,8 @@ import { useLocation } from "wouter";
 interface ImportResult {
   message: string;
   extractedData: any;
+  thicknessMeasurements: any[];
+  checklistItems: any[];
   totalRows: number;
   preview: any[];
 }
@@ -56,22 +58,58 @@ export default function ImportReports() {
 
   const createReportMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await fetch('/api/reports', {
+      // First create the report
+      const reportResponse = await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify(data.reportData),
       });
       
-      if (!response.ok) {
+      if (!reportResponse.ok) {
         throw new Error('Failed to create report');
       }
       
-      return response.json();
+      const report = await reportResponse.json();
+      
+      // Then create thickness measurements if any
+      if (data.thicknessMeasurements && data.thicknessMeasurements.length > 0) {
+        for (const measurement of data.thicknessMeasurements) {
+          const measurementData = {
+            ...measurement,
+            reportId: report.id
+          };
+          
+          await fetch('/api/thickness-measurements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(measurementData),
+          });
+        }
+      }
+      
+      // Create checklist items if any
+      if (data.checklistItems && data.checklistItems.length > 0) {
+        for (const item of data.checklistItems) {
+          const checklistData = {
+            ...item,
+            reportId: report.id,
+            category: 'external' // Default category
+          };
+          
+          await fetch('/api/inspection-checklists', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(checklistData),
+          });
+        }
+      }
+      
+      return report;
     },
     onSuccess: () => {
       toast({
         title: "Report Created",
-        description: "Successfully created report from imported data.",
+        description: "Successfully created report with imported data, measurements, and checklist items.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
       setLocation('/dashboard');
@@ -138,7 +176,11 @@ export default function ImportReports() {
 
   const createReport = () => {
     if (importResult?.extractedData) {
-      createReportMutation.mutate(importResult.extractedData);
+      createReportMutation.mutate({
+        reportData: importResult.extractedData,
+        thicknessMeasurements: importResult.thicknessMeasurements || [],
+        checklistItems: importResult.checklistItems || []
+      });
     }
   };
 
@@ -213,8 +255,8 @@ export default function ImportReports() {
               <h3 className="text-lg font-semibold text-gray-900">Import Results</h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Extracted Data */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Extracted Report Data */}
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">Extracted Report Data</h4>
                 <div className="bg-gray-50 p-4 rounded space-y-2 text-sm">
@@ -223,33 +265,90 @@ export default function ImportReports() {
                   <div><strong>Service:</strong> {importResult.extractedData.service || 'Not found'}</div>
                   <div><strong>Inspector:</strong> {importResult.extractedData.inspector || 'Not found'}</div>
                   <div><strong>Date:</strong> {importResult.extractedData.inspectionDate || 'Not found'}</div>
+                  <div><strong>Location:</strong> {importResult.extractedData.location || 'Not found'}</div>
+                  <div><strong>Owner:</strong> {importResult.extractedData.owner || 'Not found'}</div>
                   <div><strong>Diameter:</strong> {importResult.extractedData.diameter || 'Not found'}</div>
                   <div><strong>Height:</strong> {importResult.extractedData.height || 'Not found'}</div>
                   <div><strong>Original Thickness:</strong> {importResult.extractedData.originalThickness || 'Not found'}</div>
+                  <div><strong>Years Since Last Inspection:</strong> {importResult.extractedData.yearsSinceLastInspection || 'Not found'}</div>
                 </div>
               </div>
 
-              {/* File Info */}
+              {/* File Information */}
               <div>
-                <h4 className="font-medium text-gray-900 mb-3">File Information</h4>
+                <h4 className="font-medium text-gray-900 mb-3">Import Summary</h4>
                 <div className="bg-gray-50 p-4 rounded space-y-2 text-sm">
                   <div><strong>Total Rows:</strong> {importResult.totalRows}</div>
-                  <div><strong>Status:</strong> Ready to import</div>
+                  <div><strong>Thickness Measurements:</strong> {importResult.thicknessMeasurements?.length || 0}</div>
+                  <div><strong>Checklist Items:</strong> {importResult.checklistItems?.length || 0}</div>
+                  <div><strong>Status:</strong> <span className="text-green-600">Ready to import</span></div>
                 </div>
-
-                {/* Data Preview */}
-                {importResult.preview.length > 0 && (
-                  <div className="mt-4">
-                    <h4 className="font-medium text-gray-900 mb-2">Data Preview (First 5 rows)</h4>
-                    <div className="bg-gray-50 p-3 rounded text-xs overflow-x-auto">
-                      <pre className="whitespace-pre-wrap">
-                        {JSON.stringify(importResult.preview, null, 2)}
-                      </pre>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
+
+            {/* Thickness Measurements Preview */}
+            {importResult.thicknessMeasurements && importResult.thicknessMeasurements.length > 0 && (
+              <div className="mt-6">
+                <h4 className="font-medium text-gray-900 mb-3">Thickness Measurements Found ({importResult.thicknessMeasurements.length})</h4>
+                <div className="bg-gray-50 p-4 rounded">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {importResult.thicknessMeasurements.slice(0, 6).map((measurement, index) => (
+                      <div key={index} className="bg-white p-3 rounded border text-sm">
+                        <div><strong>Location:</strong> {measurement.location}</div>
+                        <div><strong>Elevation:</strong> {measurement.elevation}</div>
+                        <div><strong>Thickness:</strong> {measurement.currentThickness} in</div>
+                      </div>
+                    ))}
+                  </div>
+                  {importResult.thicknessMeasurements.length > 6 && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      ... and {importResult.thicknessMeasurements.length - 6} more measurements
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Checklist Items Preview */}
+            {importResult.checklistItems && importResult.checklistItems.length > 0 && (
+              <div className="mt-6">
+                <h4 className="font-medium text-gray-900 mb-3">Checklist Items Found ({importResult.checklistItems.length})</h4>
+                <div className="bg-gray-50 p-4 rounded">
+                  <div className="space-y-2">
+                    {importResult.checklistItems.slice(0, 5).map((item, index) => (
+                      <div key={index} className="bg-white p-3 rounded border text-sm flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="font-medium">{item.item}</div>
+                          {item.notes && <div className="text-gray-600 text-xs mt-1">{item.notes}</div>}
+                        </div>
+                        <div className={`px-2 py-1 rounded text-xs ${
+                          item.checked ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                        }`}>
+                          {item.checked ? 'Pass' : 'Fail'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {importResult.checklistItems.length > 5 && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      ... and {importResult.checklistItems.length - 5} more checklist items
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Raw Data Preview */}
+            {importResult.preview.length > 0 && (
+              <div className="mt-6">
+                <h4 className="font-medium text-gray-900 mb-2">Raw Data Preview (First 3 rows)</h4>
+                <div className="bg-gray-50 p-3 rounded text-xs overflow-x-auto">
+                  <pre className="whitespace-pre-wrap">
+                    {JSON.stringify(importResult.preview.slice(0, 3), null, 2)}
+                  </pre>
+                </div>
+              </div>
+            )}
 
             {/* Create Report Button */}
             <div className="mt-6 flex justify-end space-x-4">

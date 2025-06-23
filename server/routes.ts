@@ -36,44 +36,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const worksheet = workbook.Sheets[sheetName];
       const data = XLSX.utils.sheet_to_json(worksheet);
 
-      // Basic Excel parsing - look for common inspection report fields
+      // Enhanced Excel parsing for API 653 inspection reports
       const importedData: any = {};
+      const thicknessMeasurements: any[] = [];
+      const checklistItems: any[] = [];
       
-      // Try to extract report data from common Excel patterns
+      // Define common field patterns for API 653 reports
+      const fieldPatterns = {
+        tankId: ['Tank ID', 'Tank Id', 'TankID', 'Tank Number', 'Tank No', 'Vessel ID'],
+        reportNumber: ['Report Number', 'Report No', 'ReportNumber', 'Inspection Report No', 'IR No'],
+        service: ['Service', 'Product', 'Contents', 'Stored Product', 'Tank Service'],
+        inspector: ['Inspector', 'Inspector Name', 'Inspected By', 'API Inspector', 'Certified Inspector'],
+        inspectionDate: ['Date', 'Inspection Date', 'Date of Inspection', 'Inspection Performed'],
+        diameter: ['Diameter', 'Tank Diameter', 'Shell Diameter', 'Nominal Diameter'],
+        height: ['Height', 'Tank Height', 'Shell Height', 'Overall Height'],
+        originalThickness: ['Original Thickness', 'Nominal Thickness', 'Design Thickness', 'Min Thickness'],
+        location: ['Location', 'Site', 'Facility', 'Plant Location'],
+        owner: ['Owner', 'Client', 'Company', 'Facility Owner'],
+        lastInspection: ['Last Inspection', 'Previous Inspection', 'Last Internal Inspection']
+      };
+
+      // Helper function to find field value by pattern matching
+      const findFieldValue = (rowObj: any, patterns: string[]) => {
+        for (const pattern of patterns) {
+          if (rowObj[pattern] !== undefined && rowObj[pattern] !== null && rowObj[pattern] !== '') {
+            return rowObj[pattern];
+          }
+        }
+        return null;
+      };
+
+      // Process each row to extract data
       for (const row of data) {
         const rowObj = row as any;
         
-        // Look for tank information
-        if (rowObj['Tank ID'] || rowObj['Tank Id'] || rowObj['TankID']) {
-          importedData.tankId = rowObj['Tank ID'] || rowObj['Tank Id'] || rowObj['TankID'];
-        }
-        if (rowObj['Report Number'] || rowObj['Report No'] || rowObj['ReportNumber']) {
-          importedData.reportNumber = rowObj['Report Number'] || rowObj['Report No'] || rowObj['ReportNumber'];
-        }
-        if (rowObj['Service'] || rowObj['Product']) {
-          importedData.service = String(rowObj['Service'] || rowObj['Product']).toLowerCase();
-        }
-        if (rowObj['Inspector'] || rowObj['Inspector Name']) {
-          importedData.inspector = rowObj['Inspector'] || rowObj['Inspector Name'];
-        }
-        if (rowObj['Date'] || rowObj['Inspection Date']) {
-          const dateValue = rowObj['Date'] || rowObj['Inspection Date'];
-          if (dateValue) {
-            const date = new Date(dateValue);
-            if (!isNaN(date.getTime())) {
-              importedData.inspectionDate = date.toISOString().split('T')[0];
+        // Extract main report fields
+        for (const [field, patterns] of Object.entries(fieldPatterns)) {
+          const value = findFieldValue(rowObj, patterns);
+          if (value && !importedData[field]) {
+            if (field === 'inspectionDate' || field === 'lastInspection') {
+              const date = new Date(value);
+              if (!isNaN(date.getTime())) {
+                importedData[field] = date.toISOString().split('T')[0];
+              }
+            } else if (field === 'service') {
+              importedData[field] = String(value).toLowerCase();
+            } else {
+              importedData[field] = String(value);
             }
           }
         }
-        if (rowObj['Diameter'] || rowObj['Tank Diameter']) {
-          importedData.diameter = String(rowObj['Diameter'] || rowObj['Tank Diameter']);
+
+        // Look for thickness measurement data
+        const thicknessFields = ['Thickness', 'Current Thickness', 'Measured Thickness', 'Reading'];
+        const locationFields = ['Location', 'Position', 'Point', 'Measurement Point'];
+        const elevationFields = ['Elevation', 'Height', 'Level'];
+        
+        for (const thicknessField of thicknessFields) {
+          if (rowObj[thicknessField] && !isNaN(parseFloat(rowObj[thicknessField]))) {
+            const measurement = {
+              location: findFieldValue(rowObj, locationFields) || `Point ${thicknessMeasurements.length + 1}`,
+              elevation: findFieldValue(rowObj, elevationFields) || '0',
+              currentThickness: parseFloat(rowObj[thicknessField]),
+              originalThickness: importedData.originalThickness ? parseFloat(importedData.originalThickness) : 0.25
+            };
+            thicknessMeasurements.push(measurement);
+            break; // Only take one thickness per row
+          }
         }
-        if (rowObj['Height'] || rowObj['Tank Height']) {
-          importedData.height = String(rowObj['Height'] || rowObj['Tank Height']);
+
+        // Look for checklist items
+        const checklistPatterns = ['Item', 'Check', 'Inspection Item', 'Requirement'];
+        const statusPatterns = ['Status', 'Result', 'Pass/Fail', 'OK/Not OK', 'Satisfactory'];
+        
+        for (const checkPattern of checklistPatterns) {
+          if (rowObj[checkPattern]) {
+            const status = findFieldValue(rowObj, statusPatterns);
+            const item = {
+              item: String(rowObj[checkPattern]),
+              checked: status ? ['pass', 'ok', 'satisfactory', 'yes', 'true'].includes(String(status).toLowerCase()) : false,
+              notes: rowObj['Notes'] || rowObj['Comments'] || rowObj['Remarks'] || ''
+            };
+            checklistItems.push(item);
+            break;
+          }
         }
-        if (rowObj['Original Thickness'] || rowObj['Nominal Thickness']) {
-          importedData.originalThickness = String(rowObj['Original Thickness'] || rowObj['Nominal Thickness']);
-        }
+      }
+
+      // Calculate years since last inspection if both dates are available
+      if (importedData.inspectionDate && importedData.lastInspection) {
+        const currentDate = new Date(importedData.inspectionDate);
+        const lastDate = new Date(importedData.lastInspection);
+        const yearsDiff = (currentDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+        importedData.yearsSinceLastInspection = Math.round(yearsDiff);
       }
 
       // Generate a unique report number if not found
@@ -88,6 +143,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         message: "Excel file processed successfully",
         extractedData: importedData,
+        thicknessMeasurements,
+        checklistItems,
         totalRows: data.length,
         preview: data.slice(0, 5) // First 5 rows for preview
       });
