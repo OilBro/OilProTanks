@@ -185,7 +185,12 @@ export class MemStorage implements IStorage {
     const id = this.currentReportId++;
     const now = new Date().toISOString();
     const newReport: InspectionReport = { 
-      ...report, 
+      ...report,
+      diameter: report.diameter || null,
+      height: report.height || null,
+      originalThickness: report.originalThickness || null,
+      yearsSinceLastInspection: report.yearsSinceLastInspection || null,
+      status: report.status || 'draft',
       id, 
       createdAt: now, 
       updatedAt: now 
@@ -223,7 +228,11 @@ export class MemStorage implements IStorage {
     const id = this.currentMeasurementId++;
     const now = new Date().toISOString();
     const newMeasurement: ThicknessMeasurement = { 
-      ...measurement, 
+      ...measurement,
+      currentThickness: measurement.currentThickness || null,
+      corrosionRate: measurement.corrosionRate || null,
+      remainingLife: measurement.remainingLife || null,
+      status: measurement.status || 'acceptable',
       id, 
       createdAt: now 
     };
@@ -254,7 +263,12 @@ export class MemStorage implements IStorage {
 
   async createInspectionChecklist(checklist: InsertInspectionChecklist): Promise<InspectionChecklist> {
     const id = this.currentChecklistId++;
-    const newChecklist: InspectionChecklist = { ...checklist, id };
+    const newChecklist: InspectionChecklist = { 
+      ...checklist, 
+      checked: checklist.checked || false,
+      notes: checklist.notes || null,
+      id 
+    };
     this.inspectionChecklists.set(id, newChecklist);
     return newChecklist;
   }

@@ -9,6 +9,22 @@ import {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // Report Statistics - must come before the parameterized route
+  app.get("/api/reports/stats", async (req, res) => {
+    try {
+      const reports = await storage.getInspectionReports();
+      const stats = {
+        totalReports: reports.length,
+        inProgress: reports.filter(r => r.status === 'in_progress').length,
+        completed: reports.filter(r => r.status === 'completed').length,
+        requiresAction: reports.filter(r => r.status === 'action_required').length
+      };
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch statistics" });
+    }
+  });
+
   // Inspection Reports
   app.get("/api/reports", async (req, res) => {
     try {
@@ -171,22 +187,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(template);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch template" });
-    }
-  });
-
-  // Report Statistics
-  app.get("/api/reports/stats", async (req, res) => {
-    try {
-      const reports = await storage.getInspectionReports();
-      const stats = {
-        totalReports: reports.length,
-        inProgress: reports.filter(r => r.status === 'in_progress').length,
-        completed: reports.filter(r => r.status === 'completed').length,
-        requiresAction: reports.filter(r => r.status === 'action_required').length
-      };
-      res.json(stats);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch statistics" });
     }
   });
 
