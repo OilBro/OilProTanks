@@ -107,10 +107,24 @@ This is a full-stack web application built for managing API 653 tank inspection 
 ```
 Changelog:
 - June 23, 2025. Initial setup
+- June 23, 2025. Added PostgreSQL database with persistent storage
+- June 23, 2025. Fixed report generation errors and PDF export functionality
+- June 23, 2025. Application deployed and ready for production use
 ```
 
 ## User Preferences
 
 ```
 Preferred communication style: Simple, everyday language.
+File handling: User has existing Excel-based inspection reports (XLSM format) that may need import functionality.
+```
+
+## Recent Changes
+
+```
+✓ Database successfully integrated with PostgreSQL
+✓ Report generation errors fixed (PDF export working)
+✓ Template system working with 3 pre-configured tank types
+✓ Application ready for deployment
+→ User has existing Excel inspection reports that may need import capability
 ```
