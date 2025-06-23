@@ -37,10 +37,21 @@ This is a full-stack web application built for managing API 653 tank inspection 
 ### Core Features
 1. **Dashboard**: Overview of all inspection reports with status tracking
 2. **Report Creation**: Step-by-step report generation with form validation
-3. **Thickness Management**: Interactive table for recording thickness measurements
-4. **Checklist System**: Standardized inspection items for external/internal components
-5. **PDF Generation**: Professional report output using jsPDF
-6. **Template System**: Reusable report templates for different tank services
+3. **Comprehensive Thickness Management**: 
+   - Shell course measurements
+   - Bottom plate readings with grid references
+   - Internal annular ring measurements
+   - Critical zone assessments
+   - External repad inspections
+   - Roof thickness readings (center, edge, nozzle areas)
+   - Chime area measurements
+   - Nozzle and flange inspections
+4. **Settlement Surveys**: Internal and external elevation measurements
+5. **Dyke & Secondary Containment**: Primary/secondary containment inspections
+6. **Checklist System**: Standardized inspection items for external/internal components
+7. **Excel Import**: Smart field detection for existing inspection reports
+8. **PDF Generation**: Professional report output using jsPDF
+9. **Template System**: Reusable report templates for different tank services
 
 ### Calculation Engine
 - **Corrosion Rate Calculation**: Based on original vs current thickness over time

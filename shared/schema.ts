@@ -75,6 +75,26 @@ export const settlementSurveys = pgTable("settlement_surveys", {
   createdAt: text("created_at").notNull(),
 });
 
+export const dykeInspections = pgTable("dyke_inspections", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull(),
+  dykeType: text("dyke_type").notNull(), // primary, secondary, ring_wall
+  location: text("location").notNull(),
+  condition: text("condition").notNull(), // excellent, good, fair, poor, failed
+  height: text("height"), // Measured height
+  width: text("width"), // Measured width at top
+  material: text("material"), // Concrete, earth, steel, composite
+  drainage: text("drainage").notNull().default("adequate"), // adequate, inadequate, blocked, none
+  cracking: boolean("cracking").notNull().default(false),
+  settlement: boolean("settlement").notNull().default(false),
+  erosion: boolean("erosion").notNull().default(false),
+  vegetation: boolean("vegetation").notNull().default(false),
+  spillageEvidence: boolean("spillage_evidence").notNull().default(false),
+  capacity: text("capacity"), // Calculated or design capacity
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+});
+
 export const insertInspectionReportSchema = createInsertSchema(inspectionReports).omit({
   id: true,
   createdAt: true,
@@ -100,6 +120,11 @@ export const insertSettlementSurveySchema = createInsertSchema(settlementSurveys
   createdAt: true,
 });
 
+export const insertDykeInspectionSchema = createInsertSchema(dykeInspections).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertInspectionReport = z.infer<typeof insertInspectionReportSchema>;
 export type InspectionReport = typeof inspectionReports.$inferSelect;
 export type InsertThicknessMeasurement = z.infer<typeof insertThicknessMeasurementSchema>;
@@ -110,6 +135,8 @@ export type InsertReportTemplate = z.infer<typeof insertReportTemplateSchema>;
 export type ReportTemplate = typeof reportTemplates.$inferSelect;
 export type InsertSettlementSurvey = z.infer<typeof insertSettlementSurveySchema>;
 export type SettlementSurvey = typeof settlementSurveys.$inferSelect;
+export type InsertDykeInspection = z.infer<typeof insertDykeInspectionSchema>;
+export type DykeInspection = typeof dykeInspections.$inferSelect;
 
 // Users table for basic auth
 export const users = pgTable("users", {
