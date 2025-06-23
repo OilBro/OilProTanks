@@ -22,7 +22,41 @@ const COMPONENT_OPTIONS = [
   "Bottom Plate",
   "Roof",
   "Chime Area",
-  "Nozzle"
+  "Nozzle",
+  "Internal Annular Ring",
+  "Critical Zone",
+  "External Repad"
+];
+
+const MEASUREMENT_TYPES = [
+  { value: "shell", label: "Shell" },
+  { value: "bottom_plate", label: "Bottom Plate" },
+  { value: "internal_annular", label: "Internal Annular Ring" },
+  { value: "critical_zone", label: "Critical Zone" },
+  { value: "roof", label: "Roof" },
+  { value: "internal_component", label: "Internal Component" },
+  { value: "external_repad", label: "External Repad" },
+  { value: "nozzle", label: "Nozzle" },
+  { value: "flange", label: "Flange" }
+];
+
+const ANNULAR_POSITIONS = [
+  { value: "inner", label: "Inner" },
+  { value: "center", label: "Center" },
+  { value: "outer", label: "Outer" }
+];
+
+const CRITICAL_ZONE_TYPES = [
+  { value: "settlement", label: "Settlement Area" },
+  { value: "corrosion", label: "Corrosion Area" },
+  { value: "repair", label: "Previous Repair" },
+  { value: "stress", label: "High Stress Area" }
+];
+
+const REPAD_TYPES = [
+  { value: "full_face", label: "Full Face" },
+  { value: "partial", label: "Partial" },
+  { value: "reinforcement", label: "Reinforcement" }
 ];
 
 export function ThicknessTable({ 

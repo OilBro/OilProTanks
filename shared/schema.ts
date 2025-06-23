@@ -22,7 +22,21 @@ export const thicknessMeasurements = pgTable("thickness_measurements", {
   id: serial("id").primaryKey(),
   reportId: integer("report_id").notNull(),
   component: text("component").notNull(),
+  measurementType: text("measurement_type").notNull().default("shell"), // shell, bottom_plate, internal_annular, critical_zone, roof, internal_component, external_repad, nozzle, flange, chime
   location: text("location").notNull(),
+  elevation: text("elevation"),
+  gridReference: text("grid_reference"), // For bottom plate grids (A1, B2, etc.)
+  plateNumber: text("plate_number"), // Bottom plate identification
+  annularRingPosition: text("annular_ring_position"), // Inner, outer, center for annular readings
+  criticalZoneType: text("critical_zone_type"), // Settlement, corrosion, repair area
+  repadNumber: text("repad_number"), // External repad identification
+  repadType: text("repad_type"), // Full face, partial, reinforcement
+  repadThickness: text("repad_thickness"), // Thickness of repad material
+  nozzleId: text("nozzle_id"), // Nozzle identification (N1, N2, etc.)
+  nozzleSize: text("nozzle_size"), // Nozzle diameter
+  flangeClass: text("flange_class"), // ANSI flange class
+  flangeType: text("flange_type"), // Weld neck, slip-on, blind, etc.
+  originalThickness: text("original_thickness"),
   currentThickness: decimal("current_thickness", { precision: 10, scale: 3 }),
   corrosionRate: decimal("corrosion_rate", { precision: 10, scale: 4 }),
   remainingLife: decimal("remaining_life", { precision: 10, scale: 1 }),
