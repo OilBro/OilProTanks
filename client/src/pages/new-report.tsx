@@ -303,6 +303,7 @@ export default function NewReport() {
                   <Input
                     id="inspectionDate"
                     type="date"
+                    tabIndex={7}
                     {...form.register('inspectionDate')}
                   />
                   {form.formState.errors.inspectionDate && (
@@ -316,6 +317,7 @@ export default function NewReport() {
                     type="number"
                     step="0.001"
                     placeholder="0.500"
+                    tabIndex={8}
                     {...form.register('originalThickness')}
                   />
                 </div>
@@ -325,6 +327,7 @@ export default function NewReport() {
                     id="yearsSinceLastInspection"
                     type="number"
                     placeholder="10"
+                    tabIndex={9}
                     {...form.register('yearsSinceLastInspection')}
                   />
                 </div>
