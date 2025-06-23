@@ -27,9 +27,9 @@ export function generatePDF(data: ReportData): void {
   doc.setFontSize(10);
   doc.text(`Tank ID: ${report.tankId}`, 20, 95);
   doc.text(`Service: ${report.service}`, 20, 105);
-  doc.text(`Diameter: ${report.diameter} ft`, 20, 115);
-  doc.text(`Height: ${report.height} ft`, 20, 125);
-  doc.text(`Original Thickness: ${report.originalThickness} in`, 20, 135);
+  doc.text(`Diameter: ${report.diameter || 'N/A'} ft`, 20, 115);
+  doc.text(`Height: ${report.height || 'N/A'} ft`, 20, 125);
+  doc.text(`Original Thickness: ${report.originalThickness || 'N/A'} in`, 20, 135);
 
   // Inspection Summary
   const acceptableCount = measurements.filter(m => m.status === 'acceptable').length;
@@ -72,9 +72,9 @@ export function generatePDF(data: ReportData): void {
       
       doc.text(measurement.component || '', 20, yPos);
       doc.text(measurement.location || '', 60, yPos);
-      doc.text(measurement.currentThickness || '', 100, yPos);
-      doc.text(`${measurement.corrosionRate} in/yr`, 130, yPos);
-      doc.text(`${measurement.remainingLife} yrs`, 160, yPos);
+      doc.text(String(measurement.currentThickness || ''), 100, yPos);
+      doc.text(`${measurement.corrosionRate || ''} in/yr`, 130, yPos);
+      doc.text(`${measurement.remainingLife || ''} yrs`, 160, yPos);
       doc.text(measurement.status || '', 190, yPos);
       yPos += 8;
     });

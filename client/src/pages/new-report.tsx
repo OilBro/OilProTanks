@@ -147,6 +147,10 @@ export default function NewReport() {
     const previewReport: InspectionReport = {
       id: 0,
       ...formData,
+      diameter: formData.diameter || null,
+      height: formData.height || null,
+      originalThickness: formData.originalThickness || null,
+      yearsSinceLastInspection: formData.yearsSinceLastInspection ? parseInt(formData.yearsSinceLastInspection) : null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
