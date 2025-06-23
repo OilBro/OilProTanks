@@ -49,6 +49,18 @@ export const reportTemplates = pgTable("report_templates", {
   createdAt: text("created_at").notNull(),
 });
 
+export const settlementSurveys = pgTable("settlement_surveys", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull(),
+  surveyType: text("survey_type", { enum: ["internal", "external"] }).notNull(),
+  measurementDate: text("measurement_date").notNull(),
+  referencePoint: text("reference_point").notNull(),
+  elevation: text("elevation").notNull(),
+  location: text("location").notNull(),
+  notes: text("notes"),
+  createdAt: text("created_at").notNull(),
+});
+
 export const insertInspectionReportSchema = createInsertSchema(inspectionReports).omit({
   id: true,
   createdAt: true,
@@ -69,6 +81,11 @@ export const insertReportTemplateSchema = createInsertSchema(reportTemplates).om
   createdAt: true,
 });
 
+export const insertSettlementSurveySchema = createInsertSchema(settlementSurveys).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertInspectionReport = z.infer<typeof insertInspectionReportSchema>;
 export type InspectionReport = typeof inspectionReports.$inferSelect;
 export type InsertThicknessMeasurement = z.infer<typeof insertThicknessMeasurementSchema>;
@@ -77,6 +94,8 @@ export type InsertInspectionChecklist = z.infer<typeof insertInspectionChecklist
 export type InspectionChecklist = typeof inspectionChecklists.$inferSelect;
 export type InsertReportTemplate = z.infer<typeof insertReportTemplateSchema>;
 export type ReportTemplate = typeof reportTemplates.$inferSelect;
+export type InsertSettlementSurvey = z.infer<typeof insertSettlementSurveySchema>;
+export type SettlementSurvey = typeof settlementSurveys.$inferSelect;
 
 // Users table for basic auth
 export const users = pgTable("users", {
