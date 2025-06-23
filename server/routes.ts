@@ -27,6 +27,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Excel Import endpoint
   app.post("/api/reports/import", upload.single('excelFile'), async (req, res) => {
     try {
+      console.log('Upload request received');
+      console.log('File:', req.file);
+      console.log('Body:', req.body);
+      
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
