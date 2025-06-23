@@ -291,6 +291,7 @@ export default function NewReport() {
                   <Input
                     id="inspector"
                     placeholder="John Smith"
+                    tabIndex={6}
                     {...form.register('inspector')}
                   />
                   {form.formState.errors.inspector && (
