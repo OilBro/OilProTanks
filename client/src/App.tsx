@@ -9,6 +9,7 @@ import { Link, useLocation } from "wouter";
 import Dashboard from "@/pages/dashboard";
 import NewReport from "@/pages/new-report";
 import Templates from "@/pages/templates";
+import ImportReports from "@/pages/import-reports";
 import NotFound from "@/pages/not-found";
 
 function Header() {
@@ -35,6 +36,9 @@ function Header() {
               </Link>
               <Link href="/new-report" className={getTabClass('new-report')}>
                 New Report
+              </Link>
+              <Link href="/import" className={getTabClass('import')}>
+                Import Excel
               </Link>
               <Link href="/templates" className={getTabClass('templates')}>
                 Templates
@@ -64,6 +68,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/new-report" component={NewReport} />
+      <Route path="/import" component={ImportReports} />
       <Route path="/templates" component={Templates} />
       <Route component={NotFound} />
     </Switch>

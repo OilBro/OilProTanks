@@ -1,5 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import multer from "multer";
+import * as XLSX from "xlsx";
 import { storage } from "./storage";
 import { 
   insertInspectionReportSchema, 
@@ -9,6 +11,96 @@ import {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
+  // Configure multer for file uploads
+  const upload = multer({ 
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel'
+      ];
+      cb(null, allowedTypes.includes(file.mimetype));
+    }
+  });
+
+  // Excel Import endpoint
+  app.post("/api/reports/import", upload.single('excelFile'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const data = XLSX.utils.sheet_to_json(worksheet);
+
+      // Basic Excel parsing - look for common inspection report fields
+      const importedData: any = {};
+      
+      // Try to extract report data from common Excel patterns
+      for (const row of data) {
+        const rowObj = row as any;
+        
+        // Look for tank information
+        if (rowObj['Tank ID'] || rowObj['Tank Id'] || rowObj['TankID']) {
+          importedData.tankId = rowObj['Tank ID'] || rowObj['Tank Id'] || rowObj['TankID'];
+        }
+        if (rowObj['Report Number'] || rowObj['Report No'] || rowObj['ReportNumber']) {
+          importedData.reportNumber = rowObj['Report Number'] || rowObj['Report No'] || rowObj['ReportNumber'];
+        }
+        if (rowObj['Service'] || rowObj['Product']) {
+          importedData.service = String(rowObj['Service'] || rowObj['Product']).toLowerCase();
+        }
+        if (rowObj['Inspector'] || rowObj['Inspector Name']) {
+          importedData.inspector = rowObj['Inspector'] || rowObj['Inspector Name'];
+        }
+        if (rowObj['Date'] || rowObj['Inspection Date']) {
+          const dateValue = rowObj['Date'] || rowObj['Inspection Date'];
+          if (dateValue) {
+            const date = new Date(dateValue);
+            if (!isNaN(date.getTime())) {
+              importedData.inspectionDate = date.toISOString().split('T')[0];
+            }
+          }
+        }
+        if (rowObj['Diameter'] || rowObj['Tank Diameter']) {
+          importedData.diameter = String(rowObj['Diameter'] || rowObj['Tank Diameter']);
+        }
+        if (rowObj['Height'] || rowObj['Tank Height']) {
+          importedData.height = String(rowObj['Height'] || rowObj['Tank Height']);
+        }
+        if (rowObj['Original Thickness'] || rowObj['Nominal Thickness']) {
+          importedData.originalThickness = String(rowObj['Original Thickness'] || rowObj['Nominal Thickness']);
+        }
+      }
+
+      // Generate a unique report number if not found
+      if (!importedData.reportNumber) {
+        importedData.reportNumber = `IMP-${Date.now()}`;
+      }
+      
+      // Set default values
+      importedData.status = 'draft';
+      importedData.yearsSinceLastInspection = importedData.yearsSinceLastInspection || 10;
+
+      res.json({
+        message: "Excel file processed successfully",
+        extractedData: importedData,
+        totalRows: data.length,
+        preview: data.slice(0, 5) // First 5 rows for preview
+      });
+
+    } catch (error) {
+      console.error('Excel import error:', error);
+      res.status(500).json({ 
+        message: "Failed to process Excel file", 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+
   // Report Statistics - must come before the parameterized route
   app.get("/api/reports/stats", async (req, res) => {
     try {
