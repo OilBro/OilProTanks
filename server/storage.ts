@@ -230,12 +230,28 @@ export class MemStorage implements IStorage {
     const id = this.currentMeasurementId++;
     const now = new Date().toISOString();
     const newMeasurement: ThicknessMeasurement = { 
-      ...measurement,
+      id,
+      reportId: measurement.reportId,
+      component: measurement.component,
+      measurementType: measurement.measurementType || 'shell',
+      location: measurement.location,
+      elevation: measurement.elevation || null,
+      gridReference: measurement.gridReference || null,
+      plateNumber: measurement.plateNumber || null,
+      annularRingPosition: measurement.annularRingPosition || null,
+      criticalZoneType: measurement.criticalZoneType || null,
+      repadNumber: measurement.repadNumber || null,
+      repadType: measurement.repadType || null,
+      repadThickness: measurement.repadThickness || null,
+      nozzleId: measurement.nozzleId || null,
+      nozzleSize: measurement.nozzleSize || null,
+      flangeClass: measurement.flangeClass || null,
+      flangeType: measurement.flangeType || null,
+      originalThickness: measurement.originalThickness || null,
       currentThickness: measurement.currentThickness || null,
       corrosionRate: measurement.corrosionRate || null,
       remainingLife: measurement.remainingLife || null,
       status: measurement.status || 'acceptable',
-      id, 
       createdAt: now 
     };
     this.thicknessMeasurements.set(id, newMeasurement);

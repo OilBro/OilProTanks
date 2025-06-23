@@ -70,8 +70,24 @@ export function ThicknessTable({
 }: ThicknessTableProps) {
   const [newMeasurement, setNewMeasurement] = useState<Partial<ThicknessMeasurement>>({
     component: "",
+    measurementType: "shell",
     location: "",
-    currentThickness: "",
+    elevation: null,
+    gridReference: null,
+    plateNumber: null,
+    annularRingPosition: null,
+    criticalZoneType: null,
+    repadNumber: null,
+    repadType: null,
+    repadThickness: null,
+    nozzleId: null,
+    nozzleSize: null,
+    flangeClass: null,
+    flangeType: null,
+    originalThickness: null,
+    currentThickness: null,
+    corrosionRate: null,
+    remainingLife: null,
     status: "acceptable"
   });
 
@@ -92,10 +108,24 @@ export function ThicknessTable({
     );
 
     const measurement: ThicknessMeasurement = {
-      id: Date.now(), // temporary ID
-      reportId: 0, // will be set when saving
-      component: newMeasurement.component,
-      location: newMeasurement.location,
+      id: Date.now(),
+      reportId: 0,
+      component: newMeasurement.component!,
+      measurementType: newMeasurement.measurementType || "shell",
+      location: newMeasurement.location!,
+      elevation: newMeasurement.elevation,
+      gridReference: newMeasurement.gridReference,
+      plateNumber: newMeasurement.plateNumber,
+      annularRingPosition: newMeasurement.annularRingPosition,
+      criticalZoneType: newMeasurement.criticalZoneType,
+      repadNumber: newMeasurement.repadNumber,
+      repadType: newMeasurement.repadType,
+      repadThickness: newMeasurement.repadThickness,
+      nozzleId: newMeasurement.nozzleId,
+      nozzleSize: newMeasurement.nozzleSize,
+      flangeClass: newMeasurement.flangeClass,
+      flangeType: newMeasurement.flangeType,
+      originalThickness: originalThickness.toString(),
       currentThickness: currentThickness.toFixed(3),
       corrosionRate: calculation.corrosionRate.toFixed(4),
       remainingLife: calculation.remainingLife.toFixed(1),
