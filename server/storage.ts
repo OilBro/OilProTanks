@@ -15,6 +15,8 @@ import {
   type ReportTemplate,
   type InsertReportTemplate
 } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -305,4 +307,144 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async getInspectionReports(): Promise<InspectionReport[]> {
+    return await db.select().from(inspectionReports).orderBy(inspectionReports.updatedAt);
+  }
+
+  async getInspectionReport(id: number): Promise<InspectionReport | undefined> {
+    const [report] = await db.select().from(inspectionReports).where(eq(inspectionReports.id, id));
+    return report || undefined;
+  }
+
+  async createInspectionReport(report: InsertInspectionReport): Promise<InspectionReport> {
+    const now = new Date().toISOString();
+    const [newReport] = await db
+      .insert(inspectionReports)
+      .values({
+        ...report,
+        createdAt: now,
+        updatedAt: now
+      })
+      .returning();
+    return newReport;
+  }
+
+  async updateInspectionReport(id: number, report: Partial<InsertInspectionReport>): Promise<InspectionReport> {
+    const [updated] = await db
+      .update(inspectionReports)
+      .set({
+        ...report,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(inspectionReports.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error(`Report with id ${id} not found`);
+    }
+    return updated;
+  }
+
+  async deleteInspectionReport(id: number): Promise<boolean> {
+    const result = await db.delete(inspectionReports).where(eq(inspectionReports.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getThicknessMeasurements(reportId: number): Promise<ThicknessMeasurement[]> {
+    return await db.select().from(thicknessMeasurements).where(eq(thicknessMeasurements.reportId, reportId));
+  }
+
+  async createThicknessMeasurement(measurement: InsertThicknessMeasurement): Promise<ThicknessMeasurement> {
+    const now = new Date().toISOString();
+    const [newMeasurement] = await db
+      .insert(thicknessMeasurements)
+      .values({
+        ...measurement,
+        createdAt: now
+      })
+      .returning();
+    return newMeasurement;
+  }
+
+  async updateThicknessMeasurement(id: number, measurement: Partial<InsertThicknessMeasurement>): Promise<ThicknessMeasurement> {
+    const [updated] = await db
+      .update(thicknessMeasurements)
+      .set(measurement)
+      .where(eq(thicknessMeasurements.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error(`Measurement with id ${id} not found`);
+    }
+    return updated;
+  }
+
+  async deleteThicknessMeasurement(id: number): Promise<boolean> {
+    const result = await db.delete(thicknessMeasurements).where(eq(thicknessMeasurements.id, id));
+    return result.rowCount > 0;
+  }
+
+  async getInspectionChecklists(reportId: number): Promise<InspectionChecklist[]> {
+    return await db.select().from(inspectionChecklists).where(eq(inspectionChecklists.reportId, reportId));
+  }
+
+  async createInspectionChecklist(checklist: InsertInspectionChecklist): Promise<InspectionChecklist> {
+    const [newChecklist] = await db
+      .insert(inspectionChecklists)
+      .values(checklist)
+      .returning();
+    return newChecklist;
+  }
+
+  async updateInspectionChecklist(id: number, checklist: Partial<InsertInspectionChecklist>): Promise<InspectionChecklist> {
+    const [updated] = await db
+      .update(inspectionChecklists)
+      .set(checklist)
+      .where(eq(inspectionChecklists.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error(`Checklist item with id ${id} not found`);
+    }
+    return updated;
+  }
+
+  async getReportTemplates(): Promise<ReportTemplate[]> {
+    return await db.select().from(reportTemplates);
+  }
+
+  async getReportTemplate(id: number): Promise<ReportTemplate | undefined> {
+    const [template] = await db.select().from(reportTemplates).where(eq(reportTemplates.id, id));
+    return template || undefined;
+  }
+
+  async createReportTemplate(template: InsertReportTemplate): Promise<ReportTemplate> {
+    const now = new Date().toISOString();
+    const [newTemplate] = await db
+      .insert(reportTemplates)
+      .values({
+        ...template,
+        createdAt: now
+      })
+      .returning();
+    return newTemplate;
+  }
+}
+
+export const storage = new DatabaseStorage();
