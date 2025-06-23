@@ -31,6 +31,7 @@ const COMPONENT_OPTIONS = [
 const MEASUREMENT_TYPES = [
   { value: "shell", label: "Shell" },
   { value: "bottom_plate", label: "Bottom Plate" },
+  { value: "chime", label: "Chime Area" },
   { value: "internal_annular", label: "Internal Annular Ring" },
   { value: "critical_zone", label: "Critical Zone" },
   { value: "roof", label: "Roof" },
