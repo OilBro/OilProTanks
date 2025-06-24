@@ -213,12 +213,14 @@ export default function ImportReports() {
               Drag and drop your Excel file here, or click to browse
             </p>
             <div className="space-y-2">
-              <Label htmlFor="file-upload">
-                <Button variant="outline" className="cursor-pointer">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Choose File
-                </Button>
-              </Label>
+              <Button 
+                variant="outline" 
+                className="cursor-pointer"
+                onClick={() => document.getElementById('file-upload')?.click()}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Choose File
+              </Button>
               <input
                 id="file-upload"
                 type="file"
