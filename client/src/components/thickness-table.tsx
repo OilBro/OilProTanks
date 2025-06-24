@@ -10,24 +10,23 @@ import type { ThicknessMeasurement } from "@shared/schema";
 interface ThicknessTableProps {
   measurements: ThicknessMeasurement[];
   onMeasurementsChange: (measurements: ThicknessMeasurement[]) => void;
-  originalThickness: number;
   yearsSinceLastInspection: number;
 }
 
 const COMPONENT_OPTIONS = [
-  "Shell Course 1",
-  "Shell Course 2", 
-  "Shell Course 3",
-  "Shell Course 4",
-  "Bottom Plate",
-  "Roof - Center",
-  "Roof - Edge",
-  "Roof - Nozzle Area",
-  "Chime Area",
-  "Nozzle",
-  "Internal Annular Ring",
-  "Critical Zone",
-  "External Repad"
+  { value: "Shell Course 1", defaultThickness: 0.500 },
+  { value: "Shell Course 2", defaultThickness: 0.500 },
+  { value: "Shell Course 3", defaultThickness: 0.500 },
+  { value: "Shell Course 4", defaultThickness: 0.500 },
+  { value: "Bottom Plate", defaultThickness: 0.250 },
+  { value: "Roof - Center", defaultThickness: 0.125 },
+  { value: "Roof - Edge", defaultThickness: 0.125 },
+  { value: "Roof - Nozzle Area", defaultThickness: 0.250 },
+  { value: "Chime Area", defaultThickness: 0.500 },
+  { value: "Nozzle", defaultThickness: 0.375 },
+  { value: "Internal Annular Ring", defaultThickness: 0.250 },
+  { value: "Critical Zone", defaultThickness: 0.500 },
+  { value: "External Repad", defaultThickness: 0.375 }
 ];
 
 const MEASUREMENT_TYPES = [
@@ -92,12 +91,14 @@ export function ThicknessTable({
   });
 
   const addMeasurement = () => {
-    if (!newMeasurement.component || !newMeasurement.location || !newMeasurement.currentThickness) {
+    if (!newMeasurement.component || !newMeasurement.location || !newMeasurement.currentThickness || !newMeasurement.originalThickness) {
       return;
     }
 
     const currentThickness = parseFloat(newMeasurement.currentThickness as string);
-    if (!validateThickness(currentThickness)) {
+    const originalThickness = parseFloat(newMeasurement.originalThickness as string);
+    
+    if (!validateThickness(currentThickness) || !validateThickness(originalThickness)) {
       return;
     }
 
@@ -317,7 +318,7 @@ export function ThicknessTable({
                   type="button"
                   onClick={addMeasurement}
                   size="sm"
-                  disabled={!newMeasurement.component || !newMeasurement.location || !newMeasurement.currentThickness}
+                  disabled={!newMeasurement.component || !newMeasurement.location || !newMeasurement.currentThickness || !newMeasurement.originalThickness}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   Add
