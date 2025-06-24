@@ -1,0 +1,226 @@
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { FileText, Download, Eye, Loader2 } from "lucide-react";
+import { generateEnhancedPDF } from "@/components/enhanced-pdf-generator";
+import { useToast } from "@/hooks/use-toast";
+import type { InspectionReport, ThicknessMeasurement, InspectionChecklist } from "@shared/schema";
+
+interface QuickPDFPreviewProps {
+  report: InspectionReport;
+  measurements?: ThicknessMeasurement[];
+  checklists?: InspectionChecklist[];
+  trigger?: React.ReactNode;
+}
+
+export function QuickPDFPreview({ report, measurements = [], checklists = [], trigger }: QuickPDFPreviewProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const { toast } = useToast();
+
+  const handleGeneratePDF = async () => {
+    setIsGenerating(true);
+    try {
+      const reportData = {
+        report,
+        measurements,
+        checklists,
+        appurtenanceInspections: [],
+        repairRecommendations: [],
+        ventingInspections: [],
+        attachments: []
+      };
+
+      generateEnhancedPDF(reportData);
+      
+      toast({
+        title: "PDF Generated",
+        description: `Report ${report.reportNumber} has been generated and downloaded.`,
+      });
+      
+      setIsOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF report. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
+      case 'in_progress':
+        return <Badge className="bg-yellow-100 text-yellow-800">In Progress</Badge>;
+      case 'draft':
+        return <Badge className="bg-gray-100 text-gray-800">Draft</Badge>;
+      default:
+        return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const defaultTrigger = (
+    <Button variant="outline" size="sm">
+      <Eye className="h-4 w-4 mr-2" />
+      Quick Preview
+    </Button>
+  );
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        {trigger || defaultTrigger}
+      </DialogTrigger>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Report Preview - {report.reportNumber}
+          </DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-6">
+          {/* Report Header */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-lg">{report.reportNumber}</CardTitle>
+                  <p className="text-sm text-gray-600">Tank ID: {report.tankId}</p>
+                </div>
+                {getStatusBadge(report.status)}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                <div>
+                  <span className="font-medium text-gray-500">Customer:</span>
+                  <p className="text-gray-900">{report.customer}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-500">Location:</span>
+                  <p className="text-gray-900">{report.location}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-500">Inspector:</span>
+                  <p className="text-gray-900">{report.inspector}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-500">Inspection Date:</span>
+                  <p className="text-gray-900">{formatDate(report.inspectionDate)}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-500">Service Type:</span>
+                  <p className="text-gray-900">{report.serviceType || 'Not specified'}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-500">Years Since Last:</span>
+                  <p className="text-gray-900">{report.yearsSinceLastInspection || 'N/A'}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Measurements Summary */}
+          {measurements.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Thickness Measurements ({measurements.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {measurements.slice(0, 5).map((measurement) => (
+                    <div key={measurement.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                      <div>
+                        <span className="font-medium">{measurement.component}</span>
+                        <span className="text-gray-500 ml-2">- {measurement.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-gray-600">{measurement.currentThickness}"</span>
+                        <Badge 
+                          variant={measurement.status === 'acceptable' ? 'default' : 
+                                  measurement.status === 'monitor' ? 'secondary' : 'destructive'}
+                          className="text-xs"
+                        >
+                          {measurement.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                  {measurements.length > 5 && (
+                    <p className="text-sm text-gray-500 text-center py-2">
+                      +{measurements.length - 5} more measurements in full report...
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Checklists Summary */}
+          {checklists.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Inspection Checklists ({checklists.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {checklists.slice(0, 4).map((checklist) => (
+                    <div key={checklist.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                      <span className="text-sm">{checklist.itemDescription}</span>
+                      <Badge 
+                        variant={checklist.status === 'pass' ? 'default' : 'destructive'}
+                        className="text-xs"
+                      >
+                        {checklist.status}
+                      </Badge>
+                    </div>
+                  ))}
+                  {checklists.length > 4 && (
+                    <p className="text-sm text-gray-500 text-center py-2">
+                      +{checklists.length - 4} more checklist items in full report...
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Generate PDF Button */}
+          <div className="flex justify-between items-center pt-4 border-t">
+            <p className="text-sm text-gray-600">
+              This is a quick preview. Full report includes detailed calculations, appendices, and all data.
+            </p>
+            <Button 
+              onClick={handleGeneratePDF}
+              disabled={isGenerating}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Generate Full PDF
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

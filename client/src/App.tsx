@@ -54,10 +54,7 @@ function Header() {
                 New Report
               </Button>
             </Link>
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <User className="h-5 w-5" />
-              <span>Inspector J. Smith</span>
-            </div>
+
           </div>
         </div>
       </div>

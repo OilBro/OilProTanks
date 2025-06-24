@@ -4,7 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileText, Clock, CheckCircle, AlertTriangle, Eye, Edit, Download } from "lucide-react";
 import { Link } from "wouter";
-import type { InspectionReport } from "@shared/schema";
+import { generateEnhancedPDF } from "@/components/enhanced-pdf-generator";
+import { QuickPDFPreview } from "@/components/quick-pdf-preview";
+import { useToast } from "@/hooks/use-toast";
+import type { InspectionReport, ThicknessMeasurement, InspectionChecklist } from "@shared/schema";
 
 interface DashboardStats {
   totalReports: number;
@@ -14,6 +17,8 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
+  const { toast } = useToast();
+  
   const { data: reports = [], isLoading: reportsLoading } = useQuery<InspectionReport[]>({
     queryKey: ["/api/reports"],
   });
@@ -21,6 +26,39 @@ export default function Dashboard() {
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/reports/stats"],
   });
+
+  const handleQuickPDFGeneration = async (report: InspectionReport) => {
+    try {
+      // Fetch related data for the report
+      const [measurements, checklists] = await Promise.all([
+        fetch(`/api/thickness-measurements?reportId=${report.id}`).then(res => res.json()),
+        fetch(`/api/inspection-checklists?reportId=${report.id}`).then(res => res.json())
+      ]);
+
+      const reportData = {
+        report,
+        measurements: measurements || [],
+        checklists: checklists || [],
+        appurtenanceInspections: [],
+        repairRecommendations: [],
+        ventingInspections: [],
+        attachments: []
+      };
+
+      generateEnhancedPDF(reportData);
+      
+      toast({
+        title: "PDF Generated",
+        description: `Report ${report.reportNumber} PDF has been generated and downloaded.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF report. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -172,16 +210,30 @@ export default function Dashboard() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex space-x-2">
                         <Link href={`/report/${report.id}`}>
-                          <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
+                          <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700" title="View Report Details">
                             <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
+                        <QuickPDFPreview 
+                          report={report}
+                          trigger={
+                            <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700" title="Quick PDF Preview">
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          }
+                        />
                         <Link href={`/edit-report/${report.id}`}>
-                          <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600">
+                          <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600" title="Edit Report">
                             <Edit className="h-4 w-4" />
                           </Button>
                         </Link>
-                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600" title="Download PDF">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-gray-400 hover:text-gray-600" 
+                          title="Download PDF Report"
+                          onClick={() => handleQuickPDFGeneration(report)}
+                        >
                           <Download className="h-4 w-4" />
                         </Button>
                       </div>
