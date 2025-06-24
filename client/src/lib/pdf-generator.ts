@@ -21,25 +21,37 @@ export interface ReportData {
 
 export function generatePDF(data: ReportData): void {
   const doc = new jsPDF();
-  const { report, measurements, checklists } = data;
+  const { report, measurements, checklists, appurtenanceInspections = [], repairRecommendations = [], ventingInspections = [], attachments = [] } = data;
+  let yPosition = 20;
 
-  // Title
+  // Header
   doc.setFontSize(18);
-  doc.text('API 653 INSPECTION REPORT', 105, 20, { align: 'center' });
+  doc.text('API 653 TANK INSPECTION REPORT', 105, yPosition, { align: 'center' });
+  yPosition += 15;
 
-  // Report Info
+  // Report Summary Box
+  doc.setDrawColor(0, 0, 0);
+  doc.rect(15, yPosition, 180, 30);
   doc.setFontSize(10);
-  doc.text(`Report No: ${report.reportNumber}`, 20, 40);
-  doc.text(`Date: ${report.inspectionDate}`, 20, 50);
-  doc.text(`Inspector: ${report.inspector}`, 20, 60);
+  doc.text(`Report No: ${report.reportNumber}`, 20, yPosition + 8);
+  doc.text(`Tank ID: ${report.tankId}`, 20, yPosition + 16);
+  doc.text(`Service: ${report.service.toUpperCase()}`, 20, yPosition + 24);
+  doc.text(`Date: ${report.inspectionDate}`, 120, yPosition + 8);
+  doc.text(`Inspector: ${report.inspector}`, 120, yPosition + 16);
+  doc.text(`Status: ${report.status.toUpperCase()}`, 120, yPosition + 24);
+  yPosition += 40;
 
-  // Tank Information
-  doc.setFontSize(12);
-  doc.text('TANK INFORMATION', 20, 80);
+  // Tank Specifications
+  doc.setFontSize(14);
+  doc.text('TANK SPECIFICATIONS', 20, yPosition);
+  yPosition += 10;
   doc.setFontSize(10);
-  doc.text(`Tank ID: ${report.tankId}`, 20, 95);
-  doc.text(`Service: ${report.service}`, 20, 105);
-  doc.text(`Diameter: ${report.diameter || 'N/A'} ft`, 20, 115);
+  doc.text(`Diameter: ${report.diameter || 'N/A'} ft`, 20, yPosition);
+  doc.text(`Height: ${report.height || 'N/A'} ft`, 70, yPosition);
+  doc.text(`Original Thickness: ${report.originalThickness || 'N/A'} in`, 120, yPosition);
+  yPosition += 8;
+  doc.text(`Years Since Last Inspection: ${report.yearsSinceLastInspection || 'N/A'}`, 20, yPosition);
+  yPosition += 15;
   doc.text(`Height: ${report.height || 'N/A'} ft`, 20, 125);
   doc.text(`Original Thickness: ${report.originalThickness || 'N/A'} in`, 20, 135);
 
