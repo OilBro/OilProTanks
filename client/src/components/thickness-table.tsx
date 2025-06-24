@@ -191,7 +191,7 @@ export function ThicknessTable({
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Thickness Measurements</h3>
-        <Button onClick={addMeasurement} className="bg-blue-600 hover:bg-blue-700">
+        <Button type="button" onClick={addMeasurement} className="bg-blue-600 hover:bg-blue-700">
           <Plus className="h-4 w-4 mr-2" />
           Add Location
         </Button>
@@ -314,6 +314,7 @@ export function ThicknessTable({
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <Button
+                  type="button"
                   onClick={addMeasurement}
                   size="sm"
                   disabled={!newMeasurement.component || !newMeasurement.location || !newMeasurement.currentThickness}

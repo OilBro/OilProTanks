@@ -199,12 +199,12 @@ export function CMLDataEntry({ records, onRecordsChange, componentType }: CMLDat
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <Button onClick={addRecord}>
+            <Button type="button" onClick={addRecord}>
               <Plus className="w-4 h-4 mr-2" />
               Add CML Record
             </Button>
             {selectedRecords.length > 0 && (
-              <Button variant="outline" onClick={duplicateRecord}>
+              <Button type="button" variant="outline" onClick={duplicateRecord}>
                 <Copy className="w-4 h-4 mr-2" />
                 Duplicate Selected ({selectedRecords.length})
               </Button>

@@ -187,7 +187,7 @@ export function RepairRecommendations({ recommendations, onRecommendationsChange
             </div>
           </div>
 
-          <Button onClick={addRecommendation} className="mt-4">
+          <Button type="button" onClick={addRecommendation} className="mt-4">
             <Plus className="w-4 h-4 mr-2" />
             Add Recommendation
           </Button>

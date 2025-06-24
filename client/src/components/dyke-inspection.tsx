@@ -289,7 +289,7 @@ export function DykeInspection({ inspections, onInspectionsChange }: DykeInspect
             </div>
           </div>
 
-          <Button onClick={addInspection} className="w-full md:w-auto">
+          <Button type="button" onClick={addInspection} className="w-full md:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             Add Dyke Inspection
           </Button>

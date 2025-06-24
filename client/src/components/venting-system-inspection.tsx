@@ -188,7 +188,7 @@ export function VentingSystemInspection({ inspections, onInspectionsChange }: Ve
             </div>
           </div>
 
-          <Button onClick={addInspection} className="mt-4">
+          <Button type="button" onClick={addInspection} className="mt-4">
             <Plus className="w-4 h-4 mr-2" />
             Add Inspection
           </Button>
