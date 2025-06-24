@@ -4,6 +4,10 @@ import {
   thicknessMeasurements, 
   inspectionChecklists, 
   reportTemplates,
+  appurtenanceInspections,
+  reportAttachments,
+  repairRecommendations,
+  ventingSystemInspections,
   type User, 
   type InsertUser,
   type InspectionReport,
@@ -13,7 +17,15 @@ import {
   type InspectionChecklist,
   type InsertInspectionChecklist,
   type ReportTemplate,
-  type InsertReportTemplate
+  type InsertReportTemplate,
+  type AppurtenanceInspection,
+  type InsertAppurtenanceInspection,
+  type ReportAttachment,
+  type InsertReportAttachment,
+  type RepairRecommendation,
+  type InsertRepairRecommendation,
+  type VentingSystemInspection,
+  type InsertVentingSystemInspection
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";

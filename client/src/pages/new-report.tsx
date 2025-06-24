@@ -12,8 +12,20 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { ThicknessTable } from "@/components/thickness-table";
 import { ReportPreviewModal } from "@/components/report-preview-modal";
+import { AppurtenanceInspection } from "@/components/appurtenance-inspection";
+import { RepairRecommendations } from "@/components/repair-recommendations";
+import { VentingSystemInspection } from "@/components/venting-system-inspection";
+import { ReportAttachments } from "@/components/report-attachments";
 import { insertInspectionReportSchema } from "@shared/schema";
-import type { InspectionReport, ThicknessMeasurement, InspectionChecklist } from "@shared/schema";
+import type { 
+  InspectionReport, 
+  ThicknessMeasurement, 
+  InspectionChecklist,
+  AppurtenanceInspection as AppurtenanceInspectionType,
+  RepairRecommendation,
+  VentingSystemInspection as VentingSystemInspectionType,
+  ReportAttachment
+} from "@shared/schema";
 import { useLocation } from "wouter";
 
 const SERVICE_OPTIONS = [
@@ -39,6 +51,10 @@ export default function NewReport() {
   const { toast } = useToast();
   const [measurements, setMeasurements] = useState<ThicknessMeasurement[]>([]);
   const [checklist, setChecklist] = useState(DEFAULT_CHECKLIST_ITEMS);
+  const [appurtenanceInspections, setAppurtenanceInspections] = useState<AppurtenanceInspectionType[]>([]);
+  const [repairRecommendations, setRepairRecommendations] = useState<RepairRecommendation[]>([]);
+  const [ventingInspections, setVentingInspections] = useState<VentingSystemInspectionType[]>([]);
+  const [attachments, setAttachments] = useState<ReportAttachment[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [createdReport, setCreatedReport] = useState<InspectionReport | null>(null);
 
@@ -342,6 +358,30 @@ export default function NewReport() {
           onMeasurementsChange={setMeasurements}
           originalThickness={originalThickness}
           yearsSinceLastInspection={yearsSince}
+        />
+
+        {/* Appurtenance Inspection Section */}
+        <AppurtenanceInspection
+          inspections={appurtenanceInspections}
+          onInspectionsChange={setAppurtenanceInspections}
+        />
+
+        {/* Venting System Inspection Section */}
+        <VentingSystemInspection
+          inspections={ventingInspections}
+          onInspectionsChange={setVentingInspections}
+        />
+
+        {/* Repair Recommendations Section */}
+        <RepairRecommendations
+          recommendations={repairRecommendations}
+          onRecommendationsChange={setRepairRecommendations}
+        />
+
+        {/* Supporting Documents Section */}
+        <ReportAttachments
+          attachments={attachments}
+          onAttachmentsChange={setAttachments}
         />
 
         {/* Inspection Checklist */}

@@ -1,10 +1,22 @@
 import { jsPDF } from 'jspdf';
-import type { InspectionReport, ThicknessMeasurement, InspectionChecklist } from '@shared/schema';
+import type { 
+  InspectionReport, 
+  ThicknessMeasurement, 
+  InspectionChecklist,
+  AppurtenanceInspection,
+  RepairRecommendation,
+  VentingSystemInspection,
+  ReportAttachment
+} from '@shared/schema';
 
 export interface ReportData {
   report: InspectionReport;
   measurements: ThicknessMeasurement[];
   checklists: InspectionChecklist[];
+  appurtenanceInspections?: AppurtenanceInspection[];
+  repairRecommendations?: RepairRecommendation[];
+  ventingInspections?: VentingSystemInspection[];
+  attachments?: ReportAttachment[];
 }
 
 export function generatePDF(data: ReportData): void {
