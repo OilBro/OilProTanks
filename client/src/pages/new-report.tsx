@@ -435,8 +435,7 @@ export default function NewReport() {
         <ThicknessTable
           measurements={measurements}
           onMeasurementsChange={setMeasurements}
-          originalThickness={originalThickness}
-          yearsSinceLastInspection={yearsSince}
+          yearsSinceLastInspection={watchedValues.yearsSinceLastInspection || 1}
         />
 
         {/* Appurtenance Inspection Section */}
