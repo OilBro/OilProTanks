@@ -171,15 +171,17 @@ export default function Dashboard() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex space-x-2">
-                        <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
-                          <Eye className="h-4 w-4" />
-                        </Button>
+                        <Link href={`/report/${report.id}`}>
+                          <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
                         <Link href={`/edit-report/${report.id}`}>
                           <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600">
                             <Edit className="h-4 w-4" />
                           </Button>
                         </Link>
-                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600">
+                        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600" title="Download PDF">
                           <Download className="h-4 w-4" />
                         </Button>
                       </div>

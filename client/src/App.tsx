@@ -10,6 +10,8 @@ import Dashboard from "@/pages/dashboard";
 import NewReport from "@/pages/new-report";
 import Templates from "@/pages/templates";
 import ImportReports from "@/pages/import-reports";
+import { ReportView } from "@/pages/report-view";
+import { EditReport } from "@/pages/edit-report";
 import NotFound from "@/pages/not-found";
 
 function Header() {
@@ -70,6 +72,8 @@ function Router() {
       <Route path="/new-report" component={NewReport} />
       <Route path="/import" component={ImportReports} />
       <Route path="/templates" component={Templates} />
+      <Route path="/report/:id" component={ReportView} />
+      <Route path="/edit-report/:id" component={EditReport} />
       <Route component={NotFound} />
     </Switch>
   );
