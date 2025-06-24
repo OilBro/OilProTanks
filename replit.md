@@ -148,5 +148,14 @@ File handling: User has existing Excel-based inspection reports (XLSM format) th
   - Enhanced PDF generator with professional multi-page reports
   - Added corrosion rate calculations and remaining life assessments
   - Integrated comprehensive inspection workflow addressing all audit findings
-✓ Application transformed into professional-grade API 653 inspection platform
+✓ PROFESSIONAL API 653 REPORT BUILDER FEATURES ADDED:
+  - CML (Corrosion Monitoring Location) data entry with auto-numbering
+  - Component and Nozzle CML records with import/export capabilities
+  - Shell course remaining life calculations per API 653 requirements
+  - Settlement survey analysis with cosine curve fitting and R² validation
+  - Advanced calculation appendix with tabbed interface
+  - Material specifications from API 650 standards
+  - Joint efficiency calculations and stress analysis
+  - Professional multi-page PDF reports with certification pages
+✓ Application now matches commercial API 653 inspection software capabilities
 ```
