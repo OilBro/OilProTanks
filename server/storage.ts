@@ -46,6 +46,22 @@ export interface IStorage {
   getReportTemplates(): Promise<ReportTemplate[]>;
   getReportTemplate(id: number): Promise<ReportTemplate | undefined>;
   createReportTemplate(template: InsertReportTemplate): Promise<ReportTemplate>;
+  
+  // Appurtenance Inspections
+  getAppurtenanceInspections(reportId: number): Promise<AppurtenanceInspection[]>;
+  createAppurtenanceInspection(inspection: InsertAppurtenanceInspection): Promise<AppurtenanceInspection>;
+  
+  // Report Attachments
+  getReportAttachments(reportId: number): Promise<ReportAttachment[]>;
+  createReportAttachment(attachment: InsertReportAttachment): Promise<ReportAttachment>;
+  
+  // Repair Recommendations
+  getRepairRecommendations(reportId: number): Promise<RepairRecommendation[]>;
+  createRepairRecommendation(recommendation: InsertRepairRecommendation): Promise<RepairRecommendation>;
+  
+  // Venting System Inspections
+  getVentingSystemInspections(reportId: number): Promise<VentingSystemInspection[]>;
+  createVentingSystemInspection(inspection: InsertVentingSystemInspection): Promise<VentingSystemInspection>;
 }
 
 export class MemStorage implements IStorage {

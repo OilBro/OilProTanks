@@ -44,6 +44,63 @@ export const thicknessMeasurements = pgTable("thickness_measurements", {
   createdAt: text("created_at").notNull(),
 });
 
+// Appurtenance inspection records for detailed component tracking
+export const appurtenanceInspections = pgTable("appurtenance_inspections", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull(),
+  appurtenanceType: text("appurtenance_type").notNull(), // nozzle, manway, vent, ladder, platform, gauge, valve
+  appurtenanceId: text("appurtenance_id").notNull(),
+  location: text("location").notNull(),
+  condition: text("condition").notNull(), // good, fair, poor, defective
+  findings: text("findings"),
+  recommendations: text("recommendations"),
+  priority: text("priority").default("routine"), // urgent, high, medium, routine
+  photosAttached: boolean("photos_attached").default(false),
+  createdAt: text("created_at").notNull(),
+});
+
+// Document attachments for photos and supporting files
+export const reportAttachments = pgTable("report_attachments", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull(),
+  filename: text("filename").notNull(),
+  fileType: text("file_type").notNull(), // photo, document, drawing, ndt_report
+  description: text("description"),
+  category: text("category").notNull(), // general, defect, repair, nde, historical
+  uploadedAt: text("uploaded_at").notNull(),
+});
+
+// Repair recommendations with tracking
+export const repairRecommendations = pgTable("repair_recommendations", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull(),
+  component: text("component").notNull(),
+  defectDescription: text("defect_description").notNull(),
+  recommendation: text("recommendation").notNull(),
+  priority: text("priority").notNull(), // urgent, high, medium, routine
+  estimatedCost: decimal("estimated_cost", { precision: 12, scale: 2 }),
+  dueDate: text("due_date"),
+  status: text("status").default("open"), // open, in_progress, completed, deferred
+  apiReference: text("api_reference"), // API 653 clause reference
+  completedDate: text("completed_date"),
+  completionNotes: text("completion_notes"),
+  createdAt: text("created_at").notNull(),
+});
+
+// Venting system inspection
+export const ventingSystemInspections = pgTable("venting_system_inspections", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull(),
+  ventType: text("vent_type").notNull(), // pressure_relief, vacuum_relief, conservation, emergency
+  ventId: text("vent_id").notNull(),
+  setpoint: text("setpoint"),
+  condition: text("condition").notNull(),
+  testResults: text("test_results"),
+  findings: text("findings"),
+  recommendations: text("recommendations"),
+  createdAt: text("created_at").notNull(),
+});
+
 export const inspectionChecklists = pgTable("inspection_checklists", {
   id: serial("id").primaryKey(),
   reportId: integer("report_id").notNull(),
@@ -125,6 +182,26 @@ export const insertDykeInspectionSchema = createInsertSchema(dykeInspections).om
   createdAt: true,
 });
 
+export const insertAppurtenanceInspectionSchema = createInsertSchema(appurtenanceInspections).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertReportAttachmentSchema = createInsertSchema(reportAttachments).omit({
+  id: true,
+  uploadedAt: true,
+});
+
+export const insertRepairRecommendationSchema = createInsertSchema(repairRecommendations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertVentingSystemInspectionSchema = createInsertSchema(ventingSystemInspections).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertInspectionReport = z.infer<typeof insertInspectionReportSchema>;
 export type InspectionReport = typeof inspectionReports.$inferSelect;
 export type InsertThicknessMeasurement = z.infer<typeof insertThicknessMeasurementSchema>;
@@ -137,6 +214,14 @@ export type InsertSettlementSurvey = z.infer<typeof insertSettlementSurveySchema
 export type SettlementSurvey = typeof settlementSurveys.$inferSelect;
 export type InsertDykeInspection = z.infer<typeof insertDykeInspectionSchema>;
 export type DykeInspection = typeof dykeInspections.$inferSelect;
+export type InsertAppurtenanceInspection = z.infer<typeof insertAppurtenanceInspectionSchema>;
+export type AppurtenanceInspection = typeof appurtenanceInspections.$inferSelect;
+export type InsertReportAttachment = z.infer<typeof insertReportAttachmentSchema>;
+export type ReportAttachment = typeof reportAttachments.$inferSelect;
+export type InsertRepairRecommendation = z.infer<typeof insertRepairRecommendationSchema>;
+export type RepairRecommendation = typeof repairRecommendations.$inferSelect;
+export type InsertVentingSystemInspection = z.infer<typeof insertVentingSystemInspectionSchema>;
+export type VentingSystemInspection = typeof ventingSystemInspections.$inferSelect;
 
 // Users table for basic auth
 export const users = pgTable("users", {
