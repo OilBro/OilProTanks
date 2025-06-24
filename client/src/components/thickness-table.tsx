@@ -147,26 +147,26 @@ export function ThicknessTable({
     onMeasurementsChange(measurements.filter(m => m.id !== id));
   };
 
-  const updateMeasurement = (id: number, field: string, value: string) => {
+  const updateMeasurement = (id: number, field: keyof ThicknessMeasurement, value: any) => {
     const updatedMeasurements = measurements.map(measurement => {
       if (measurement.id === id) {
         const updated = { ...measurement, [field]: value };
         
-        // Recalculate if current thickness changes
-        if (field === 'currentThickness') {
-          const currentThickness = parseFloat(value);
-          if (validateThickness(currentThickness)) {
-            const calculation = calculateMeasurement(
-              originalThickness,
-              currentThickness,
-              yearsSinceLastInspection
-            );
-            updated.corrosionRate = calculation.corrosionRate.toFixed(4);
-            updated.remainingLife = calculation.remainingLife.toFixed(1);
-            updated.status = calculation.status;
-          }
+        // Recalculate if thickness changed and we have both original and current thickness
+        if ((field === 'currentThickness' || field === 'originalThickness') && 
+            updated.originalThickness && updated.currentThickness) {
+          const calculation = calculateMeasurement(
+            updated.originalThickness,
+            parseFloat(updated.currentThickness.toString()),
+            yearsSinceLastInspection
+          );
+          return {
+            ...updated,
+            corrosionRate: calculation.corrosionRate,
+            remainingLife: calculation.remainingLife,
+            status: calculation.status
+          };
         }
-        
         return updated;
       }
       return measurement;
@@ -204,7 +204,8 @@ export function ThicknessTable({
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Component</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Thickness (in)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Original (in)</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current (in)</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Corrosion Rate</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remaining Life</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -224,7 +225,7 @@ export function ThicknessTable({
                     </SelectTrigger>
                     <SelectContent>
                       {COMPONENT_OPTIONS.map(option => (
-                        <SelectItem key={option} value={option}>{option}</SelectItem>
+                        <SelectItem key={option.value} value={option.value}>{option.value}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -241,10 +242,20 @@ export function ThicknessTable({
                   <Input
                     type="number"
                     step="0.001"
+                    value={measurement.originalThickness || ''}
+                    onChange={(e) => updateMeasurement(measurement.id, 'originalThickness', parseFloat(e.target.value) || null)}
+                    placeholder="0.500"
+                    className="w-20"
+                  />
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <Input
+                    type="number"
+                    step="0.001"
                     value={measurement.currentThickness || ''}
                     onChange={(e) => updateMeasurement(measurement.id, 'currentThickness', e.target.value)}
                     placeholder="0.485"
-                    className="w-full"
+                    className="w-20"
                   />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -274,14 +285,23 @@ export function ThicknessTable({
               <td className="px-6 py-4 whitespace-nowrap">
                 <Select 
                   value={newMeasurement.component || ''} 
-                  onValueChange={(value) => setNewMeasurement({...newMeasurement, component: value})}
+                  onValueChange={(value) => {
+                    const component = COMPONENT_OPTIONS.find(opt => opt.value === value);
+                    setNewMeasurement({
+                      ...newMeasurement, 
+                      component: value,
+                      originalThickness: component?.defaultThickness || null
+                    });
+                  }}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select Component" />
                   </SelectTrigger>
                   <SelectContent>
                     {COMPONENT_OPTIONS.map(option => (
-                      <SelectItem key={option} value={option}>{option}</SelectItem>
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.value} (Default: {option.defaultThickness}")
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -298,10 +318,20 @@ export function ThicknessTable({
                 <Input
                   type="number"
                   step="0.001"
+                  value={newMeasurement.originalThickness || ''}
+                  onChange={(e) => setNewMeasurement({...newMeasurement, originalThickness: parseFloat(e.target.value) || null})}
+                  placeholder="0.500"
+                  className="w-20"
+                />
+              </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <Input
+                  type="number"
+                  step="0.001"
                   value={newMeasurement.currentThickness || ''}
                   onChange={(e) => setNewMeasurement({...newMeasurement, currentThickness: e.target.value})}
-                  placeholder="0.000"
-                  className="w-full"
+                  placeholder="0.485"
+                  className="w-20"
                 />
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
