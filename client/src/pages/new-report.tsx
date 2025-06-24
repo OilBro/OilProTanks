@@ -16,6 +16,9 @@ import { AppurtenanceInspection } from "@/components/appurtenance-inspection";
 import { RepairRecommendations } from "@/components/repair-recommendations";
 import { VentingSystemInspection } from "@/components/venting-system-inspection";
 import { ReportAttachments } from "@/components/report-attachments";
+import { SettlementDataEntry } from "@/components/settlement-data-entry";
+import { NDETestLocations } from "@/components/nde-test-locations";
+import { SecondaryContainment } from "@/components/secondary-containment";
 import { insertInspectionReportSchema } from "@shared/schema";
 import type { 
   InspectionReport, 
@@ -26,6 +29,64 @@ import type {
   VentingSystemInspection as VentingSystemInspectionType,
   ReportAttachment
 } from "@shared/schema";
+
+// Additional interfaces for new components
+interface SettlementPoint {
+  point: number;
+  angle: number;
+  elevation: number;
+  distance: number;
+}
+
+interface SettlementData {
+  referenceElevation: number;
+  points: SettlementPoint[];
+  maxDifferentialSettlement: number;
+  analysisMethod: 'circumferential' | 'differential';
+  notes: string;
+}
+
+interface NDEResult {
+  id: number;
+  testType: 'UT' | 'MT' | 'PT' | 'VT' | 'RT' | 'ET';
+  location: string;
+  component: string;
+  gridReference?: string;
+  testMethod: string;
+  acceptance: 'pass' | 'fail' | 'conditional';
+  discontinuityType?: string;
+  discontinuitySize?: string;
+  discontinuityDepth?: number;
+  repairRequired: boolean;
+  testDate: string;
+  technician: string;
+  equipment: string;
+  findings: string;
+}
+
+interface ContainmentComponent {
+  id: number;
+  componentType: 'dyke' | 'liner' | 'drain' | 'sump' | 'valve' | 'piping' | 'foundation';
+  location: string;
+  material: string;
+  condition: 'excellent' | 'good' | 'fair' | 'poor' | 'failed';
+  findings: string;
+  dimensions?: string;
+  capacity?: number;
+  repairRequired: boolean;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+}
+
+interface ContainmentSystem {
+  systemType: 'earthen_dyke' | 'concrete_dyke' | 'synthetic_liner' | 'clay_liner' | 'composite';
+  capacity: number;
+  drainageSystem: boolean;
+  monitoring: boolean;
+  components: ContainmentComponent[];
+  overallCondition: 'satisfactory' | 'marginal' | 'unsatisfactory';
+  complianceStatus: 'compliant' | 'non_compliant' | 'conditional';
+  notes: string;
+}
 import { useLocation } from "wouter";
 
 const SERVICE_OPTIONS = [
@@ -55,6 +116,24 @@ export default function NewReport() {
   const [repairRecommendations, setRepairRecommendations] = useState<RepairRecommendation[]>([]);
   const [ventingInspections, setVentingInspections] = useState<VentingSystemInspectionType[]>([]);
   const [attachments, setAttachments] = useState<ReportAttachment[]>([]);
+  const [settlementData, setSettlementData] = useState<SettlementData>({
+    referenceElevation: 0,
+    points: [],
+    maxDifferentialSettlement: 0,
+    analysisMethod: 'circumferential',
+    notes: ''
+  });
+  const [ndeResults, setNDEResults] = useState<NDEResult[]>([]);
+  const [containmentData, setContainmentData] = useState<ContainmentSystem>({
+    systemType: 'earthen_dyke',
+    capacity: 110,
+    drainageSystem: true,
+    monitoring: false,
+    components: [],
+    overallCondition: 'satisfactory',
+    complianceStatus: 'compliant',
+    notes: ''
+  });
   const [showPreview, setShowPreview] = useState(false);
   const [createdReport, setCreatedReport] = useState<InspectionReport | null>(null);
 
@@ -378,30 +457,29 @@ export default function NewReport() {
           onRecommendationsChange={setRepairRecommendations}
         />
 
+        {/* Settlement Survey Section */}
+        <SettlementDataEntry
+          data={settlementData}
+          onDataChange={setSettlementData}
+        />
+
+        {/* NDE Test Locations Section */}
+        <NDETestLocations
+          results={ndeResults}
+          onResultsChange={setNDEResults}
+        />
+
+        {/* Secondary Containment Section */}
+        <SecondaryContainment
+          data={containmentData}
+          onDataChange={setContainmentData}
+        />
+
         {/* Supporting Documents Section */}
         <ReportAttachments
           attachments={attachments}
           onAttachmentsChange={setAttachments}
         />
-
-        {/* Advanced Calculations Sections */}
-        <div className="grid grid-cols-1 gap-6">
-          {/* These would be added as separate components or tabs */}
-          <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
-            <p className="text-gray-500 mb-2">Advanced API 653 Calculations Available:</p>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p>• Shell Course Remaining Life Calculations</p>
-              <p>• Floor MRT (Magnetic Flux Examination) Analysis</p>
-              <p>• Roof Load Calculations</p>
-              <p>• Settlement Survey Analysis with Cosine Curve Fitting</p>
-              <p>• Nozzle Remaining Life Evaluations</p>
-              <p>• CML (Corrosion Monitoring Location) Data Management</p>
-            </div>
-            <p className="text-xs text-gray-500 mt-4">
-              Click "Generate Report" to access calculation appendices
-            </p>
-          </div>
-        </div>
 
         {/* Inspection Checklist */}
         <Card>
