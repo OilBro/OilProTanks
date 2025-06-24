@@ -340,7 +340,7 @@ export function SecondaryContainment({ data, onDataChange }: SecondaryContainmen
             />
           </div>
 
-          <Button onClick={addComponent}>
+          <Button type="button" onClick={addComponent}>
             <Plus className="w-4 h-4 mr-2" />
             Add Component
           </Button>

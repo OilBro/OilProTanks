@@ -268,7 +268,7 @@ export function NDETestLocations({ results, onResultsChange }: NDETestLocationsP
             />
           </div>
 
-          <Button onClick={addNDEResult}>
+          <Button type="button" onClick={addNDEResult}>
             <Plus className="w-4 h-4 mr-2" />
             Add NDE Result
           </Button>

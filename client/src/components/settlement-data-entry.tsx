@@ -147,7 +147,7 @@ export function SettlementDataEntry({ data, onDataChange }: SettlementDataEntryP
               />
             </div>
           </div>
-          <Button onClick={addSettlementPoint} className="mt-4">
+          <Button type="button" onClick={addSettlementPoint} className="mt-4">
             Add Point
           </Button>
         </div>
