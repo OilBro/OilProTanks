@@ -384,6 +384,25 @@ export default function NewReport() {
           onAttachmentsChange={setAttachments}
         />
 
+        {/* Advanced Calculations Sections */}
+        <div className="grid grid-cols-1 gap-6">
+          {/* These would be added as separate components or tabs */}
+          <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-lg">
+            <p className="text-gray-500 mb-2">Advanced API 653 Calculations Available:</p>
+            <div className="text-sm text-gray-600 space-y-1">
+              <p>• Shell Course Remaining Life Calculations</p>
+              <p>• Floor MRT (Magnetic Flux Examination) Analysis</p>
+              <p>• Roof Load Calculations</p>
+              <p>• Settlement Survey Analysis with Cosine Curve Fitting</p>
+              <p>• Nozzle Remaining Life Evaluations</p>
+              <p>• CML (Corrosion Monitoring Location) Data Management</p>
+            </div>
+            <p className="text-xs text-gray-500 mt-4">
+              Click "Generate Report" to access calculation appendices
+            </p>
+          </div>
+        </div>
+
         {/* Inspection Checklist */}
         <Card>
           <CardContent className="p-6">
