@@ -303,6 +303,7 @@ export function NDETestLocations({ results, onResultsChange }: NDETestLocationsP
                       </div>
                     </div>
                     <Button
+                      type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => removeResult(result.id)}

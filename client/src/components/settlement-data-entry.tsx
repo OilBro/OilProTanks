@@ -180,6 +180,7 @@ export function SettlementDataEntry({ data, onDataChange }: SettlementDataEntryP
                       <td className="p-2">{point.distance || '-'}</td>
                       <td className="p-2">
                         <Button
+                          type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => removePoint(index)}

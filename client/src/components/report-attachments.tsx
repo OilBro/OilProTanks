@@ -163,6 +163,7 @@ export function ReportAttachments({ attachments, onAttachmentsChange }: ReportAt
               className="hidden"
             />
             <Button 
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2"
             >
@@ -205,6 +206,7 @@ export function ReportAttachments({ attachments, onAttachmentsChange }: ReportAt
                               </Badge>
                             </div>
                             <Button
+                              type="button"
                               variant="ghost"
                               size="sm"
                               onClick={() => removeAttachment(attachment.id)}

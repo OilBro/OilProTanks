@@ -231,6 +231,7 @@ export function RepairRecommendations({ recommendations, onRecommendationsChange
                           {STATUSES.find(s => s.value === rec.status)?.label}
                         </Badge>
                         <Button
+                          type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => removeRecommendation(rec.id)}

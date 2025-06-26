@@ -377,6 +377,7 @@ export function SecondaryContainment({ data, onDataChange }: SecondaryContainmen
                     </div>
                   </div>
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
                     onClick={() => removeComponent(component.id)}

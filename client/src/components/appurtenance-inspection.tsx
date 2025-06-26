@@ -215,6 +215,7 @@ export function AppurtenanceInspection({ inspections, onInspectionsChange }: App
                       {CONDITIONS.find(c => c.value === inspection.condition)?.label}
                     </Badge>
                     <Button
+                      type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => removeInspection(inspection.id)}
@@ -245,7 +246,7 @@ export function AppurtenanceInspection({ inspections, onInspectionsChange }: App
                   <Badge variant="outline" className="text-xs">
                     Priority: {inspection.priority}
                   </Badge>
-                  <Button variant="outline" size="sm">
+                  <Button type="button" variant="outline" size="sm">
                     <Camera className="w-4 h-4 mr-2" />
                     Attach Photos
                   </Button>

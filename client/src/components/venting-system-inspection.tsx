@@ -225,6 +225,7 @@ export function VentingSystemInspection({ inspections, onInspectionsChange }: Ve
                         {CONDITIONS.find(c => c.value === inspection.condition)?.label}
                       </Badge>
                       <Button
+                        type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => removeInspection(inspection.id)}
