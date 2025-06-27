@@ -34,7 +34,9 @@ export function SettlementSurvey({ data, onDataChange }: SettlementSurveyProps) 
   const [newPoint, setNewPoint] = useState<Partial<SettlementPoint>>({
     location: '',
     elevation: 0,
-    originalElevation: 0
+    originalElevation: 0,
+    distance: 0,
+    notes: ''
   });
 
   const addPoint = () => {

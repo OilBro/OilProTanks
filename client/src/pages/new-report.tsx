@@ -309,10 +309,16 @@ export default function NewReport() {
       </div>
 
       <form 
-        onSubmit={form.handleSubmit(onSubmit)} 
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' && e.target instanceof HTMLInputElement) {
+          if (e.key === 'Enter') {
             e.preventDefault();
+            e.stopPropagation();
+            return false;
           }
         }}
         className="space-y-8"
@@ -430,12 +436,29 @@ export default function NewReport() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="yearsSinceLastInspection">Years Since Last Inspection</Label>
+                  <div className="flex items-center">
+                    <Label htmlFor="yearsSinceLastInspection">Years Since Last Inspection</Label>
+                    <HelpTooltip content="Time elapsed since the previous API 653 inspection. Used for corrosion rate calculations." />
+                  </div>
                   <Input
                     id="yearsSinceLastInspection"
                     type="number"
                     placeholder="10"
                     tabIndex={9}
+                    autoComplete="off"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    onFocus={(e) => {
+                      // Prevent auto-focus from other elements
+                      if (document.activeElement && document.activeElement !== e.target) {
+                        e.preventDefault();
+                        e.currentTarget.blur();
+                      }
+                    }}
                     {...form.register('yearsSinceLastInspection')}
                   />
                 </div>
@@ -555,8 +578,17 @@ export default function NewReport() {
             variant="outline"
             onClick={(e) => {
               e.preventDefault();
-              form.setValue('status', 'draft');
-              form.handleSubmit(onSubmit)();
+              e.stopPropagation();
+              
+              // Remove focus from any input fields
+              if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+              }
+              
+              setTimeout(() => {
+                form.setValue('status', 'draft');
+                form.handleSubmit(onSubmit)();
+              }, 100);
             }}
           >
             Save Draft
@@ -567,7 +599,16 @@ export default function NewReport() {
               variant="outline"
               onClick={(e) => {
                 e.preventDefault();
-                handlePreviewReport();
+                e.stopPropagation();
+                
+                // Remove focus from any input fields
+                if (document.activeElement instanceof HTMLElement) {
+                  document.activeElement.blur();
+                }
+                
+                setTimeout(() => {
+                  handlePreviewReport();
+                }, 100);
               }}
               className="bg-slate-600 text-white hover:bg-slate-700"
             >
@@ -575,9 +616,19 @@ export default function NewReport() {
             </Button>
             <Button 
               type="button"
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.preventDefault();
-                form.handleSubmit(onSubmit)();
+                e.stopPropagation();
+                
+                // Remove focus from any input fields
+                if (document.activeElement instanceof HTMLElement) {
+                  document.activeElement.blur();
+                }
+                
+                // Add small delay to ensure focus is cleared
+                setTimeout(() => {
+                  form.handleSubmit(onSubmit)();
+                }, 100);
               }}
               disabled={createReportMutation.isPending}
               className="bg-blue-600 hover:bg-blue-700"
