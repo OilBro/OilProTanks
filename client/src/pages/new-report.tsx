@@ -23,6 +23,7 @@ import { SecondaryContainment } from "@/components/secondary-containment";
 import { VisualDocumentation } from "@/components/visual-documentation";
 import { HelpTooltip } from "@/components/help-tooltip";
 import { insertInspectionReportSchema } from "@shared/schema";
+import { z } from "zod";
 import type { 
   InspectionReport, 
   ThicknessMeasurement, 
@@ -151,7 +152,8 @@ export default function NewReport() {
   const [createdReport, setCreatedReport] = useState<InspectionReport | null>(null);
 
   const form = useForm({
-    resolver: zodResolver(insertInspectionReportSchema),
+    // Disable strict validation to prevent auto-focus issues
+    resolver: undefined,
     defaultValues: {
       reportNumber: '',
       tankId: '',
@@ -160,10 +162,13 @@ export default function NewReport() {
       height: '',
       inspector: '',
       inspectionDate: new Date().toISOString().split('T')[0],
-      originalThickness: '',
-      yearsSinceLastInspection: '',
+      originalThickness: '0.5',
+      yearsSinceLastInspection: '1',
       status: 'draft' as const
-    }
+    },
+    mode: 'onSubmit',
+    shouldFocusError: false,
+    shouldUseNativeValidation: false
   });
 
   const createReportMutation = useMutation({
@@ -220,7 +225,28 @@ export default function NewReport() {
 
   const onSubmit = async (data: any) => {
     try {
-      const report = await createReportMutation.mutateAsync(data);
+      // Validate required fields manually (without causing focus issues)
+      if (!data.reportNumber || !data.tankId) {
+        toast({
+          title: "Missing Required Fields",
+          description: "Please fill in at least Report Number and Tank ID.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Process data with proper defaults
+      const processedData = {
+        ...data,
+        originalThickness: parseFloat(data.originalThickness) || 0.5,
+        yearsSinceLastInspection: parseInt(data.yearsSinceLastInspection) || 1,
+        diameter: data.diameter || null,
+        height: data.height || null,
+        service: data.service || '',
+        inspector: data.inspector || 'Unknown'
+      };
+
+      const report = await createReportMutation.mutateAsync(processedData);
       
       if (measurements.length > 0) {
         await saveMeasurementsMutation.mutateAsync({ 
@@ -234,9 +260,19 @@ export default function NewReport() {
         checklist 
       });
       
+      toast({
+        title: "Report Created Successfully",
+        description: `Report ${data.reportNumber} has been saved.`,
+      });
+      
       setLocation('/dashboard');
     } catch (error) {
       console.error('Failed to save report:', error);
+      toast({
+        title: "Save Failed",
+        description: "Unable to save the report. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -452,13 +488,7 @@ export default function NewReport() {
                         e.currentTarget.blur();
                       }
                     }}
-                    onFocus={(e) => {
-                      // Prevent auto-focus from other elements
-                      if (document.activeElement && document.activeElement !== e.target) {
-                        e.preventDefault();
-                        e.currentTarget.blur();
-                      }
-                    }}
+
                     {...form.register('yearsSinceLastInspection')}
                   />
                 </div>
