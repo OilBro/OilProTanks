@@ -1,0 +1,88 @@
+Specific Broken Links and Errors Report - OilPro Tanks Website
+Executive Summary
+Based on comprehensive testing of buttons and links across the website, several specific issues have been identified that require immediate attention.
+
+Specific Broken Links and Errors Found
+1. Edit Report Button from Report Details Page
+	•	Location: Report details page (e.g., /report/1)
+	•	Button: “Edit Report” button in the Quick Actions section
+	•	Issue: Redirects to URL with “undefined” parameter
+	•	Broken URL: `https://oilpro-tanks.replit.app/edit-report/undefined`
+	•	Expected URL: `https://oilpro-tanks.replit.app/edit-report/[report-id]`
+	•	Status: BROKEN - Report ID not being passed correctly
+	•	Impact: Users cannot edit reports from the report details page
+
+2. Download PDF Report Button (Dashboard)
+	•	Location: Dashboard page - Recent Reports table
+	•	Button: “Download PDF Report” button (red button with download icon)
+	•	Issue: Fails to generate PDF and shows error message
+	•	Error Message: “Error - Failed to generate PDF report. Please try again.”
+	•	Status: BROKEN - PDF generation functionality not working
+	•	Impact: Users cannot download PDF reports from dashboard
+	•	Tested on: TEST-001 report
+
+3. Report Details Page Loading Issues
+	•	Location: Report details pages for specific reports
+	•	Issue: Complete page loading failure showing only gray placeholder boxes
+	•	Affected URLs:
+	◦	`https://oilpro-tanks.replit.app/report/2` (TEST-002 report)
+	•	Status: BROKEN - Page content not loading properly
+	•	Impact: Users cannot view details for affected reports
+
+4. View Full Report Button (Non-functional)
+	•	Location: Report details page - Quick Actions section
+	•	Button: “View Full Report” button
+	•	Issue: Button shows visual feedback when clicked but doesn’t navigate or perform any action
+	•	Status: NON-FUNCTIONAL - No response or navigation
+	•	Impact: Users cannot access full report view
+
+5. Download PDF Button (Report Details Page)
+	•	Location: Report details page - Quick Actions section
+	•	Button: “Download PDF” button
+	•	Issue: Button shows visual feedback when clicked but doesn’t trigger download
+	•	Status: NON-FUNCTIONAL - No download initiated
+	•	Impact: Users cannot download PDFs from report details page
+
+Data Issues
+6. Invalid Date Display
+	•	Location: Multiple report details pages
+	•	Issue: “Invalid Date” displayed instead of proper dates
+	•	Affected Fields:
+	◦	Inspection Date
+	◦	Created date
+	◦	Last Updated date
+	•	Status: DATA ISSUE - Date formatting/parsing problems
+	•	Impact: Users cannot see proper dates for reports
+
+Working Functionality (For Reference)
+Buttons That Work Correctly:
+	1.	Dashboard Navigation - All navigation links work properly
+	2.	Quick PDF Preview - Opens modal with report preview successfully
+	3.	Generate Full PDF (from preview modal) - Works and shows success notification
+	4.	Edit Report (from dashboard) - Works correctly with proper URL routing
+	5.	Template System - All template buttons work and pre-populate forms correctly
+	6.	New Report Form - All form buttons and dropdowns function properly
+	7.	File Upload - Choose File buttons work correctly
+
+Priority Recommendations
+High Priority (Immediate Fix Required):
+	1.	Fix “Edit Report” button URL routing from report details page
+	2.	Fix PDF download functionality from dashboard
+	3.	Fix report details page loading for affected reports (report/2)
+
+Medium Priority:
+	4.	Fix “View Full Report” button functionality
+	5.	Fix “Download PDF” button on report details pages
+	6.	Fix date formatting/display issues
+
+Testing Notes:
+	•	Issues are consistent across different browsers
+	•	Some functionality works from one location but not another (Edit Report button)
+	•	Template and new report functionality is working well
+	•	Navigation between main pages works correctly
+
+Recommended Next Steps:
+	1.	Fix URL parameter passing for Edit Report functionality
+	2.	Debug PDF generation service
+	3.	Investigate report data loading issues for specific report IDs
+	4.	Review date formatting in the database/API responses
