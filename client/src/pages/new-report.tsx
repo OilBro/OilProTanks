@@ -17,8 +17,10 @@ import { RepairRecommendations } from "@/components/repair-recommendations";
 import { VentingSystemInspection } from "@/components/venting-system-inspection";
 import { ReportAttachments } from "@/components/report-attachments";
 import { SettlementDataEntry } from "@/components/settlement-data-entry";
+import { SettlementSurvey } from "@/components/settlement-survey";
 import { NDETestLocations } from "@/components/nde-test-locations";
 import { SecondaryContainment } from "@/components/secondary-containment";
+import { VisualDocumentation } from "@/components/visual-documentation";
 import { insertInspectionReportSchema } from "@shared/schema";
 import type { 
   InspectionReport, 
@@ -123,7 +125,15 @@ export default function NewReport() {
     analysisMethod: 'circumferential',
     notes: ''
   });
-  const [ndeResults, setNDEResults] = useState<NDEResult[]>([]);
+  
+  const [settlementSurveyData, setSettlementSurveyData] = useState({
+    referenceElevation: 0,
+    measurementDate: new Date().toISOString().split('T')[0],
+    instrument: '',
+    points: [] as any[],
+    analysisNotes: ''
+  });
+  const [ndeResults, setNDEResults] = useState<any[]>([]);
   const [containmentData, setContainmentData] = useState<ContainmentSystem>({
     systemType: 'earthen_dyke',
     capacity: 110,
@@ -134,6 +144,8 @@ export default function NewReport() {
     complianceStatus: 'compliant',
     notes: ''
   });
+
+  const [visualDocuments, setVisualDocuments] = useState<any[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const [createdReport, setCreatedReport] = useState<InspectionReport | null>(null);
 
@@ -435,7 +447,7 @@ export default function NewReport() {
         <ThicknessTable
           measurements={measurements}
           onMeasurementsChange={setMeasurements}
-          yearsSinceLastInspection={watchedValues.yearsSinceLastInspection || 1}
+          yearsSinceLastInspection={Number(watchedValues.yearsSinceLastInspection) || 1}
         />
 
         {/* Appurtenance Inspection Section */}
@@ -457,21 +469,27 @@ export default function NewReport() {
         />
 
         {/* Settlement Survey Section */}
-        <SettlementDataEntry
-          data={settlementData}
-          onDataChange={setSettlementData}
+        <SettlementSurvey
+          data={settlementSurveyData as any}
+          onDataChange={(data: any) => setSettlementSurveyData(data)}
         />
 
         {/* NDE Test Locations Section */}
         <NDETestLocations
-          results={ndeResults}
-          onResultsChange={setNDEResults}
+          results={ndeResults as any}
+          onResultsChange={(results: any) => setNDEResults(results)}
         />
 
         {/* Secondary Containment Section */}
         <SecondaryContainment
           data={containmentData}
           onDataChange={setContainmentData}
+        />
+
+        {/* Visual Documentation Section */}
+        <VisualDocumentation
+          documents={visualDocuments}
+          onDocumentsChange={setVisualDocuments}
         />
 
         {/* Supporting Documents Section */}

@@ -3,6 +3,37 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+// Security headers middleware - addressing audit findings
+app.use((req: Request, res: Response, next: NextFunction) => {
+  // Prevent MIME-sniffing attacks
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  
+  // Prevent clickjacking attacks
+  res.setHeader('X-Frame-Options', 'DENY');
+  
+  // Enable XSS protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  
+  // Content Security Policy
+  res.setHeader('Content-Security-Policy', 
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline'; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' data:; " +
+    "connect-src 'self'; " +
+    "font-src 'self'; " +
+    "object-src 'none'; " +
+    "base-uri 'self'; " +
+    "form-action 'self'"
+  );
+  
+  // Referrer policy
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  next();
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

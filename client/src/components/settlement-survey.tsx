@@ -1,33 +1,28 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { BarChart3, AlertCircle, TrendingUp, Plus } from "lucide-react";
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Trash2, Calculator, TrendingUp } from 'lucide-react';
 
-interface SurveyPoint {
-  point: number;
-  circumferentialDistance: number; // feet
-  elevation: number; // feet
-  predictedElevation?: number;
-  settlement?: number;
+interface SettlementPoint {
+  id: number;
+  location: string; // e.g., "0°", "45°", "90°", etc.
+  elevation: number; // Current elevation in inches
+  originalElevation?: number; // Original elevation if known
+  distance?: number; // Distance from reference point
+  notes?: string;
 }
 
 interface SettlementSurveyData {
-  tankDiameter: number; // feet
-  numberOfPoints: number;
-  roofType: 'O' | 'F'; // Open or Fixed
-  modulus: number; // MOE (default 29,000,000)
-  elevationSet: 'single' | 'double';
-  points: SurveyPoint[];
-  rSquared?: number;
-  settlementArcLength?: number;
-  maxSettlement?: number;
-  calculationMethod: 'cosine' | 'manual';
-  notes: string;
+  referenceElevation: number;
+  measurementDate: string;
+  instrument: string;
+  points: SettlementPoint[];
+  maxDifferentialSettlement?: number;
+  averageSettlement?: number;
+  analysisNotes?: string;
 }
 
 interface SettlementSurveyProps {
@@ -36,404 +31,323 @@ interface SettlementSurveyProps {
 }
 
 export function SettlementSurvey({ data, onDataChange }: SettlementSurveyProps) {
-  const [showGraph, setShowGraph] = useState(false);
-  const [selectedPoints, setSelectedPoints] = useState<number[]>([]);
+  const [newPoint, setNewPoint] = useState<Partial<SettlementPoint>>({
+    location: '',
+    elevation: 0,
+    originalElevation: 0
+  });
 
-  // Calculate survey points based on tank diameter
-  const calculateSurveyPoints = (diameter: number, numPoints: number) => {
-    const circumference = diameter * Math.PI;
-    const spacing = circumference / numPoints;
-    
-    const points: SurveyPoint[] = [];
-    for (let i = 0; i < numPoints; i++) {
-      points.push({
-        point: i + 1,
-        circumferentialDistance: i * spacing,
-        elevation: 0
-      });
-    }
-    return points;
-  };
+  const addPoint = () => {
+    if (!newPoint.location || newPoint.elevation === undefined) return;
 
-  // Cosine curve fitting for settlement analysis
-  const performCosineAnalysis = () => {
-    if (data.points.length < 4 || data.points.some(p => p.elevation === 0)) return;
-
-    const points = data.points;
-    const n = points.length;
-    
-    // Calculate average elevation
-    const avgElevation = points.reduce((sum, p) => sum + p.elevation, 0) / n;
-    
-    // Fit cosine curve: y = A*cos(B*x + C) + D
-    // Simplified approximation for demonstration
-    const amplitude = Math.max(...points.map(p => p.elevation)) - Math.min(...points.map(p => p.elevation));
-    const frequency = (2 * Math.PI) / (data.tankDiameter * Math.PI);
-    
-    // Calculate predicted elevations and R²
-    let sumSquaredResiduals = 0;
-    let sumSquaredTotal = 0;
-    
-    const updatedPoints = points.map(point => {
-      const predicted = avgElevation + (amplitude / 2) * Math.cos(frequency * point.circumferentialDistance);
-      const residual = point.elevation - predicted;
-      const totalVariation = point.elevation - avgElevation;
-      
-      sumSquaredResiduals += residual * residual;
-      sumSquaredTotal += totalVariation * totalVariation;
-      
-      return {
-        ...point,
-        predictedElevation: predicted,
-        settlement: point.elevation - predicted
-      };
-    });
-    
-    const rSquared = 1 - (sumSquaredResiduals / sumSquaredTotal);
-    
-    // Calculate settlement characteristics
-    const settlements = updatedPoints.map(p => Math.abs(p.settlement || 0));
-    const maxSettlement = Math.max(...settlements);
-    
-    onDataChange({
-      ...data,
-      points: updatedPoints,
-      rSquared,
-      maxSettlement,
-      calculationMethod: rSquared >= 0.9 ? 'cosine' : 'manual'
-    });
-  };
-
-  // Manual settlement analysis per API 653 B.2.2.5
-  const performManualAnalysis = () => {
-    if (selectedPoints.length < 2) return;
-    
-    // Calculate arc length between selected points
-    const selectedElevations = selectedPoints.map(i => data.points[i - 1].elevation);
-    const maxElev = Math.max(...selectedElevations);
-    const minElev = Math.min(...selectedElevations);
-    
-    const arcLength = selectedPoints.length * (data.tankDiameter * Math.PI / data.numberOfPoints);
-    
-    onDataChange({
-      ...data,
-      settlementArcLength: arcLength,
-      maxSettlement: maxElev - minElev,
-      calculationMethod: 'manual'
-    });
-  };
-
-  const updatePoint = (index: number, elevation: number) => {
-    const newPoints = [...data.points];
-    newPoints[index] = { ...newPoints[index], elevation };
-    onDataChange({ ...data, points: newPoints });
-  };
-
-  const addSurveyPoint = () => {
-    const circumference = data.tankDiameter * Math.PI;
-    const spacing = circumference / (data.numberOfPoints + 1);
-    
-    const newPoint: SurveyPoint = {
-      point: data.numberOfPoints + 1,
-      circumferentialDistance: data.numberOfPoints * spacing,
-      elevation: 0
+    const point: SettlementPoint = {
+      id: Date.now(),
+      location: newPoint.location,
+      elevation: newPoint.elevation,
+      originalElevation: newPoint.originalElevation,
+      distance: newPoint.distance,
+      notes: newPoint.notes || ''
     };
-    
+
     onDataChange({
       ...data,
-      numberOfPoints: data.numberOfPoints + 1,
-      points: [...data.points, newPoint]
+      points: [...data.points, point]
+    });
+
+    setNewPoint({
+      location: '',
+      elevation: 0,
+      originalElevation: 0
     });
   };
 
-  const resetPoints = () => {
-    const newPoints = calculateSurveyPoints(data.tankDiameter, data.numberOfPoints);
-    onDataChange({ ...data, points: newPoints });
+  const removePoint = (id: number) => {
+    onDataChange({
+      ...data,
+      points: data.points.filter(p => p.id !== id)
+    });
   };
 
-  useEffect(() => {
-    // Recalculate points when tank diameter or number of points changes
-    if (data.points.length !== data.numberOfPoints) {
-      const newPoints = calculateSurveyPoints(data.tankDiameter, data.numberOfPoints);
-      onDataChange({ ...data, points: newPoints });
+  const calculateSettlementAnalysis = () => {
+    if (data.points.length < 3) return;
+
+    const settlements = data.points
+      .filter(p => p.originalElevation !== undefined)
+      .map(p => p.elevation - (p.originalElevation || 0));
+
+    if (settlements.length === 0) return;
+
+    const maxSettlement = Math.max(...settlements.map(Math.abs));
+    const avgSettlement = settlements.reduce((sum, s) => sum + s, 0) / settlements.length;
+    
+    // Calculate differential settlement (max difference between adjacent points)
+    const sortedPoints = [...data.points].sort((a, b) => {
+      const getAngle = (loc: string) => {
+        const match = loc.match(/(\d+)/);
+        return match ? parseInt(match[1]) : 0;
+      };
+      return getAngle(a.location) - getAngle(b.location);
+    });
+
+    let maxDifferential = 0;
+    for (let i = 0; i < sortedPoints.length - 1; i++) {
+      const current = sortedPoints[i];
+      const next = sortedPoints[i + 1];
+      if (current.originalElevation && next.originalElevation) {
+        const currentSettlement = current.elevation - current.originalElevation;
+        const nextSettlement = next.elevation - next.originalElevation;
+        const differential = Math.abs(currentSettlement - nextSettlement);
+        maxDifferential = Math.max(maxDifferential, differential);
+      }
     }
-  }, [data.tankDiameter, data.numberOfPoints]);
 
-  const chartData = data.points.map(point => ({
-    point: point.point,
-    distance: point.circumferentialDistance.toFixed(1),
-    actual: point.elevation,
-    predicted: point.predictedElevation || point.elevation,
-    settlement: Math.abs(point.settlement || 0)
-  }));
+    onDataChange({
+      ...data,
+      maxDifferentialSettlement: maxDifferential,
+      averageSettlement: avgSettlement
+    });
+  };
 
-  const isCalculationValid = data.rSquared && data.rSquared >= 0.9;
+  const getSettlementStatus = () => {
+    if (!data.maxDifferentialSettlement) return 'unknown';
+    
+    // API 653 typical limits (these may vary based on tank design)
+    if (data.maxDifferentialSettlement <= 0.5) return 'acceptable';
+    if (data.maxDifferentialSettlement <= 1.0) return 'monitor';
+    return 'action_required';
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'acceptable': return 'bg-green-100 text-green-800';
+      case 'monitor': return 'bg-yellow-100 text-yellow-800';
+      case 'action_required': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <BarChart3 className="w-5 h-5" />
-          Shell Settlement Survey Calculations
+          <TrendingUp className="w-5 h-5" />
+          Settlement Survey Analysis
         </CardTitle>
-        <p className="text-sm text-gray-600">
-          Settlement analysis per API 653 Appendix B requirements
-        </p>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent>
         {/* Survey Parameters */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div>
-            <Label htmlFor="tankDiameter">Tank Diameter (ft)</Label>
+            <Label htmlFor="referenceElevation">Reference Elevation (ft)</Label>
             <Input
+              id="referenceElevation"
               type="number"
-              value={data.tankDiameter}
-              onChange={(e) => {
-                const diameter = parseFloat(e.target.value) || 0;
-                const recommendedPoints = Math.ceil(diameter / 10);
-                onDataChange({ 
-                  ...data, 
-                  tankDiameter: diameter,
-                  numberOfPoints: recommendedPoints > data.numberOfPoints ? recommendedPoints : data.numberOfPoints
-                });
-              }}
+              step="0.001"
+              value={data.referenceElevation}
+              onChange={(e) => onDataChange({
+                ...data,
+                referenceElevation: parseFloat(e.target.value) || 0
+              })}
             />
           </div>
           <div>
-            <Label htmlFor="numberOfPoints">Number of Points</Label>
+            <Label htmlFor="measurementDate">Measurement Date</Label>
             <Input
-              type="number"
-              value={data.numberOfPoints}
-              onChange={(e) => onDataChange({ ...data, numberOfPoints: parseInt(e.target.value) || 10 })}
+              id="measurementDate"
+              type="date"
+              value={data.measurementDate}
+              onChange={(e) => onDataChange({
+                ...data,
+                measurementDate: e.target.value
+              })}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Recommended: {Math.ceil(data.tankDiameter / 10)} (max spacing 31.42 ft)
-            </p>
           </div>
           <div>
-            <Label htmlFor="roofType">Roof Type</Label>
-            <Select value={data.roofType} onValueChange={(value: 'O' | 'F') => onDataChange({ ...data, roofType: value })}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="O">O - Open Top Tank</SelectItem>
-                <SelectItem value="F">F - Fixed Roof Tank</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="modulus">MOE (psi)</Label>
+            <Label htmlFor="instrument">Survey Instrument</Label>
             <Input
-              type="number"
-              value={data.modulus}
-              onChange={(e) => onDataChange({ ...data, modulus: parseFloat(e.target.value) || 29000000 })}
+              id="instrument"
+              placeholder="e.g., Leica DNA03"
+              value={data.instrument}
+              onChange={(e) => onDataChange({
+                ...data,
+                instrument: e.target.value
+              })}
             />
           </div>
         </div>
 
-        {/* Survey Points Data Entry */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h4 className="font-medium">Elevation Data Entry</h4>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={addSurveyPoint}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Point
+        {/* Add New Settlement Point */}
+        <div className="border rounded-lg p-4 mb-6 bg-slate-50">
+          <h4 className="font-medium mb-3">Add Settlement Point</h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+            <div>
+              <Label htmlFor="location">Location/Angle</Label>
+              <Input
+                id="location"
+                placeholder="0°, N, E, etc."
+                value={newPoint.location}
+                onChange={(e) => setNewPoint(prev => ({ ...prev, location: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="elevation">Current Elevation (ft)</Label>
+              <Input
+                id="elevation"
+                type="number"
+                step="0.001"
+                value={newPoint.elevation}
+                onChange={(e) => setNewPoint(prev => ({ ...prev, elevation: parseFloat(e.target.value) || 0 }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="originalElevation">Original Elevation (ft)</Label>
+              <Input
+                id="originalElevation"
+                type="number"
+                step="0.001"
+                value={newPoint.originalElevation}
+                onChange={(e) => setNewPoint(prev => ({ ...prev, originalElevation: parseFloat(e.target.value) || 0 }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="distance">Distance (ft)</Label>
+              <Input
+                id="distance"
+                type="number"
+                step="0.1"
+                value={newPoint.distance}
+                onChange={(e) => setNewPoint(prev => ({ ...prev, distance: parseFloat(e.target.value) || undefined }))}
+              />
+            </div>
+          </div>
+          <div className="mb-3">
+            <Label htmlFor="pointNotes">Notes</Label>
+            <Input
+              id="pointNotes"
+              placeholder="Additional observations"
+              value={newPoint.notes}
+              onChange={(e) => setNewPoint(prev => ({ ...prev, notes: e.target.value }))}
+            />
+          </div>
+          <Button type="button" onClick={addPoint} className="flex items-center gap-2">
+            <Plus className="w-4 h-4" />
+            Add Point
+          </Button>
+        </div>
+
+        {/* Settlement Points Table */}
+        {data.points.length > 0 && (
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-3">
+              <h4 className="font-medium">Settlement Points</h4>
+              <Button 
+                type="button"
+                variant="outline" 
+                size="sm" 
+                onClick={calculateSettlementAnalysis}
+                className="flex items-center gap-2"
+              >
+                <Calculator className="w-4 h-4" />
+                Calculate Analysis
               </Button>
-              <Button variant="outline" size="sm" onClick={resetPoints}>
-                Reset Points
-              </Button>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {data.points.map((point, index) => (
-              <div key={point.point} className="space-y-2">
-                <Label htmlFor={`point-${point.point}`}>
-                  Point {point.point}
-                  <br />
-                  <span className="text-xs text-gray-500">
-                    @ {point.circumferentialDistance.toFixed(1)} ft
-                  </span>
-                </Label>
-                <Input
-                  id={`point-${point.point}`}
-                  type="number"
-                  step="0.001"
-                  placeholder="0.000"
-                  value={point.elevation || ''}
-                  onChange={(e) => updatePoint(index, parseFloat(e.target.value) || 0)}
-                />
-                {data.calculationMethod === 'manual' && (
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedPoints.includes(point.point)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedPoints([...selectedPoints, point.point]);
-                        } else {
-                          setSelectedPoints(selectedPoints.filter(p => p !== point.point));
-                        }
-                      }}
-                      className="mr-1"
-                    />
-                    <span className="text-xs">Select for manual analysis</span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Elevation Set Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="elevationSet">Elevation Set</Label>
-            <Select value={data.elevationSet} onValueChange={(value: 'single' | 'double') => onDataChange({ ...data, elevationSet: value })}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="single">Single Set</SelectItem>
-                <SelectItem value="double">Double Set (for refinement)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Calculation Controls */}
-        <div className="flex gap-4">
-          <Button onClick={performCosineAnalysis}>
-            Calculate Cosine Fit
-          </Button>
-          <Button variant="outline" onClick={performManualAnalysis}>
-            Manual Analysis (B.2.2.5)
-          </Button>
-          <Button variant="outline" onClick={() => setShowGraph(!showGraph)}>
-            {showGraph ? 'Hide' : 'Display'} Graph
-          </Button>
-        </div>
-
-        {/* Results Display */}
-        {data.rSquared !== undefined && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
-            <div>
-              <span className="font-medium">R² Correlation:</span>
-              <div className={`text-lg font-bold ${isCalculationValid ? 'text-green-600' : 'text-red-600'}`}>
-                {data.rSquared.toFixed(3)}
-              </div>
-              {!isCalculationValid && (
-                <div className="flex items-center gap-1 text-red-600 text-sm">
-                  <AlertCircle className="w-4 h-4" />
-                  <span>Below 0.90 minimum</span>
-                </div>
-              )}
-            </div>
-            <div>
-              <span className="font-medium">Max Settlement:</span>
-              <div className="text-lg font-bold">
-                {data.maxSettlement ? data.maxSettlement.toFixed(3) : '-'}"
-              </div>
-            </div>
-            <div>
-              <span className="font-medium">Calculation Method:</span>
-              <div className="text-lg font-bold capitalize">
-                {data.calculationMethod}
-              </div>
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="p-3 text-left">Location</th>
+                    <th className="p-3 text-left">Current (ft)</th>
+                    <th className="p-3 text-left">Original (ft)</th>
+                    <th className="p-3 text-left">Settlement (in)</th>
+                    <th className="p-3 text-left">Distance (ft)</th>
+                    <th className="p-3 text-left">Notes</th>
+                    <th className="p-3 text-left">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.points.map((point) => {
+                    const settlement = point.originalElevation 
+                      ? (point.elevation - point.originalElevation) * 12 
+                      : null;
+                    
+                    return (
+                      <tr key={point.id} className="border-t">
+                        <td className="p-3 font-mono">{point.location}</td>
+                        <td className="p-3">{point.elevation.toFixed(3)}</td>
+                        <td className="p-3">{point.originalElevation?.toFixed(3) || '-'}</td>
+                        <td className="p-3">
+                          {settlement !== null ? (
+                            <span className={settlement > 0 ? 'text-red-600' : 'text-green-600'}>
+                              {settlement > 0 ? '+' : ''}{settlement.toFixed(2)}"
+                            </span>
+                          ) : '-'}
+                        </td>
+                        <td className="p-3">{point.distance || '-'}</td>
+                        <td className="p-3">{point.notes || '-'}</td>
+                        <td className="p-3">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removePoint(point.id)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
 
-        {/* Settlement Analysis Warning */}
-        {data.rSquared && data.rSquared < 0.9 && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
+        {/* Settlement Analysis Results */}
+        {data.maxDifferentialSettlement !== undefined && (
+          <div className="border rounded-lg p-4 bg-blue-50">
+            <h4 className="font-medium mb-3">Settlement Analysis Results</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div>
-                <h5 className="font-medium text-yellow-800">Manual Analysis Required</h5>
-                <p className="text-sm text-yellow-700 mt-1">
-                  R² ratio is below 0.90 minimum. Use manual analysis per API 653 B.2.2.5:
-                </p>
-                <ul className="text-sm text-yellow-700 mt-2 ml-4 list-disc">
-                  <li>Select points indicating significant change in settlement direction</li>
-                  <li>Calculate arc length between high points</li>
-                  <li>Determine maximum settlement magnitude</li>
-                </ul>
+                <Label>Maximum Differential Settlement</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-lg font-mono">
+                    {(data.maxDifferentialSettlement * 12).toFixed(2)}"
+                  </span>
+                  <Badge className={getStatusColor(getSettlementStatus())}>
+                    {getSettlementStatus().replace('_', ' ').toUpperCase()}
+                  </Badge>
+                </div>
+              </div>
+              <div>
+                <Label>Average Settlement</Label>
+                <div className="text-lg font-mono mt-1">
+                  {data.averageSettlement ? (data.averageSettlement * 12).toFixed(2) : '0.00'}"
+                </div>
+              </div>
+              <div>
+                <Label>Total Points Measured</Label>
+                <div className="text-lg font-mono mt-1">
+                  {data.points.length}
+                </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* Settlement Chart */}
-        {showGraph && chartData.length > 0 && (
-          <div className="space-y-4">
-            <h4 className="font-medium">Settlement Survey Chart</h4>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="point" 
-                    label={{ value: 'Survey Point', position: 'insideBottom', offset: -5 }}
-                  />
-                  <YAxis 
-                    label={{ value: 'Elevation (ft)', angle: -90, position: 'insideLeft' }}
-                  />
-                  <Tooltip 
-                    formatter={(value, name) => [
-                      typeof value === 'number' ? value.toFixed(3) : value, 
-                      name === 'actual' ? 'Actual Elevation' : 
-                      name === 'predicted' ? 'Predicted Elevation' : 'Settlement'
-                    ]}
-                    labelFormatter={(label) => `Point ${label}`}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="actual" 
-                    stroke="#2563eb" 
-                    strokeWidth={2}
-                    name="actual"
-                    dot={{ fill: '#2563eb', r: 4 }}
-                  />
-                  {data.rSquared && (
-                    <Line 
-                      type="monotone" 
-                      dataKey="predicted" 
-                      stroke="#dc2626" 
-                      strokeWidth={2}
-                      strokeDasharray="5 5"
-                      name="predicted"
-                      dot={{ fill: '#dc2626', r: 3 }}
-                    />
-                  )}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-
-        {/* Guidelines */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h5 className="font-medium text-blue-800 mb-2">Survey Guidelines</h5>
-          <div className="text-sm text-blue-700 space-y-1">
-            <p>• Find center of highest point around tank and make it Point #1 for best fit</p>
-            <p>• Use even number of points (recommended: diameter ÷ 10)</p>
-            <p>• Maximum distance between survey points: 31.42 ft</p>
-            <p>• Take additional points if needed for refinement (use Double Set)</p>
-            <p>• Elevation measurements must be in feet (convert from inches if needed)</p>
-          </div>
-        </div>
-
-        {/* Notes */}
-        <div>
-          <Label htmlFor="notes">Survey Notes</Label>
-          <Input
-            id="notes"
-            placeholder="Enter any additional notes about the settlement survey..."
-            value={data.notes}
-            onChange={(e) => onDataChange({ ...data, notes: e.target.value })}
+        {/* Analysis Notes */}
+        <div className="mt-4">
+          <Label htmlFor="analysisNotes">Analysis Notes & Recommendations</Label>
+          <textarea
+            id="analysisNotes"
+            className="w-full p-3 border rounded mt-1"
+            rows={3}
+            placeholder="Document analysis findings, API 653 compliance, and recommendations..."
+            value={data.analysisNotes}
+            onChange={(e) => onDataChange({
+              ...data,
+              analysisNotes: e.target.value
+            })}
           />
         </div>
       </CardContent>

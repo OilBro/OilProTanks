@@ -18,12 +18,19 @@ interface NDEResult {
   discontinuityType?: string;
   discontinuitySize?: string;
   discontinuityDepth?: number;
+  discontinuityLength?: number;
+  discontinuityWidth?: number;
   repairRequired: boolean;
   testDate: string;
   technician: string;
   equipment: string;
+  calibrationDate?: string;
+  testStandard: string;
   findings: string;
+  recommendations?: string;
   attachments?: string[];
+  drawingReference?: string;
+  reportNumber?: string;
 }
 
 interface NDETestLocationsProps {
@@ -43,7 +50,20 @@ const NDE_TYPES = [
 const DISCONTINUITY_TYPES = [
   'Crack', 'Porosity', 'Inclusion', 'Lack of Fusion', 'Undercut', 'Overlap',
   'Burn Through', 'Root Concavity', 'Incomplete Penetration', 'Corrosion',
-  'Pitting', 'General Thinning', 'Lamination', 'Delamination'
+  'Pitting', 'General Thinning', 'Lamination', 'Delamination', 'Weld Defect',
+  'Base Metal Defect', 'HAZ Defect', 'Surface Irregularity'
+];
+
+const TEST_STANDARDS = [
+  'ASME Section V', 'ASTM E797', 'ASTM E165', 'ASTM E709', 'ASTM E1444',
+  'API 653', 'AWS D1.1', 'ASNT SNT-TC-1A', 'ISO 9712', 'Custom Procedure'
+];
+
+const COMPONENTS = [
+  'Shell Course', 'Bottom Plate', 'Roof Plate', 'Nozzle', 'Manway', 
+  'Weld Seam', 'Fillet Weld', 'Butt Weld', 'Repair Area', 'Repad',
+  'Reinforcement Plate', 'Ladder Attachment', 'Platform Attachment',
+  'Pipe Attachment', 'Structural Support'
 ];
 
 export function NDETestLocations({ results, onResultsChange }: NDETestLocationsProps) {
@@ -57,6 +77,7 @@ export function NDETestLocations({ results, onResultsChange }: NDETestLocationsP
     testDate: '',
     technician: '',
     equipment: '',
+    testStandard: 'API 653',
     findings: ''
   });
 
@@ -71,6 +92,7 @@ export function NDETestLocations({ results, onResultsChange }: NDETestLocationsP
       gridReference: newResult.gridReference,
       testMethod: newResult.testMethod,
       acceptance: newResult.acceptance as any,
+      testStandard: newResult.testStandard,
       repairRequired: newResult.acceptance === 'fail',
       testDate: newResult.testDate,
       technician: newResult.technician,
@@ -89,6 +111,7 @@ export function NDETestLocations({ results, onResultsChange }: NDETestLocationsP
       testDate: '',
       technician: '',
       equipment: '',
+      testStandard: 'API 653',
       findings: ''
     });
   };
