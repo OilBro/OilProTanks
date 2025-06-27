@@ -1,12 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Clock, CheckCircle, AlertTriangle, Eye, Edit, Download } from "lucide-react";
+import { FileText, Clock, CheckCircle, AlertTriangle, Eye, Edit, Download, TrendingUp, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
 import { generateEnhancedPDF } from "@/components/enhanced-pdf-generator";
 import { QuickPDFPreview } from "@/components/quick-pdf-preview";
+import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 import type { InspectionReport, ThicknessMeasurement, InspectionChecklist } from "@shared/schema";
 
 interface DashboardStats {
@@ -18,6 +21,7 @@ interface DashboardStats {
 
 export default function Dashboard() {
   const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState("");
   
   const { data: reports = [], isLoading: reportsLoading } = useQuery<InspectionReport[]>({
     queryKey: ["/api/reports"],
@@ -29,10 +33,24 @@ export default function Dashboard() {
 
   const handleQuickPDFGeneration = async (report: InspectionReport) => {
     try {
-      // Fetch related data for the report
+      toast({
+        title: "Generating PDF Report",
+        description: "Please wait while we compile your inspection data...",
+      });
+
+      // Fetch related data for the report with error handling
+      const [measurementsResponse, checklistsResponse] = await Promise.all([
+        fetch(`/api/thickness-measurements?reportId=${report.id}`),
+        fetch(`/api/inspection-checklists?reportId=${report.id}`)
+      ]);
+
+      if (!measurementsResponse.ok || !checklistsResponse.ok) {
+        throw new Error('Failed to fetch report data');
+      }
+
       const [measurements, checklists] = await Promise.all([
-        fetch(`/api/thickness-measurements?reportId=${report.id}`).then(res => res.json()),
-        fetch(`/api/inspection-checklists?reportId=${report.id}`).then(res => res.json())
+        measurementsResponse.json(),
+        checklistsResponse.json()
       ]);
 
       const reportData = {
