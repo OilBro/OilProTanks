@@ -21,6 +21,7 @@ import { SettlementSurvey } from "@/components/settlement-survey";
 import { NDETestLocations } from "@/components/nde-test-locations";
 import { SecondaryContainment } from "@/components/secondary-containment";
 import { VisualDocumentation } from "@/components/visual-documentation";
+import { HelpTooltip } from "@/components/help-tooltip";
 import { insertInspectionReportSchema } from "@shared/schema";
 import type { 
   InspectionReport, 
@@ -552,7 +553,11 @@ export default function NewReport() {
           <Button 
             type="button" 
             variant="outline"
-            onClick={() => form.setValue('status', 'draft')}
+            onClick={(e) => {
+              e.preventDefault();
+              form.setValue('status', 'draft');
+              form.handleSubmit(onSubmit)();
+            }}
           >
             Save Draft
           </Button>
@@ -560,13 +565,20 @@ export default function NewReport() {
             <Button 
               type="button" 
               variant="outline"
-              onClick={handlePreviewReport}
+              onClick={(e) => {
+                e.preventDefault();
+                handlePreviewReport();
+              }}
               className="bg-slate-600 text-white hover:bg-slate-700"
             >
               Preview Report
             </Button>
             <Button 
-              type="submit" 
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                form.handleSubmit(onSubmit)();
+              }}
               disabled={createReportMutation.isPending}
               className="bg-blue-600 hover:bg-blue-700"
             >
