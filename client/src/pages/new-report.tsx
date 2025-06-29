@@ -174,6 +174,10 @@ export default function NewReport() {
   const createReportMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await apiRequest('POST', '/api/reports', data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create report');
+      }
       return response.json();
     },
     onSuccess: (report: InspectionReport) => {
@@ -185,10 +189,11 @@ export default function NewReport() {
       queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
       queryClient.invalidateQueries({ queryKey: ['/api/reports/stats'] });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Mutation error:', error);
       toast({
         title: "Error",
-        description: "Failed to create report. Please try again.",
+        description: error.message || "Failed to create report. Please try again.",
         variant: "destructive",
       });
     }
@@ -225,6 +230,8 @@ export default function NewReport() {
 
   const onSubmit = async (data: any) => {
     try {
+      console.log('Form data before validation:', data);
+      
       // Validate required fields manually (without causing focus issues)
       if (!data.reportNumber || !data.tankId) {
         toast({
@@ -235,16 +242,19 @@ export default function NewReport() {
         return;
       }
 
-      // Process data with proper defaults
+      // Process data with proper defaults and ensure correct types
       const processedData = {
         ...data,
-        originalThickness: parseFloat(data.originalThickness) || 0.5,
-        yearsSinceLastInspection: parseInt(data.yearsSinceLastInspection) || 1,
-        diameter: data.diameter || null,
-        height: data.height || null,
+        originalThickness: data.originalThickness ? parseFloat(data.originalThickness) : 0.5,
+        yearsSinceLastInspection: data.yearsSinceLastInspection ? parseInt(data.yearsSinceLastInspection) : 1,
+        diameter: data.diameter ? parseFloat(data.diameter) : null,
+        height: data.height ? parseFloat(data.height) : null,
         service: data.service || '',
-        inspector: data.inspector || 'Unknown'
+        inspector: data.inspector || 'Unknown',
+        status: data.status || 'draft'
       };
+
+      console.log('Processed data to send:', processedData);
 
       const report = await createReportMutation.mutateAsync(processedData);
       
@@ -266,11 +276,16 @@ export default function NewReport() {
       });
       
       setLocation('/dashboard');
-    } catch (error) {
-      console.error('Failed to save report:', error);
+    } catch (error: any) {
+      console.error('Failed to save report - Full error:', error);
+      console.error('Error response:', error?.response);
+      console.error('Error message:', error?.message);
+      
+      const errorMessage = error?.response?.data?.message || error?.message || "Unable to save the report. Please try again.";
+      
       toast({
         title: "Save Failed",
-        description: "Unable to save the report. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
