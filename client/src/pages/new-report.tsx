@@ -244,13 +244,15 @@ export default function NewReport() {
 
       // Process data with proper defaults and ensure correct types
       const processedData = {
-        ...data,
-        originalThickness: data.originalThickness ? parseFloat(data.originalThickness) : 0.5,
-        yearsSinceLastInspection: data.yearsSinceLastInspection ? parseInt(data.yearsSinceLastInspection) : 1,
-        diameter: data.diameter ? parseFloat(data.diameter) : null,
-        height: data.height ? parseFloat(data.height) : null,
+        reportNumber: data.reportNumber,
+        tankId: data.tankId,
         service: data.service || '',
+        diameter: data.diameter ? String(data.diameter) : null,
+        height: data.height ? String(data.height) : null,
         inspector: data.inspector || 'Unknown',
+        inspectionDate: data.inspectionDate,
+        originalThickness: data.originalThickness ? String(data.originalThickness) : null,
+        yearsSinceLastInspection: data.yearsSinceLastInspection ? Number(data.yearsSinceLastInspection) : 1,
         status: data.status || 'draft'
       };
 
