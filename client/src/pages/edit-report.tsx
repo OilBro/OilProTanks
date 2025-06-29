@@ -110,7 +110,7 @@ export function EditReport() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Report Not Found</h1>
           <p className="text-gray-600 mb-6">The inspection report you're trying to edit doesn't exist.</p>
-          <Link href="/dashboard">
+          <Link href="/">
             <Button>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard

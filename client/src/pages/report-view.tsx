@@ -4,14 +4,17 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Download, Edit, FileText } from "lucide-react";
+import { ArrowLeft, Download, Edit, FileText, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { generateEnhancedPDF } from "@/components/enhanced-pdf-generator";
+import { useToast } from "@/hooks/use-toast";
 import type { InspectionReport, ThicknessMeasurement, InspectionChecklist } from "@shared/schema";
 
 export function ReportView() {
   const { id } = useParams();
   const reportId = parseInt(id || "0");
+  const { toast } = useToast();
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   const { data: report, isLoading: reportLoading } = useQuery<InspectionReport>({
     queryKey: ['/api/reports', reportId],
@@ -45,7 +48,7 @@ export function ReportView() {
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Report Not Found</h1>
           <p className="text-gray-600 mb-6">The inspection report you're looking for doesn't exist.</p>
-          <Link href="/dashboard">
+          <Link href="/">
             <Button>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
@@ -56,17 +59,37 @@ export function ReportView() {
     );
   }
 
-  const handleGeneratePDF = () => {
-    const reportData = {
-      report,
-      measurements,
-      checklists,
-      appurtenanceInspections: [],
-      repairRecommendations: [],
-      ventingInspections: [],
-      attachments: []
-    };
-    generateEnhancedPDF(reportData);
+  const handleGeneratePDF = async () => {
+    setIsGeneratingPDF(true);
+    try {
+      const reportData = {
+        report,
+        measurements,
+        checklists,
+        appurtenanceInspections: [],
+        repairRecommendations: [],
+        ventingInspections: [],
+        attachments: []
+      };
+      
+      // Generate the PDF
+      generateEnhancedPDF(reportData);
+      
+      // Show success message
+      toast({
+        title: "PDF Generated",
+        description: `Report ${report.reportNumber} has been downloaded successfully.`,
+      });
+    } catch (error) {
+      console.error('PDF generation error:', error);
+      toast({
+        title: "PDF Generation Failed",
+        description: "Unable to generate the PDF report. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -91,7 +114,7 @@ export function ReportView() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4">
-          <Link href="/dashboard">
+          <Link href="/">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dashboard
@@ -111,9 +134,22 @@ export function ReportView() {
               Edit Report
             </Button>
           </Link>
-          <Button onClick={handleGeneratePDF} className="bg-blue-600 hover:bg-blue-700">
-            <Download className="h-4 w-4 mr-2" />
-            Generate PDF
+          <Button 
+            onClick={handleGeneratePDF} 
+            disabled={isGeneratingPDF}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            {isGeneratingPDF ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Generate PDF
+              </>
+            )}
           </Button>
         </div>
       </div>

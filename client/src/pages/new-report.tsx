@@ -277,7 +277,7 @@ export default function NewReport() {
         description: `Report ${data.reportNumber} has been saved.`,
       });
       
-      setLocation('/dashboard');
+      setLocation('/');
     } catch (error: any) {
       console.error('Failed to save report - Full error:', error);
       console.error('Error response:', error?.response);

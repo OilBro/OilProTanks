@@ -62,7 +62,7 @@ export default function CalculationAppendix() {
             <h2 className="text-2xl font-bold text-gray-900">API 653 Calculation Appendix</h2>
             <p className="text-gray-600">Comprehensive inspection calculations and data analysis</p>
           </div>
-          <Button variant="outline" onClick={() => setLocation('/dashboard')}>
+          <Button variant="outline" onClick={() => setLocation('/')}>
             Back to Dashboard
           </Button>
         </div>

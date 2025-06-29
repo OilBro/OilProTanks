@@ -112,7 +112,7 @@ export default function ImportReports() {
         description: "Successfully created report with imported data, measurements, and checklist items.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
-      setLocation('/dashboard');
+      setLocation('/');
     },
     onError: () => {
       toast({
