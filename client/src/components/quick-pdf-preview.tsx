@@ -66,7 +66,10 @@ export function QuickPDFPreview({ report, measurements = [], checklists = [], tr
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid Date';
+    return date.toLocaleDateString();
   };
 
   const defaultTrigger = (
@@ -104,12 +107,8 @@ export function QuickPDFPreview({ report, measurements = [], checklists = [], tr
             <CardContent className="pt-0">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                 <div>
-                  <span className="font-medium text-gray-500">Customer:</span>
-                  <p className="text-gray-900">{report.customer}</p>
-                </div>
-                <div>
-                  <span className="font-medium text-gray-500">Location:</span>
-                  <p className="text-gray-900">{report.location}</p>
+                  <span className="font-medium text-gray-500">Service:</span>
+                  <p className="text-gray-900 capitalize">{report.service || 'Not specified'}</p>
                 </div>
                 <div>
                   <span className="font-medium text-gray-500">Inspector:</span>
@@ -120,8 +119,12 @@ export function QuickPDFPreview({ report, measurements = [], checklists = [], tr
                   <p className="text-gray-900">{formatDate(report.inspectionDate)}</p>
                 </div>
                 <div>
-                  <span className="font-medium text-gray-500">Service Type:</span>
-                  <p className="text-gray-900">{report.serviceType || 'Not specified'}</p>
+                  <span className="font-medium text-gray-500">Tank Diameter:</span>
+                  <p className="text-gray-900">{report.diameter ? `${report.diameter} ft` : 'N/A'}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-500">Tank Height:</span>
+                  <p className="text-gray-900">{report.height ? `${report.height} ft` : 'N/A'}</p>
                 </div>
                 <div>
                   <span className="font-medium text-gray-500">Years Since Last:</span>
@@ -177,12 +180,12 @@ export function QuickPDFPreview({ report, measurements = [], checklists = [], tr
                 <div className="space-y-2">
                   {checklists.slice(0, 4).map((checklist) => (
                     <div key={checklist.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <span className="text-sm">{checklist.itemDescription}</span>
+                      <span className="text-sm">{checklist.item}</span>
                       <Badge 
-                        variant={checklist.status === 'pass' ? 'default' : 'destructive'}
+                        variant={checklist.checked ? 'default' : 'secondary'}
                         className="text-xs"
                       >
-                        {checklist.status}
+                        {checklist.checked ? 'Checked' : 'Not Checked'}
                       </Badge>
                     </div>
                   ))}
