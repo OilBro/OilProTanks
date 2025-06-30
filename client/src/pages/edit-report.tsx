@@ -22,7 +22,7 @@ export function EditReport() {
   const reportId = parseInt(id || "0");
 
   const { data: report, isLoading } = useQuery<InspectionReport>({
-    queryKey: ['/api/reports', reportId],
+    queryKey: [`/api/reports/${reportId}`],
   });
 
   const form = useForm<InsertInspectionReport>({

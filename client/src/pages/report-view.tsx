@@ -17,15 +17,15 @@ export function ReportView() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
   const { data: report, isLoading: reportLoading } = useQuery<InspectionReport>({
-    queryKey: ['/api/reports', reportId],
+    queryKey: [`/api/reports/${reportId}`],
   });
 
   const { data: measurements = [] } = useQuery<ThicknessMeasurement[]>({
-    queryKey: ['/api/thickness-measurements', reportId],
+    queryKey: [`/api/reports/${reportId}/measurements`],
   });
 
   const { data: checklists = [] } = useQuery<InspectionChecklist[]>({
-    queryKey: ['/api/inspection-checklists', reportId],
+    queryKey: [`/api/reports/${reportId}/checklists`],
   });
 
   if (reportLoading) {
