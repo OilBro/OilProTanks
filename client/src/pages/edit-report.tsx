@@ -30,24 +30,28 @@ export function EditReport() {
     defaultValues: {
       reportNumber: "",
       tankId: "",
-      customer: "",
-      location: "",
+      service: "",
       inspector: "",
       inspectionDate: "",
-      tankDescription: "",
-      serviceType: "",
+      diameter: null,
+      height: null,
+      originalThickness: null,
       yearsSinceLastInspection: 1,
-      originalThickness: 0.5,
       status: "draft"
     }
   });
 
   const updateReportMutation = useMutation({
     mutationFn: async (data: InsertInspectionReport) => {
-      const response = await queryClient.apiRequest(`/api/reports/${reportId}`, {
-        method: 'PATCH',
+      const response = await fetch(`/api/reports/${reportId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
+      if (!response.ok) {
+        throw new Error('Failed to update report');
+      }
+      return response.json();
       return response;
     },
     onSuccess: () => {
@@ -73,14 +77,13 @@ export function EditReport() {
       form.reset({
         reportNumber: report.reportNumber,
         tankId: report.tankId,
-        customer: report.customer,
-        location: report.location,
+        service: report.service,
         inspector: report.inspector,
         inspectionDate: report.inspectionDate,
-        tankDescription: report.tankDescription || "",
-        serviceType: report.serviceType || "",
+        diameter: report.diameter,
+        height: report.height,
+        originalThickness: report.originalThickness,
         yearsSinceLastInspection: report.yearsSinceLastInspection || 1,
-        originalThickness: report.originalThickness || 0.5,
         status: report.status
       });
     }
@@ -178,24 +181,23 @@ export function EditReport() {
               </div>
               
               <div>
-                <Label htmlFor="customer">Customer</Label>
-                <Input
-                  id="customer"
-                  {...form.register('customer')}
-                />
-                {form.formState.errors.customer && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.customer.message}</p>
-                )}
-              </div>
-              
-              <div>
-                <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  {...form.register('location')}
-                />
-                {form.formState.errors.location && (
-                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.location.message}</p>
+                <Label htmlFor="service">Service</Label>
+                <Select value={form.watch('service')} onValueChange={(value) => form.setValue('service', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Service" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="crude">Crude Oil</SelectItem>
+                    <SelectItem value="diesel">Diesel</SelectItem>
+                    <SelectItem value="gasoline">Gasoline</SelectItem>
+                    <SelectItem value="jet_fuel">Jet Fuel</SelectItem>
+                    <SelectItem value="water">Water</SelectItem>
+                    <SelectItem value="chemical">Chemical</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                {form.formState.errors.service && (
+                  <p className="text-sm text-red-600 mt-1">{form.formState.errors.service.message}</p>
                 )}
               </div>
               
@@ -223,22 +225,24 @@ export function EditReport() {
               </div>
             </div>
             
-            <div>
-              <Label htmlFor="tankDescription">Tank Description</Label>
-              <Textarea
-                id="tankDescription"
-                {...form.register('tankDescription')}
-                placeholder="Describe the tank specifications and details..."
-              />
-            </div>
-            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="serviceType">Service Type</Label>
+                <Label htmlFor="diameter">Diameter (ft)</Label>
                 <Input
-                  id="serviceType"
-                  {...form.register('serviceType')}
-                  placeholder="e.g., Crude Oil, Gasoline"
+                  id="diameter"
+                  type="number"
+                  {...form.register('diameter')}
+                  placeholder="120"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="height">Height (ft)</Label>
+                <Input
+                  id="height"
+                  type="number"
+                  {...form.register('height')}
+                  placeholder="48"
                 />
               </div>
               

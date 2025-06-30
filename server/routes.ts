@@ -236,6 +236,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Thickness Measurements
+  app.get("/api/thickness-measurements", async (req, res) => {
+    try {
+      const reportId = req.query.reportId ? parseInt(req.query.reportId as string) : undefined;
+      if (!reportId) {
+        return res.status(400).json({ message: "Report ID is required" });
+      }
+      const measurements = await storage.getThicknessMeasurements(reportId);
+      res.json(measurements);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch measurements" });
+    }
+  });
+
   app.get("/api/reports/:reportId/measurements", async (req, res) => {
     try {
       const reportId = parseInt(req.params.reportId);
@@ -285,6 +298,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Inspection Checklists
+  app.get("/api/inspection-checklists", async (req, res) => {
+    try {
+      const reportId = req.query.reportId ? parseInt(req.query.reportId as string) : undefined;
+      if (!reportId) {
+        return res.status(400).json({ message: "Report ID is required" });
+      }
+      const checklists = await storage.getInspectionChecklists(reportId);
+      res.json(checklists);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch checklists" });
+    }
+  });
+
   app.get("/api/reports/:reportId/checklists", async (req, res) => {
     try {
       const reportId = parseInt(req.params.reportId);

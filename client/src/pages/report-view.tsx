@@ -172,12 +172,12 @@ export function ReportView() {
                   <p className="text-sm text-gray-900">{report.tankId}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Customer</label>
-                  <p className="text-sm text-gray-900">{report.customer}</p>
+                  <label className="text-sm font-medium text-gray-500">Service</label>
+                  <p className="text-sm text-gray-900 capitalize">{report.service || 'N/A'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Location</label>
-                  <p className="text-sm text-gray-900">{report.location}</p>
+                  <label className="text-sm font-medium text-gray-500">Status</label>
+                  <div>{getStatusBadge(report.status)}</div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Inspector</label>
@@ -189,19 +189,32 @@ export function ReportView() {
                 </div>
               </div>
               
-              {report.tankDescription && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Tank Description</label>
-                  <p className="text-sm text-gray-900">{report.tankDescription}</p>
-                </div>
-              )}
-              
-              {report.serviceType && (
-                <div>
-                  <label className="text-sm font-medium text-gray-500">Service Type</label>
-                  <p className="text-sm text-gray-900">{report.serviceType}</p>
-                </div>
-              )}
+              <div className="grid grid-cols-2 gap-4">
+                {report.diameter && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Diameter</label>
+                    <p className="text-sm text-gray-900">{report.diameter} ft</p>
+                  </div>
+                )}
+                {report.height && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Height</label>
+                    <p className="text-sm text-gray-900">{report.height} ft</p>
+                  </div>
+                )}
+                {report.originalThickness && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Original Thickness</label>
+                    <p className="text-sm text-gray-900">{report.originalThickness} in</p>
+                  </div>
+                )}
+                {report.yearsSinceLastInspection && (
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">Years Since Last Inspection</label>
+                    <p className="text-sm text-gray-900">{report.yearsSinceLastInspection}</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -260,11 +273,14 @@ export function ReportView() {
                 <div className="space-y-2">
                   {checklists.slice(0, 3).map((checklist) => (
                     <div key={checklist.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                      <span className="text-sm text-gray-900">{checklist.itemDescription}</span>
+                      <div>
+                        <span className="text-sm font-medium text-gray-900">{checklist.category}</span>
+                        <span className="text-sm text-gray-600 ml-2">- {checklist.item}</span>
+                      </div>
                       <Badge 
-                        variant={checklist.status === 'pass' ? 'default' : 'destructive'}
+                        variant={checklist.checked ? 'default' : 'secondary'}
                       >
-                        {checklist.status}
+                        {checklist.checked ? 'Checked' : 'Unchecked'}
                       </Badge>
                     </div>
                   ))}
