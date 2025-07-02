@@ -28,10 +28,15 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
   let worksheet = null;
   let sheetName = '';
   
+  console.log(`Processing Excel file: ${fileName}`);
+  console.log(`Found ${workbook.SheetNames.length} sheets: ${workbook.SheetNames.join(', ')}`);
+  
   for (const name of workbook.SheetNames) {
     const sheet = workbook.Sheets[name];
     const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
     const rowCount = range.e.r - range.s.r + 1;
+    
+    console.log(`Sheet "${name}" has ${rowCount} rows`);
     
     if (rowCount > 1) {
       worksheet = sheet;
@@ -123,30 +128,64 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
         }
       }
 
-      // Look for additional thickness measurements
-      const thicknessFields = ['Thickness', 'Current Thickness', 'Measured Thickness', 'Reading'];
-      const locationFields = ['Location', 'Position', 'Point', 'Measurement Point'];
+      // Look for additional thickness measurements - expanded patterns
+      const thicknessFields = [
+        'Thickness', 'Current Thickness', 'Measured Thickness', 'Reading',
+        'Shell Thickness', 'Actual Thickness', 'UT Reading', 'Minimum Thickness',
+        'Course 1', 'Course 2', 'Course 3', 'Course 4', 'Course 5', 
+        'Course 6', 'Course 7', 'Course 8', 'Course 9', 'Course 10'
+      ];
+      const locationFields = ['Location', 'Position', 'Point', 'Measurement Point', 'Course', 'Elevation'];
       
-      for (const thicknessField of thicknessFields) {
-        if (rowObj[thicknessField] && !isNaN(parseFloat(rowObj[thicknessField]))) {
-          const measurement = {
-            location: findFieldValue(rowObj, locationFields) || `Point ${thicknessMeasurements.length + 1}`,
-            elevation: rowObj['Elevation'] || '0',
-            currentThickness: parseFloat(rowObj[thicknessField]),
-            component: 'Shell',
-            measurementType: 'shell'
-          };
+      // Check each potential thickness field
+      for (const key of Object.keys(rowObj)) {
+        const value = rowObj[key];
+        const keyLower = key.toLowerCase();
+        
+        // Check if this is a thickness value
+        if (value && !isNaN(parseFloat(value))) {
+          const numValue = parseFloat(value);
           
-          // Check if this measurement already exists
-          const exists = thicknessMeasurements.some(m => 
-            m.location === measurement.location && 
-            m.currentThickness === measurement.currentThickness
-          );
-          
-          if (!exists) {
-            thicknessMeasurements.push(measurement);
+          // Typical thickness range for steel tanks (0.1 to 2 inches)
+          if (numValue > 0.05 && numValue < 3) {
+            let isThickness = false;
+            
+            // Check if column name indicates thickness
+            for (const field of thicknessFields) {
+              if (keyLower.includes(field.toLowerCase())) {
+                isThickness = true;
+                break;
+              }
+            }
+            
+            // Also check for patterns like "Course 1: 0.375" or numeric columns
+            if (!isThickness && (keyLower.includes('course') || keyLower.match(/^\d+$/))) {
+              isThickness = true;
+            }
+            
+            if (isThickness) {
+              const measurement = {
+                location: findFieldValue(rowObj, locationFields) || key || `Point ${thicknessMeasurements.length + 1}`,
+                elevation: rowObj['Elevation'] || rowObj['Course'] || '0',
+                currentThickness: numValue,
+                component: 'Shell',
+                measurementType: 'shell',
+                originalThickness: rowObj['Original Thickness'] || rowObj['Nominal Thickness'] || '0.375',
+                createdAt: new Date().toISOString()
+              };
+              
+              // Check if this measurement already exists
+              const exists = thicknessMeasurements.some(m => 
+                m.location === measurement.location && 
+                Math.abs(m.currentThickness - measurement.currentThickness) < 0.001
+              );
+              
+              if (!exists) {
+                thicknessMeasurements.push(measurement);
+                console.log(`Found thickness measurement: ${measurement.location} = ${measurement.currentThickness}`);
+              }
+            }
           }
-          break;
         }
       }
     }

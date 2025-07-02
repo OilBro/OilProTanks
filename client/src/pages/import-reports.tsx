@@ -76,7 +76,9 @@ export default function ImportReports() {
       });
       
       if (!reportResponse.ok) {
-        throw new Error('Failed to create report');
+        const errorData = await reportResponse.json();
+        console.error('Report creation failed:', errorData);
+        throw new Error(errorData.message || 'Failed to create report');
       }
       
       const report = await reportResponse.json();

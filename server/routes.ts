@@ -103,11 +103,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/reports", async (req, res) => {
     try {
+      console.log('Creating report with data:', req.body);
       const validatedData = insertInspectionReportSchema.parse(req.body);
       const report = await storage.createInspectionReport(validatedData);
       res.status(201).json(report);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid report data", error });
+    } catch (error: any) {
+      console.error('Report creation error:', error);
+      console.error('Error details:', error.issues || error.message);
+      res.status(400).json({ 
+        message: "Invalid report data", 
+        error: error.issues || error.message 
+      });
     }
   });
 
