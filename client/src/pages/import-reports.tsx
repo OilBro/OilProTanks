@@ -79,11 +79,15 @@ export default function ImportReports() {
             reportId: report.id
           };
           
-          await fetch('/api/thickness-measurements', {
+          const measurementResponse = await fetch(`/api/reports/${report.id}/measurements`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(measurementData),
           });
+          
+          if (!measurementResponse.ok) {
+            throw new Error('Failed to create thickness measurement');
+          }
         }
       }
       
@@ -96,11 +100,15 @@ export default function ImportReports() {
             category: 'external' // Default category
           };
           
-          await fetch('/api/inspection-checklists', {
+          const checklistResponse = await fetch(`/api/reports/${report.id}/checklists`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(checklistData),
           });
+          
+          if (!checklistResponse.ok) {
+            throw new Error('Failed to create checklist item');
+          }
         }
       }
       
