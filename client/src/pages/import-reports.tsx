@@ -26,6 +26,8 @@ export default function ImportReports() {
 
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
+      console.log('Uploading file:', file.name, 'Size:', file.size, 'Type:', file.type);
+      
       const formData = new FormData();
       formData.append('excelFile', file);
       
@@ -35,8 +37,15 @@ export default function ImportReports() {
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to import Excel file');
+        let errorMessage = 'Failed to import Excel file';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+          console.error('Import error:', errorData);
+        } catch (e) {
+          console.error('Failed to parse error response');
+        }
+        throw new Error(errorMessage);
       }
       
       return response.json();

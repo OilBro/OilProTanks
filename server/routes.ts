@@ -46,30 +46,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let workbook;
       try {
-        workbook = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
+        // Try different parsing options for compatibility
+        workbook = XLSX.read(req.file.buffer, { 
+          type: 'buffer', 
+          cellDates: true,
+          sheetStubs: true,
+          password: '' // In case file has empty password protection
+        });
       } catch (xlsxError) {
         console.error('Error reading Excel file:', xlsxError);
+        // Try again with different settings
+        try {
+          workbook = XLSX.read(req.file.buffer, { 
+            type: 'buffer',
+            raw: true,
+            sheetStubs: true
+          });
+        } catch (secondError) {
+          return res.status(400).json({ 
+            message: "Unable to read Excel file. The file may be corrupted or in an unsupported format.",
+            error: xlsxError instanceof Error ? xlsxError.message : String(xlsxError)
+          });
+        }
+      }
+
+      console.log('Available sheets:', workbook.SheetNames);
+      
+      // Try to find a sheet with data, not just the first one
+      let worksheet = null;
+      let sheetName = '';
+      
+      for (const name of workbook.SheetNames) {
+        const sheet = workbook.Sheets[name];
+        const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+        const rowCount = range.e.r - range.s.r + 1;
+        
+        console.log(`Sheet "${name}" has ${rowCount} rows`);
+        
+        if (rowCount > 1) { // More than just headers
+          worksheet = sheet;
+          sheetName = name;
+          break;
+        }
+      }
+      
+      if (!worksheet) {
         return res.status(400).json({ 
-          message: "Unable to read Excel file. Please ensure it's a valid Excel file (.xlsx or .xls).",
-          error: xlsxError instanceof Error ? xlsxError.message : String(xlsxError)
+          message: "No data found in any sheet of the Excel file",
+          sheets: workbook.SheetNames 
         });
       }
-
-      const sheetName = workbook.SheetNames[0];
-      if (!sheetName) {
-        return res.status(400).json({ message: "No sheets found in Excel file" });
+      
+      // Try multiple parsing methods
+      let data: any[] = [];
+      try {
+        data = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false });
+      } catch (e) {
+        console.log('Standard parsing failed, trying with header option');
+        data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
       }
-
-      const worksheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
       
       console.log('Sheet name:', sheetName);
       console.log('Number of rows:', data.length);
       
       // Log first few rows to see structure
       if (data.length > 0) {
-        console.log('Sample data (first row):', data[0]);
-        console.log('Column headers:', Object.keys(data[0] as any));
+        console.log('Sample data (first row):', JSON.stringify(data[0], null, 2));
+        if (Array.isArray(data[0])) {
+          console.log('Data is in array format');
+        } else {
+          console.log('Column headers:', Object.keys(data[0] as any));
+        }
+      }
+
+      // If no data found, return error
+      if (!data || data.length === 0) {
+        return res.status(400).json({ 
+          message: "No data found in Excel file. Please ensure the file contains inspection data.",
+          sheetName: sheetName
+        });
       }
 
       // Enhanced Excel parsing for API 653 inspection reports
@@ -101,6 +156,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         return null;
       };
+
+      // If data is empty after all attempts, create basic import data
+      if (data.length === 0) {
+        importedData.tankId = req.file.originalname.replace(/\.(xlsx|xls|xlsm)$/i, '');
+        importedData.reportNumber = `IMP-${Date.now()}`;
+        importedData.inspectionDate = new Date().toISOString().split('T')[0];
+        importedData.inspector = 'Imported';
+        importedData.service = 'crude oil';
+        importedData.status = 'draft';
+        
+        return res.json({
+          message: "File uploaded but no data could be extracted. Basic report created.",
+          extractedData: importedData,
+          thicknessMeasurements: [],
+          checklistItems: [],
+          totalRows: 0,
+          preview: []
+        });
+      }
+
+      // Handle array format data (from header: 1 parsing)
+      if (data.length > 0 && Array.isArray(data[0])) {
+        console.log('Converting array format to object format');
+        const headers = data[0] as string[];
+        const objectData = [];
+        
+        for (let i = 1; i < data.length; i++) {
+          const row = data[i] as any[];
+          const obj: any = {};
+          headers.forEach((header, index) => {
+            if (header && row[index] !== undefined) {
+              obj[header] = row[index];
+            }
+          });
+          objectData.push(obj);
+        }
+        
+        data = objectData;
+      }
 
       // Process each row to extract data
       for (const row of data) {
