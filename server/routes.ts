@@ -1,13 +1,13 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
-import * as XLSX from "xlsx";
 import { storage } from "./storage";
 import { 
   insertInspectionReportSchema, 
   insertThicknessMeasurementSchema,
   insertInspectionChecklistSchema 
 } from "@shared/schema";
+import { handleExcelImport } from "./import-handler";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -32,251 +32,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Excel Import endpoint
   app.post("/api/reports/import", upload.single('excelFile'), async (req, res) => {
     try {
-      console.log('Upload request received');
-      console.log('File:', req.file);
-      console.log('Body:', req.body);
-      
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      console.log('File buffer size:', req.file.buffer.length);
-      console.log('File mimetype:', req.file.mimetype);
-      console.log('File original name:', req.file.originalname);
-
-      let workbook;
-      try {
-        // Try different parsing options for compatibility
-        workbook = XLSX.read(req.file.buffer, { 
-          type: 'buffer', 
-          cellDates: true,
-          sheetStubs: true,
-          password: '' // In case file has empty password protection
-        });
-      } catch (xlsxError) {
-        console.error('Error reading Excel file:', xlsxError);
-        // Try again with different settings
-        try {
-          workbook = XLSX.read(req.file.buffer, { 
-            type: 'buffer',
-            raw: true,
-            sheetStubs: true
-          });
-        } catch (secondError) {
-          return res.status(400).json({ 
-            message: "Unable to read Excel file. The file may be corrupted or in an unsupported format.",
-            error: xlsxError instanceof Error ? xlsxError.message : String(xlsxError)
-          });
-        }
-      }
-
-      console.log('Available sheets:', workbook.SheetNames);
+      // Use the import handler with AI analysis
+      const result = await handleExcelImport(req.file.buffer, req.file.originalname);
       
-      // Try to find a sheet with data, not just the first one
-      let worksheet = null;
-      let sheetName = '';
-      
-      for (const name of workbook.SheetNames) {
-        const sheet = workbook.Sheets[name];
-        const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
-        const rowCount = range.e.r - range.s.r + 1;
-        
-        console.log(`Sheet "${name}" has ${rowCount} rows`);
-        
-        if (rowCount > 1) { // More than just headers
-          worksheet = sheet;
-          sheetName = name;
-          break;
-        }
-      }
-      
-      if (!worksheet) {
-        return res.status(400).json({ 
-          message: "No data found in any sheet of the Excel file",
-          sheets: workbook.SheetNames 
-        });
-      }
-      
-      // Try multiple parsing methods
-      let data: any[] = [];
-      try {
-        data = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false });
-      } catch (e) {
-        console.log('Standard parsing failed, trying with header option');
-        data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      }
-      
-      console.log('Sheet name:', sheetName);
-      console.log('Number of rows:', data.length);
-      
-      // Log first few rows to see structure
-      if (data.length > 0) {
-        console.log('Sample data (first row):', JSON.stringify(data[0], null, 2));
-        if (Array.isArray(data[0])) {
-          console.log('Data is in array format');
-        } else {
-          console.log('Column headers:', Object.keys(data[0] as any));
-        }
-      }
-
-      // If no data found, return error
-      if (!data || data.length === 0) {
-        return res.status(400).json({ 
-          message: "No data found in Excel file. Please ensure the file contains inspection data.",
-          sheetName: sheetName
-        });
-      }
-
-      // Enhanced Excel parsing for API 653 inspection reports
-      const importedData: any = {};
-      const thicknessMeasurements: any[] = [];
-      const checklistItems: any[] = [];
-      
-      // Define common field patterns for API 653 reports
-      const fieldPatterns = {
-        tankId: ['Tank ID', 'Tank Id', 'TankID', 'Tank Number', 'Tank No', 'Vessel ID'],
-        reportNumber: ['Report Number', 'Report No', 'ReportNumber', 'Inspection Report No', 'IR No'],
-        service: ['Service', 'Product', 'Contents', 'Stored Product', 'Tank Service'],
-        inspector: ['Inspector', 'Inspector Name', 'Inspected By', 'API Inspector', 'Certified Inspector'],
-        inspectionDate: ['Date', 'Inspection Date', 'Date of Inspection', 'Inspection Performed'],
-        diameter: ['Diameter', 'Tank Diameter', 'Shell Diameter', 'Nominal Diameter'],
-        height: ['Height', 'Tank Height', 'Shell Height', 'Overall Height'],
-        originalThickness: ['Original Thickness', 'Nominal Thickness', 'Design Thickness', 'Min Thickness'],
-        location: ['Location', 'Site', 'Facility', 'Plant Location'],
-        owner: ['Owner', 'Client', 'Company', 'Facility Owner'],
-        lastInspection: ['Last Inspection', 'Previous Inspection', 'Last Internal Inspection']
-      };
-
-      // Helper function to find field value by pattern matching
-      const findFieldValue = (rowObj: any, patterns: string[]) => {
-        for (const pattern of patterns) {
-          if (rowObj[pattern] !== undefined && rowObj[pattern] !== null && rowObj[pattern] !== '') {
-            return rowObj[pattern];
-          }
-        }
-        return null;
-      };
-
-      // If data is empty after all attempts, create basic import data
-      if (data.length === 0) {
-        importedData.tankId = req.file.originalname.replace(/\.(xlsx|xls|xlsm)$/i, '');
-        importedData.reportNumber = `IMP-${Date.now()}`;
-        importedData.inspectionDate = new Date().toISOString().split('T')[0];
-        importedData.inspector = 'Imported';
-        importedData.service = 'crude oil';
-        importedData.status = 'draft';
-        
-        return res.json({
-          message: "File uploaded but no data could be extracted. Basic report created.",
-          extractedData: importedData,
-          thicknessMeasurements: [],
-          checklistItems: [],
-          totalRows: 0,
-          preview: []
-        });
-      }
-
-      // Handle array format data (from header: 1 parsing)
-      if (data.length > 0 && Array.isArray(data[0])) {
-        console.log('Converting array format to object format');
-        const headers = data[0] as string[];
-        const objectData = [];
-        
-        for (let i = 1; i < data.length; i++) {
-          const row = data[i] as any[];
-          const obj: any = {};
-          headers.forEach((header, index) => {
-            if (header && row[index] !== undefined) {
-              obj[header] = row[index];
-            }
-          });
-          objectData.push(obj);
-        }
-        
-        data = objectData;
-      }
-
-      // Process each row to extract data
-      for (const row of data) {
-        const rowObj = row as any;
-        
-        // Extract main report fields
-        for (const [field, patterns] of Object.entries(fieldPatterns)) {
-          const value = findFieldValue(rowObj, patterns);
-          if (value && !importedData[field]) {
-            if (field === 'inspectionDate' || field === 'lastInspection') {
-              const date = new Date(value);
-              if (!isNaN(date.getTime())) {
-                importedData[field] = date.toISOString().split('T')[0];
-              }
-            } else if (field === 'service') {
-              importedData[field] = String(value).toLowerCase();
-            } else {
-              importedData[field] = String(value);
-            }
-          }
-        }
-
-        // Look for thickness measurement data
-        const thicknessFields = ['Thickness', 'Current Thickness', 'Measured Thickness', 'Reading'];
-        const locationFields = ['Location', 'Position', 'Point', 'Measurement Point'];
-        const elevationFields = ['Elevation', 'Height', 'Level'];
-        
-        for (const thicknessField of thicknessFields) {
-          if (rowObj[thicknessField] && !isNaN(parseFloat(rowObj[thicknessField]))) {
-            const measurement = {
-              location: findFieldValue(rowObj, locationFields) || `Point ${thicknessMeasurements.length + 1}`,
-              elevation: findFieldValue(rowObj, elevationFields) || '0',
-              currentThickness: parseFloat(rowObj[thicknessField]),
-              originalThickness: importedData.originalThickness ? parseFloat(importedData.originalThickness) : 0.25
-            };
-            thicknessMeasurements.push(measurement);
-            break; // Only take one thickness per row
-          }
-        }
-
-        // Look for checklist items
-        const checklistPatterns = ['Item', 'Check', 'Inspection Item', 'Requirement'];
-        const statusPatterns = ['Status', 'Result', 'Pass/Fail', 'OK/Not OK', 'Satisfactory'];
-        
-        for (const checkPattern of checklistPatterns) {
-          if (rowObj[checkPattern]) {
-            const status = findFieldValue(rowObj, statusPatterns);
-            const item = {
-              item: String(rowObj[checkPattern]),
-              checked: status ? ['pass', 'ok', 'satisfactory', 'yes', 'true'].includes(String(status).toLowerCase()) : false,
-              notes: rowObj['Notes'] || rowObj['Comments'] || rowObj['Remarks'] || ''
-            };
-            checklistItems.push(item);
-            break;
-          }
-        }
-      }
-
-      // Calculate years since last inspection if both dates are available
-      if (importedData.inspectionDate && importedData.lastInspection) {
-        const currentDate = new Date(importedData.inspectionDate);
-        const lastDate = new Date(importedData.lastInspection);
-        const yearsDiff = (currentDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
-        importedData.yearsSinceLastInspection = Math.round(yearsDiff);
-      }
-
-      // Generate a unique report number if not found
-      if (!importedData.reportNumber) {
-        importedData.reportNumber = `IMP-${Date.now()}`;
-      }
-      
-      // Set default values
-      importedData.status = 'draft';
-      importedData.yearsSinceLastInspection = importedData.yearsSinceLastInspection || 10;
-
       res.json({
-        message: "Excel file processed successfully",
-        extractedData: importedData,
-        thicknessMeasurements,
-        checklistItems,
-        totalRows: data.length,
-        preview: data.slice(0, 5) // First 5 rows for preview
+        message: `Excel file processed successfully with AI analysis (${Math.round(result.aiAnalysis.confidence * 100)}% confidence)`,
+        extractedData: result.importedData,
+        thicknessMeasurements: result.thicknessMeasurements,
+        checklistItems: result.checklistItems,
+        totalRows: result.totalRows,
+        preview: result.preview,
+        aiInsights: {
+          confidence: result.aiAnalysis.confidence,
+          detectedColumns: result.aiAnalysis.detectedColumns,
+          mappingSuggestions: result.aiAnalysis.mappingSuggestions
+        }
       });
 
     } catch (error) {
