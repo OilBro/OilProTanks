@@ -35,7 +35,8 @@ export default function ImportReports() {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to import Excel file');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to import Excel file');
       }
       
       return response.json();

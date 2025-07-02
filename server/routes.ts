@@ -17,10 +17,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
     fileFilter: (req, file, cb) => {
       const allowedTypes = [
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.ms-excel'
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        'application/vnd.ms-excel', // .xls
+        'application/vnd.ms-excel.sheet.macroEnabled.12' // .xlsm
       ];
-      cb(null, allowedTypes.includes(file.mimetype));
+      const isAllowed = allowedTypes.includes(file.mimetype) || 
+                       file.originalname.toLowerCase().endsWith('.xlsx') ||
+                       file.originalname.toLowerCase().endsWith('.xls') ||
+                       file.originalname.toLowerCase().endsWith('.xlsm');
+      cb(null, isAllowed);
     }
   });
 
@@ -35,10 +40,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+      console.log('File buffer size:', req.file.buffer.length);
+      console.log('File mimetype:', req.file.mimetype);
+      console.log('File original name:', req.file.originalname);
+
+      let workbook;
+      try {
+        workbook = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
+      } catch (xlsxError) {
+        console.error('Error reading Excel file:', xlsxError);
+        return res.status(400).json({ 
+          message: "Unable to read Excel file. Please ensure it's a valid Excel file (.xlsx or .xls).",
+          error: xlsxError instanceof Error ? xlsxError.message : String(xlsxError)
+        });
+      }
+
       const sheetName = workbook.SheetNames[0];
+      if (!sheetName) {
+        return res.status(400).json({ message: "No sheets found in Excel file" });
+      }
+
       const worksheet = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json(worksheet);
+      const data = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+      
+      console.log('Sheet name:', sheetName);
+      console.log('Number of rows:', data.length);
+      
+      // Log first few rows to see structure
+      if (data.length > 0) {
+        console.log('Sample data (first row):', data[0]);
+        console.log('Column headers:', Object.keys(data[0] as any));
+      }
 
       // Enhanced Excel parsing for API 653 inspection reports
       const importedData: any = {};
