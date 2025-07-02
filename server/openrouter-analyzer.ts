@@ -28,6 +28,10 @@ export async function analyzeSpreadsheetWithOpenRouter(
   fileName: string
 ): Promise<SpreadsheetAnalysis> {
   try {
+    console.log('=== OpenRouter AI Analysis Starting ===');
+    console.log('Analyzing file:', fileName);
+    console.log('Sheet names:', workbook.SheetNames);
+    
     // Get sample data from the spreadsheet
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
@@ -43,6 +47,9 @@ export async function analyzeSpreadsheetWithOpenRouter(
     
     // Get column headers if available
     const headers = Array.isArray(data[0]) ? data[0] : Object.keys(data[0] || {});
+    
+    console.log('Headers detected:', headers);
+    console.log('First 3 data rows:', sampleData.slice(0, 3));
     
     const systemPrompt = `You are an expert at analyzing API 653 tank inspection spreadsheets. Your task is to identify and extract inspection data accurately. Always return valid JSON.`;
     
@@ -90,7 +97,16 @@ Return a JSON object with this exact structure:
   "detectedColumns": ["list", "of", "relevant", "columns"]
 }
 
-Look for variations in naming (Tank #, Vessel ID, etc). Extract all thickness readings found.`;
+Look for variations in naming (Tank #, Vessel ID, etc). 
+
+IMPORTANT: Extract ALL thickness readings found, especially:
+- Shell thickness measurements (look for columns with numeric values between 0.1 and 1.0)
+- Course measurements (Course 1, Course 2, etc.)
+- Any columns with headers containing "thickness", "reading", "UT", "measured"
+- Numeric columns that appear to be thickness values
+- Pay special attention to shell/wall thickness data in any format
+
+For each thickness reading found, include it in the thicknessMeasurements array with proper location/elevation info.`;
 
     const request: OpenRouterRequest = {
       model: 'anthropic/claude-3.5-sonnet',
@@ -126,16 +142,23 @@ Look for variations in naming (Tank #, Vessel ID, etc). Extract all thickness re
       throw new Error('No content in OpenRouter response');
     }
 
+    console.log('OpenRouter AI raw response:', content);
+
     // Parse the JSON response
     try {
       const analysis = JSON.parse(content);
+      console.log('Parsed AI analysis:', JSON.stringify(analysis, null, 2));
+      console.log(`AI found ${analysis.thicknessMeasurements?.length || 0} thickness measurements`);
       return analysis as SpreadsheetAnalysis;
     } catch (parseError) {
       // Try to extract JSON from the response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]) as SpreadsheetAnalysis;
+        const analysis = JSON.parse(jsonMatch[0]) as SpreadsheetAnalysis;
+        console.log('Extracted AI analysis from text:', JSON.stringify(analysis, null, 2));
+        return analysis;
       }
+      console.error('Failed to parse AI response:', parseError);
       throw new Error('Failed to parse AI response as JSON');
     }
     
