@@ -170,6 +170,29 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
   if (!importedData.yearsSinceLastInspection) {
     importedData.yearsSinceLastInspection = 10;
   }
+  
+  // Ensure all required fields are present
+  const now = new Date().toISOString();
+  if (!importedData.createdAt) {
+    importedData.createdAt = now;
+  }
+  if (!importedData.updatedAt) {
+    importedData.updatedAt = now;
+  }
+  
+  // Ensure essential fields have default values if missing
+  if (!importedData.tankId) {
+    importedData.tankId = fileName.replace(/\.(xlsx|xls|xlsm)$/i, '') || 'IMPORTED-TANK';
+  }
+  if (!importedData.inspector) {
+    importedData.inspector = 'Imported';
+  }
+  if (!importedData.service) {
+    importedData.service = 'crude oil';
+  }
+  if (!importedData.inspectionDate) {
+    importedData.inspectionDate = new Date().toISOString().split('T')[0];
+  }
 
   return {
     importedData,
