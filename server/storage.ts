@@ -489,6 +489,58 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return newTemplate;
   }
+
+  // Appurtenance Inspections
+  async getAppurtenanceInspections(reportId: number): Promise<AppurtenanceInspection[]> {
+    return await db.select().from(appurtenanceInspections).where(eq(appurtenanceInspections.reportId, reportId));
+  }
+
+  async createAppurtenanceInspection(inspection: InsertAppurtenanceInspection): Promise<AppurtenanceInspection> {
+    const [newInspection] = await db
+      .insert(appurtenanceInspections)
+      .values(inspection)
+      .returning();
+    return newInspection;
+  }
+
+  // Report Attachments
+  async getReportAttachments(reportId: number): Promise<ReportAttachment[]> {
+    return await db.select().from(reportAttachments).where(eq(reportAttachments.reportId, reportId));
+  }
+
+  async createReportAttachment(attachment: InsertReportAttachment): Promise<ReportAttachment> {
+    const [newAttachment] = await db
+      .insert(reportAttachments)
+      .values(attachment)
+      .returning();
+    return newAttachment;
+  }
+
+  // Repair Recommendations
+  async getRepairRecommendations(reportId: number): Promise<RepairRecommendation[]> {
+    return await db.select().from(repairRecommendations).where(eq(repairRecommendations.reportId, reportId));
+  }
+
+  async createRepairRecommendation(recommendation: InsertRepairRecommendation): Promise<RepairRecommendation> {
+    const [newRecommendation] = await db
+      .insert(repairRecommendations)
+      .values(recommendation)
+      .returning();
+    return newRecommendation;
+  }
+
+  // Venting System Inspections
+  async getVentingSystemInspections(reportId: number): Promise<VentingSystemInspection[]> {
+    return await db.select().from(ventingSystemInspections).where(eq(ventingSystemInspections.reportId, reportId));
+  }
+
+  async createVentingSystemInspection(inspection: InsertVentingSystemInspection): Promise<VentingSystemInspection> {
+    const [newInspection] = await db
+      .insert(ventingSystemInspections)
+      .values(inspection)
+      .returning();
+    return newInspection;
+  }
 }
 
 export const storage = new DatabaseStorage();

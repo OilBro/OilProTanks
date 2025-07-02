@@ -8,7 +8,15 @@ import { ArrowLeft, Download, Edit, FileText, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { generateEnhancedPDF } from "@/components/enhanced-pdf-generator";
 import { useToast } from "@/hooks/use-toast";
-import type { InspectionReport, ThicknessMeasurement, InspectionChecklist } from "@shared/schema";
+import type { 
+  InspectionReport, 
+  ThicknessMeasurement, 
+  InspectionChecklist,
+  AppurtenanceInspection,
+  RepairRecommendation,
+  VentingSystemInspection,
+  ReportAttachment
+} from "@shared/schema";
 
 export function ReportView() {
   const { id } = useParams();
@@ -26,6 +34,22 @@ export function ReportView() {
 
   const { data: checklists = [] } = useQuery<InspectionChecklist[]>({
     queryKey: [`/api/reports/${reportId}/checklists`],
+  });
+
+  const { data: appurtenanceInspections = [] } = useQuery<AppurtenanceInspection[]>({
+    queryKey: [`/api/reports/${reportId}/appurtenances`],
+  });
+
+  const { data: repairRecommendations = [] } = useQuery<RepairRecommendation[]>({
+    queryKey: [`/api/reports/${reportId}/repairs`],
+  });
+
+  const { data: ventingInspections = [] } = useQuery<VentingSystemInspection[]>({
+    queryKey: [`/api/reports/${reportId}/venting`],
+  });
+
+  const { data: attachments = [] } = useQuery<ReportAttachment[]>({
+    queryKey: [`/api/reports/${reportId}/attachments`],
   });
 
   if (reportLoading) {
@@ -66,10 +90,10 @@ export function ReportView() {
         report,
         measurements,
         checklists,
-        appurtenanceInspections: [],
-        repairRecommendations: [],
-        ventingInspections: [],
-        attachments: []
+        appurtenanceInspections,
+        repairRecommendations,
+        ventingInspections,
+        attachments
       };
       
       // Generate the PDF

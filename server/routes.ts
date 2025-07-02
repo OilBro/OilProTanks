@@ -346,6 +346,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Appurtenance Inspections
+  app.get("/api/reports/:reportId/appurtenances", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const appurtenances = await storage.getAppurtenanceInspections(reportId);
+      res.json(appurtenances);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch appurtenance inspections" });
+    }
+  });
+
+  // Repair Recommendations
+  app.get("/api/reports/:reportId/repairs", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const repairs = await storage.getRepairRecommendations(reportId);
+      res.json(repairs);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch repair recommendations" });
+    }
+  });
+
+  // Venting System Inspections
+  app.get("/api/reports/:reportId/venting", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const venting = await storage.getVentingSystemInspections(reportId);
+      res.json(venting);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch venting system inspections" });
+    }
+  });
+
+  // Report Attachments
+  app.get("/api/reports/:reportId/attachments", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const attachments = await storage.getReportAttachments(reportId);
+      res.json(attachments);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch report attachments" });
+    }
+  });
+
   // Report Templates
   app.get("/api/templates", async (req, res) => {
     try {
