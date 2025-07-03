@@ -282,17 +282,17 @@ export default function ImportReports() {
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">Extracted Report Data</h4>
                 <div className="bg-gray-50 p-4 rounded space-y-2 text-sm">
-                  <div><strong>Report Number:</strong> {importResult.importedData.reportNumber || 'Not found'}</div>
-                  <div><strong>Tank ID:</strong> {importResult.importedData.tankId || 'Not found'}</div>
-                  <div><strong>Service:</strong> {importResult.importedData.service || 'Not found'}</div>
-                  <div><strong>Inspector:</strong> {importResult.importedData.inspector || 'Not found'}</div>
-                  <div><strong>Date:</strong> {importResult.importedData.inspectionDate || 'Not found'}</div>
-                  <div><strong>Location:</strong> {importResult.importedData.location || 'Not found'}</div>
-                  <div><strong>Owner:</strong> {importResult.importedData.owner || 'Not found'}</div>
-                  <div><strong>Diameter:</strong> {importResult.importedData.diameter || 'Not found'}</div>
-                  <div><strong>Height:</strong> {importResult.importedData.height || 'Not found'}</div>
-                  <div><strong>Original Thickness:</strong> {importResult.importedData.originalThickness || 'Not found'}</div>
-                  <div><strong>Years Since Last Inspection:</strong> {importResult.importedData.yearsSinceLastInspection || 'Not found'}</div>
+                  <div><strong>Report Number:</strong> {importResult.importedData?.reportNumber || 'Not found'}</div>
+                  <div><strong>Tank ID:</strong> {importResult.importedData?.tankId || 'Not found'}</div>
+                  <div><strong>Service:</strong> {importResult.importedData?.service || 'Not found'}</div>
+                  <div><strong>Inspector:</strong> {importResult.importedData?.inspector || 'Not found'}</div>
+                  <div><strong>Date:</strong> {importResult.importedData?.inspectionDate || 'Not found'}</div>
+                  <div><strong>Location:</strong> {importResult.importedData?.location || 'Not found'}</div>
+                  <div><strong>Owner:</strong> {importResult.importedData?.owner || 'Not found'}</div>
+                  <div><strong>Diameter:</strong> {importResult.importedData?.diameter || 'Not found'}</div>
+                  <div><strong>Height:</strong> {importResult.importedData?.height || 'Not found'}</div>
+                  <div><strong>Original Thickness:</strong> {importResult.importedData?.originalThickness || 'Not found'}</div>
+                  <div><strong>Years Since Last Inspection:</strong> {importResult.importedData?.yearsSinceLastInspection || 'Not found'}</div>
                 </div>
               </div>
 
@@ -387,7 +387,7 @@ export default function ImportReports() {
             </div>
 
             {/* Warning if data is incomplete */}
-            {(!importResult.importedData.tankId || !importResult.importedData.reportNumber) && (
+            {(!importResult.importedData?.tankId || !importResult.importedData?.reportNumber) && (
               <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded">
                 <div className="flex items-center">
                   <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2" />
