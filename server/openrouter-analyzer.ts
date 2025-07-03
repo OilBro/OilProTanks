@@ -73,9 +73,9 @@ export async function analyzeSpreadsheetWithOpenRouter(
     
     console.log('\nTotal sheets analyzed:', workbook.SheetNames.length);
     
-    const systemPrompt = `You are an expert at analyzing API 653 tank inspection spreadsheets. Your task is to identify and extract inspection data accurately. Always return valid JSON.`;
+    const systemPrompt = `You are an expert API 653 tank inspection data extraction specialist. Your task is to analyze tank inspection spreadsheets and extract ALL relevant data accurately. Always return valid JSON with comprehensive data extraction.`;
     
-    const userPrompt = `Analyze this MULTI-SHEET tank inspection workbook and extract relevant data from ALL sheets:
+    const userPrompt = `Analyze this MULTI-SHEET tank inspection workbook and extract comprehensive data from ALL sheets:
 
 FILENAME: ${fileName}
 TOTAL SHEETS: ${workbook.SheetNames.length}
@@ -83,52 +83,84 @@ TOTAL SHEETS: ${workbook.SheetNames.length}
 WORKBOOK DATA:
 ${allSheetData}
 
-Return a JSON object with this exact structure:
+EXTRACTION REQUIREMENTS:
+Extract ALL available information into this JSON structure:
+
 {
   "reportData": {
-    "tankId": "extracted tank ID",
-    "reportNumber": "report number",
-    "service": "product type (crude oil/diesel/water/etc)",
-    "inspector": "inspector name",
-    "inspectionDate": "YYYY-MM-DD",
-    "diameter": "tank diameter",
-    "height": "tank height",
-    "originalThickness": "original thickness",
-    "location": "facility name",
-    "owner": "owner/company"
+    "tankId": "Tank identification (look for Tank #, Tank No, Unit, Vessel, AST)",
+    "reportNumber": "Report number if found",
+    "service": "Product type (crude oil, diesel, water, etc)",
+    "inspector": "Inspector name",
+    "inspectionDate": "YYYY-MM-DD format",
+    "diameter": "Tank diameter (feet or meters)",
+    "height": "Tank height (feet or meters)", 
+    "originalThickness": "Original/nominal thickness",
+    "location": "Physical location/facility name",
+    "owner": "Owner/company/client name",
+    "yearsSinceLastInspection": "Years since last inspection (number)",
+    "equipment_id": "Equipment tag if found",
+    "capacity": "Tank capacity if found",
+    "specificGravity": "Product specific gravity if found",
+    "constructionCode": "API-650, API-653, etc if found",
+    "yearBuilt": "Year of construction if found",
+    "shellMaterial": "Shell material if found",
+    "roofType": "Roof type if found",
+    "foundationType": "Foundation type if found",
+    "numberOfCourses": "Number of shell courses if found",
+    "inspectorCertification": "API-653 certification if found",
+    "inspectionCompany": "Inspection company if found",
+    "testMethods": "UT, VT, MT, etc if found",
+    "corrosionAllowance": "Corrosion allowance if found",
+    "jointEfficiency": "Joint efficiency if found"
   },
   "thicknessMeasurements": [
     {
-      "location": "measurement point",
-      "elevation": "height/elevation",
+      "location": "Measurement point/position",
+      "elevation": "Course number or elevation",
       "currentThickness": number,
-      "component": "shell/bottom/roof"
+      "component": "shell/bottom/roof/nozzle",
+      "originalThickness": "Original thickness if available",
+      "measurementType": "shell/bottom_plate/internal_annular/critical_zone/roof/nozzle"
     }
   ],
   "checklistItems": [
     {
-      "item": "inspection item",
-      "status": "pass/fail/satisfactory",
-      "notes": "notes if any"
+      "item": "Inspection item/component",
+      "status": "satisfactory/acceptable/needs_repair",
+      "notes": "Findings or notes"
     }
   ],
   "confidence": 0.0 to 1.0,
   "mappingSuggestions": {
     "columnName": "suggestedFieldMapping"
   },
-  "detectedColumns": ["list", "of", "relevant", "columns"]
+  "detectedColumns": ["list", "of", "all", "relevant", "columns"]
 }
 
-Look for variations in naming (Tank #, Vessel ID, etc). 
+CRITICAL EXTRACTION RULES:
+1. Extract ALL thickness readings from EVERY sheet, especially:
+   - Sheets named: "Shell", "Thickness", "Course", "TML", "AST Comp TML", "Comp TML"
+   - Columns: tml-1, tml-2, _1, _2, or any numeric columns with values 0.05-3.0
+   - Shell course data (Course 1, Course 2, etc)
+   - Look for patterns like "N", "S", "E", "W" with thickness values
+   
+2. Search patterns for tank data:
+   - Tank: "Tank", "Tank #", "Tank No", "Unit", "Vessel", "AST", "T-"
+   - Location: "Location", "Site", "Facility", "Plant"
+   - Owner: "Client", "Company", "Owner", "Customer"
+   - Dates: Convert any date format to YYYY-MM-DD
+   
+3. Extract numeric values properly:
+   - Thickness values should be numbers, not strings
+   - Typical thickness range: 0.05 to 3.0 inches
+   - Include values from cells even without headers
+   
+4. Check every sheet for data - don't skip any
+5. If data is missing, use null (not "Not found")
+6. Include all data fields even if null
 
-IMPORTANT: Extract ALL thickness readings found, especially:
-- Shell thickness measurements (look for columns with numeric values between 0.1 and 1.0)
-- Course measurements (Course 1, Course 2, etc.)
-- Any columns with headers containing "thickness", "reading", "UT", "measured"
-- Numeric columns that appear to be thickness values
-- Pay special attention to shell/wall thickness data in any format
-
-For each thickness reading found, include it in the thicknessMeasurements array with proper location/elevation info.`;
+For each thickness reading found, include it in the thicknessMeasurements array with complete information.`;
 
     const request: OpenRouterRequest = {
       model: 'anthropic/claude-3.5-sonnet',

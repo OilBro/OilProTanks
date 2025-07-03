@@ -212,4 +212,11 @@ File handling: User has existing Excel-based inspection reports (XLSM format) th
   - Shows AI analysis results including detected columns and mapping suggestions
   - Successfully handles complex API 653 inspection spreadsheets
   - System ready for deployment with all features working
+✓ ENHANCED AI EXTRACTION PROMPT (July 3, 2025):
+  - Updated OpenRouter prompt to extract 25+ data fields comprehensively
+  - Added detection for equipment ID, capacity, construction codes, materials
+  - Enhanced thickness measurement extraction from all sheet types
+  - Improved pattern matching for "tml-1", "_1", numeric columns
+  - Added support for inspector certification, test methods, corrosion allowance
+  - Fixed import-to-report creation workflow with proper field mapping
 ```
