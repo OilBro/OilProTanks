@@ -32,34 +32,56 @@ export async function analyzeSpreadsheetWithOpenRouter(
     console.log('Analyzing file:', fileName);
     console.log('Sheet names:', workbook.SheetNames);
     
-    // Get sample data from the spreadsheet
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    // Analyze ALL sheets in the workbook
+    let allSheetData = '';
+    let allHeaders: string[] = [];
+    const sheetAnalysis: { [key: string]: any } = {};
     
-    // Limit to first 20 rows for analysis
-    const sampleData = data.slice(0, 20);
+    // Process each sheet
+    for (const sheetName of workbook.SheetNames) {
+      const worksheet = workbook.Sheets[sheetName];
+      const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      if (data.length > 0) {
+        console.log(`\nAnalyzing sheet: "${sheetName}" with ${data.length} rows`);
+        
+        // Get headers from this sheet
+        const headers = Array.isArray(data[0]) ? data[0] : Object.keys(data[0] || {});
+        console.log(`Headers in "${sheetName}":`, headers);
+        
+        // Store sheet data for analysis
+        sheetAnalysis[sheetName] = data.slice(0, 10); // First 10 rows per sheet
+        
+        // Add to combined text
+        allSheetData += `\n\n=== SHEET: ${sheetName} ===\n`;
+        allSheetData += `COLUMNS: ${headers.join(' | ')}\n`;
+        
+        // Add sample rows
+        const sampleRows = data.slice(0, 5);
+        sampleRows.forEach((row: any, index: number) => {
+          allSheetData += `Row ${index + 1}: ${row.join(' | ')}\n`;
+        });
+        
+        // Look for shell thickness data specifically
+        if (sheetName.toLowerCase().includes('shell') || 
+            sheetName.toLowerCase().includes('thickness') ||
+            sheetName.toLowerCase().includes('course')) {
+          console.log(`Sheet "${sheetName}" appears to contain thickness data`);
+        }
+      }
+    }
     
-    // Create a text representation of the spreadsheet
-    const spreadsheetText = sampleData.map((row: any, index: number) => {
-      return `Row ${index + 1}: ${row.join(' | ')}`;
-    }).join('\n');
-    
-    // Get column headers if available
-    const headers = Array.isArray(data[0]) ? data[0] : Object.keys(data[0] || {});
-    
-    console.log('Headers detected:', headers);
-    console.log('First 3 data rows:', sampleData.slice(0, 3));
+    console.log('\nTotal sheets analyzed:', workbook.SheetNames.length);
     
     const systemPrompt = `You are an expert at analyzing API 653 tank inspection spreadsheets. Your task is to identify and extract inspection data accurately. Always return valid JSON.`;
     
-    const userPrompt = `Analyze this tank inspection spreadsheet and extract relevant data:
+    const userPrompt = `Analyze this MULTI-SHEET tank inspection workbook and extract relevant data from ALL sheets:
 
 FILENAME: ${fileName}
-COLUMNS: ${headers.join(', ')}
+TOTAL SHEETS: ${workbook.SheetNames.length}
 
-SAMPLE DATA:
-${spreadsheetText}
+WORKBOOK DATA:
+${allSheetData}
 
 Return a JSON object with this exact structure:
 {
@@ -189,34 +211,52 @@ export async function processSpreadsheetWithAI(
   const thicknessMeasurements: any[] = [...analysis.thicknessMeasurements];
   const checklistItems: any[] = [...analysis.checklistItems];
   
-  // Process all sheets for additional data
+  console.log(`Processing ${workbook.SheetNames.length} sheets for additional thickness data`);
+  
+  // Process ALL sheets for additional thickness data
   for (const sheetName of workbook.SheetNames) {
     const worksheet = workbook.Sheets[sheetName];
     const data = XLSX.utils.sheet_to_json(worksheet);
     
-    // Use AI's mapping suggestions to extract more data
-    for (const row of data) {
-      const rowObj = row as any;
+    console.log(`\nProcessing sheet "${sheetName}" with ${data.length} rows`);
+    
+    // Special handling for sheets that likely contain thickness data
+    if (sheetName.toLowerCase().includes('shell') || 
+        sheetName.toLowerCase().includes('thickness') ||
+        sheetName.toLowerCase().includes('course') ||
+        sheetName.toLowerCase().includes('readings') ||
+        data.length > 0) { // Process all sheets with data
       
-      // Look for thickness measurements based on detected columns
-      for (const col of analysis.detectedColumns) {
-        if (col.toLowerCase().includes('thick') || col.toLowerCase().includes('reading')) {
-          const value = rowObj[col];
-          if (typeof value === 'number' && value > 0 && value < 10) {
+      // Process each row
+      for (const row of data) {
+        const rowObj = row as any;
+        
+        // Look for thickness values in any numeric column
+        for (const [key, value] of Object.entries(rowObj)) {
+          if (typeof value === 'number' && value > 0.05 && value < 3) {
+            // This looks like a thickness measurement
+            const location = rowObj['Location'] || rowObj['Course'] || rowObj['Point'] || 
+                           rowObj['Elevation'] || key;
+            
             // Check if we already have this measurement
             const exists = thicknessMeasurements.some(m => 
-              m.location === (rowObj['Location'] || rowObj['Point'] || col) &&
-              m.currentThickness === value
+              m.location === location && 
+              Math.abs(m.currentThickness - value) < 0.001
             );
             
             if (!exists) {
-              thicknessMeasurements.push({
-                location: rowObj['Location'] || rowObj['Point'] || `${sheetName} - ${col}`,
+              const measurement = {
+                location: location,
                 elevation: rowObj['Elevation'] || rowObj['Height'] || '0',
                 currentThickness: value,
-                component: determineComponent(sheetName, col),
-                measurementType: determineMeasurementType(sheetName, col)
-              });
+                component: determineComponent(sheetName, key),
+                measurementType: determineMeasurementType(sheetName, key),
+                originalThickness: rowObj['Original'] || rowObj['Nominal'] || '0.375',
+                createdAt: new Date().toISOString()
+              };
+              
+              thicknessMeasurements.push(measurement);
+              console.log(`Added thickness: ${measurement.location} = ${measurement.currentThickness}`);
             }
           }
         }

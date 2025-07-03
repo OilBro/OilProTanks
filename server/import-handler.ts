@@ -76,14 +76,60 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     data = objectData;
   }
 
-  // Use AI to analyze the spreadsheet
+  // Use AI to analyze the ENTIRE workbook
   const aiAnalysis = await analyzeSpreadsheetWithOpenRouter(workbook, fileName);
   
   // Process with AI insights
   let { importedData, thicknessMeasurements, checklistItems } = await processSpreadsheetWithAI(workbook, aiAnalysis);
 
-  // If AI analysis has low confidence, enhance with standard parsing
-  if (aiAnalysis.confidence < 0.5 && data.length > 0) {
+  // If AI analysis has low confidence, enhance with standard parsing from ALL sheets
+  if (aiAnalysis.confidence < 0.5) {
+    console.log('AI confidence low, enhancing with standard parsing from all sheets');
+    
+    // Process ALL sheets for additional data
+    for (const sheetName of workbook.SheetNames) {
+      const sheetWorksheet = workbook.Sheets[sheetName];
+      const sheetData = XLSX.utils.sheet_to_json(sheetWorksheet, { defval: '', raw: false });
+      
+      if (sheetData.length === 0) continue;
+      console.log(`Standard parsing sheet "${sheetName}" with ${sheetData.length} rows`);
+      
+      // Process thickness measurements from this sheet
+      for (const row of sheetData) {
+        const rowObj = row as any;
+        
+        // Look for thickness values in any column
+        for (const [key, value] of Object.entries(rowObj)) {
+          if (typeof value === 'number' && value > 0.05 && value < 3) {
+            const location = rowObj['Location'] || rowObj['Course'] || rowObj['Point'] || 
+                           rowObj['Elevation'] || key;
+            
+            const exists = thicknessMeasurements.some(m => 
+              m.location === location && 
+              Math.abs(m.currentThickness - value) < 0.001
+            );
+            
+            if (!exists) {
+              const measurement = {
+                location: location,
+                elevation: rowObj['Elevation'] || rowObj['Height'] || '0',
+                currentThickness: value,
+                component: 'Shell',
+                measurementType: 'shell',
+                originalThickness: rowObj['Original'] || rowObj['Nominal'] || '0.375',
+                createdAt: new Date().toISOString()
+              };
+              
+              thicknessMeasurements.push(measurement);
+              console.log(`Found thickness in "${sheetName}": ${measurement.location} = ${measurement.currentThickness}`);
+            }
+          }
+        }
+      }
+    }
+    
+    // Process first sheet for main report data
+    if (data.length > 0) {
     const fieldPatterns = {
       tankId: ['Tank ID', 'Tank Id', 'TankID', 'Tank Number', 'Tank No', 'Vessel ID'],
       reportNumber: ['Report Number', 'Report No', 'ReportNumber', 'Inspection Report No', 'IR No'],
@@ -188,6 +234,7 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
           }
         }
       }
+    }
     }
   }
 
