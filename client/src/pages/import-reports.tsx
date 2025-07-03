@@ -51,6 +51,11 @@ export default function ImportReports() {
       return response.json();
     },
     onSuccess: (result: ImportResult) => {
+      console.log('=== EXCEL IMPORT SUCCESS ===');
+      console.log('Full import result:', result);
+      console.log('importedData field:', result.importedData);
+      console.log('Result structure:', Object.keys(result));
+      
       setImportResult(result);
       toast({
         title: "File Processed",
@@ -75,7 +80,7 @@ export default function ImportReports() {
       // First create the report with defaults for missing required fields
       const reportData = {
         reportNumber: data.reportData.reportNumber || `IMP-${Date.now()}`,
-        tankId: data.reportData.tankId || data.reportData.tank_id || data.reportData.equipmentId || 'Unknown Tank',
+        tankId: data.reportData.tankId || data.reportData.tank_id || data.reportData.equipmentId || data.reportData['Equipment ID'] || data.reportData['EQUIP ID'] || 'Unknown Tank',
         service: data.reportData.service || data.reportData.serviceType || 'Unknown Service',
         inspector: data.reportData.inspector || data.reportData.inspectorName || 'Unknown Inspector',
         inspectionDate: data.reportData.inspectionDate || data.reportData.inspection_date || new Date().toISOString().split('T')[0],
@@ -83,7 +88,8 @@ export default function ImportReports() {
         height: data.reportData.height ? parseFloat(data.reportData.height) : null,
         originalThickness: data.reportData.originalThickness ? parseFloat(data.reportData.originalThickness) : null,
         yearsSinceLastInspection: data.reportData.yearsSinceLastInspection ? parseInt(data.reportData.yearsSinceLastInspection) : null,
-        status: 'draft' as const
+        status: 'draft' as const,
+        findings: data.reportData.findings || data.reportData.Findings || null
       };
       
       console.log('=== SENDING REPORT DATA TO SERVER ===');
@@ -488,6 +494,19 @@ export default function ImportReports() {
             <div className="mt-6 flex justify-end space-x-4">
               <Button variant="outline" onClick={() => setImportResult(null)}>
                 Cancel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  console.log('=== DEBUG BUTTON CLICKED ===');
+                  console.log('Current importResult:', importResult);
+                  console.log('importedData exists?', !!importResult.importedData);
+                  if (importResult.importedData) {
+                    console.log('importedData contents:', importResult.importedData);
+                  }
+                }}
+              >
+                Debug Data
               </Button>
               <Button
                 onClick={createReport}

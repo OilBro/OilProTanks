@@ -131,7 +131,7 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     // Process first sheet for main report data
     if (data.length > 0) {
     const fieldPatterns = {
-      tankId: ['Tank ID', 'Tank Id', 'TankID', 'Tank Number', 'Tank No', 'Vessel ID'],
+      tankId: ['Tank ID', 'Tank Id', 'TankID', 'Tank Number', 'Tank No', 'Vessel ID', 'Equipment ID', 'Equip ID', 'EQUIP ID'],
       reportNumber: ['Report Number', 'Report No', 'ReportNumber', 'Inspection Report No', 'IR No'],
       service: ['Service', 'Product', 'Contents', 'Stored Product', 'Tank Service'],
       inspector: ['Inspector', 'Inspector Name', 'Inspected By', 'API Inspector', 'Certified Inspector'],
@@ -141,7 +141,8 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
       originalThickness: ['Original Thickness', 'Nominal Thickness', 'Design Thickness', 'Min Thickness'],
       location: ['Location', 'Site', 'Facility', 'Plant Location'],
       owner: ['Owner', 'Client', 'Company', 'Facility Owner'],
-      lastInspection: ['Last Inspection', 'Previous Inspection', 'Last Internal Inspection']
+      lastInspection: ['Last Inspection', 'Previous Inspection', 'Last Internal Inspection'],
+      findings: ['Findings', 'Report Write Up', 'Write Up', 'Report Summary', 'Inspection Findings']
     };
 
     const findFieldValue = (rowObj: any, patterns: string[]) => {
@@ -168,6 +169,11 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
             }
           } else if (field === 'service') {
             importedData[field] = String(value).toLowerCase();
+          } else if (field === 'findings') {
+            // Store findings but don't overwrite if already found
+            if (!importedData.findings) {
+              importedData.findings = String(value);
+            }
           } else {
             importedData[field] = String(value);
           }
