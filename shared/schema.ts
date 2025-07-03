@@ -78,7 +78,6 @@ export const repairRecommendations = pgTable("repair_recommendations", {
   defectDescription: text("defect_description").notNull(),
   recommendation: text("recommendation").notNull(),
   priority: text("priority").notNull(), // urgent, high, medium, routine
-  estimatedCost: decimal("estimated_cost", { precision: 12, scale: 2 }),
   dueDate: text("due_date"),
   status: text("status").default("open"), // open, in_progress, completed, deferred
   apiReference: text("api_reference"), // API 653 clause reference

@@ -34,7 +34,6 @@ export function RepairRecommendations({ recommendations, onRecommendationsChange
     defectDescription: "",
     recommendation: "",
     priority: "routine",
-    estimatedCost: "",
     dueDate: "",
     apiReference: ""
   });
@@ -49,7 +48,6 @@ export function RepairRecommendations({ recommendations, onRecommendationsChange
       defectDescription: newRecommendation.defectDescription,
       recommendation: newRecommendation.recommendation,
       priority: newRecommendation.priority,
-      estimatedCost: newRecommendation.estimatedCost ? parseFloat(newRecommendation.estimatedCost) : null,
       dueDate: newRecommendation.dueDate || null,
       status: "open",
       apiReference: newRecommendation.apiReference || null,
@@ -64,7 +62,6 @@ export function RepairRecommendations({ recommendations, onRecommendationsChange
       defectDescription: "",
       recommendation: "",
       priority: "routine",
-      estimatedCost: "",
       dueDate: "",
       apiReference: ""
     });
@@ -159,16 +156,7 @@ export function RepairRecommendations({ recommendations, onRecommendationsChange
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            <div>
-              <Label htmlFor="estimatedCost">Estimated Cost ($)</Label>
-              <Input
-                type="number"
-                placeholder="5000"
-                value={newRecommendation.estimatedCost}
-                onChange={(e) => setNewRecommendation(prev => ({ ...prev, estimatedCost: e.target.value }))}
-              />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
               <Label htmlFor="dueDate">Due Date</Label>
               <Input
@@ -254,9 +242,6 @@ export function RepairRecommendations({ recommendations, onRecommendationsChange
 
                     <div className="flex justify-between items-center mt-4 pt-3 border-t">
                       <div className="flex gap-4 text-xs text-gray-500">
-                        {rec.estimatedCost && (
-                          <span>Est. Cost: ${rec.estimatedCost.toLocaleString()}</span>
-                        )}
                         {rec.dueDate && (
                           <span>Due: {new Date(rec.dueDate).toLocaleDateString()}</span>
                         )}

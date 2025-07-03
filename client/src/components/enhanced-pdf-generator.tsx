@@ -292,11 +292,6 @@ export function generateEnhancedPDF(data: EnhancedReportData): void {
       doc.text(recLines, margin + 10, yPosition);
       yPosition += recLines.length * 4 + 2;
       
-      if (rec.estimatedCost) {
-        doc.text(`Estimated Cost: $${rec.estimatedCost.toLocaleString()}`, margin + 5, yPosition);
-        yPosition += 6;
-      }
-      
       if (rec.apiReference) {
         doc.text(`API 653 Reference: ${rec.apiReference}`, margin + 5, yPosition);
         yPosition += 6;

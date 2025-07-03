@@ -128,6 +128,12 @@ Changelog:
 ```
 Preferred communication style: Simple, everyday language.
 File handling: User has existing Excel-based inspection reports (XLSM format) that may need import functionality.
+Excel field mappings:
+- Equipment ID = Tank Number/Tank ID
+- Report Write Up = Comprehensive findings (Foundation, Shell, Roof, Floor/Bottom, Nozzles, NDE Results)
+- Nominal Thickness = Original Thickness
+- Findings section includes: Executive Summary with repair recommendations and next inspection date
+Business Rules: NO cost estimation for repair recommendations
 ```
 
 ## Recent Changes
