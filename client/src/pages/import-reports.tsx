@@ -87,19 +87,18 @@ export default function ImportReports() {
       // Then create thickness measurements if any
       if (data.thicknessMeasurements && data.thicknessMeasurements.length > 0) {
         for (const measurement of data.thicknessMeasurements) {
-          // Ensure all required fields are present
+          // Ensure all required fields are present and convert to proper types
           const measurementData = {
             reportId: report.id,
             component: measurement.component || 'Shell',
             location: measurement.location || 'Unknown',
             measurementType: measurement.measurementType || 'shell',
-            currentThickness: measurement.currentThickness || 0,
-            originalThickness: measurement.originalThickness || null,
+            currentThickness: parseFloat(measurement.currentThickness) || 0,
+            originalThickness: measurement.originalThickness ? parseFloat(measurement.originalThickness) : null,
             elevation: measurement.elevation || null,
-            corrosionRate: measurement.corrosionRate || null,
-            remainingLife: measurement.remainingLife || null,
-            status: measurement.status || 'acceptable',
-            createdAt: new Date().toISOString()
+            corrosionRate: measurement.corrosionRate ? parseFloat(measurement.corrosionRate) : null,
+            remainingLife: measurement.remainingLife ? parseFloat(measurement.remainingLife) : null,
+            status: measurement.status || 'acceptable'
           };
           
           console.log('Sending measurement:', measurementData);

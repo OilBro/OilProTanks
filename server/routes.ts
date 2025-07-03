@@ -32,12 +32,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Excel Import endpoint
   app.post("/api/reports/import", upload.single('excelFile'), async (req, res) => {
     try {
+      console.log('=== Excel Import Request ===');
+      console.log('File received:', req.file ? {
+        originalname: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      } : 'No file');
+      
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
       // Use the import handler with AI analysis
+      console.log('Calling handleExcelImport...');
       const result = await handleExcelImport(req.file.buffer, req.file.originalname);
+      
+      console.log('Import result summary:');
+      console.log('- Total rows:', result.totalRows);
+      console.log('- AI Confidence:', result.aiAnalysis?.confidence);
+      console.log('- Imported data fields:', Object.keys(result.importedData || {}));
+      console.log('- Thickness measurements count:', result.thicknessMeasurements?.length || 0);
+      console.log('- Checklist items count:', result.checklistItems?.length || 0);
       
       res.json({
         message: `Excel file processed successfully with AI analysis (${Math.round(result.aiAnalysis.confidence * 100)}% confidence)`,
@@ -55,6 +70,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error('Excel import error:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       res.status(500).json({ 
         message: "Failed to process Excel file", 
         error: error instanceof Error ? error.message : 'Unknown error' 
@@ -196,17 +212,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Thickness measurement creation error:', error);
       console.error('Error details:', error.issues || error.message);
       
+      let detailedMessage = "Invalid measurement data";
       if (error.issues) {
         console.error('Validation issues:');
-        error.issues.forEach((issue: any) => {
-          console.error(`- Field: ${issue.path.join('.')}, Message: ${issue.message}`);
+        const issueMessages = error.issues.map((issue: any) => {
+          const fieldPath = issue.path.join('.');
+          console.error(`- Field: ${fieldPath}, Message: ${issue.message}`);
+          return `${fieldPath}: ${issue.message}`;
         });
+        detailedMessage = `Validation failed: ${issueMessages.join(', ')}`;
       }
       
       res.status(400).json({ 
-        message: "Invalid measurement data", 
+        message: detailedMessage, 
         error: error.issues || error.message,
-        receivedData: req.body
+        receivedData: req.body,
+        validationDetails: error.issues
       });
     }
   });
