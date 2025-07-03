@@ -410,6 +410,8 @@ export default function ImportReports() {
                   <div><strong>Diameter:</strong> {importResult.importedData?.diameter || 'Not found'}</div>
                   <div><strong>Height:</strong> {importResult.importedData?.height || 'Not found'}</div>
                   <div><strong>Original Thickness:</strong> {importResult.importedData?.originalThickness || 'Not found'}</div>
+                  <div><strong>Findings:</strong> {importResult.importedData?.findings ? 'Found' : 'Not found'}</div>
+                  <div><strong>Next Inspection:</strong> {importResult.importedData?.nextInspectionDate || 'Not found'}</div>
                   <div><strong>Years Since Last Inspection:</strong> {importResult.importedData?.yearsSinceLastInspection || 'Not found'}</div>
                 </div>
               </div>

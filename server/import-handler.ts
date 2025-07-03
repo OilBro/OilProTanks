@@ -142,7 +142,11 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
       location: ['Location', 'Site', 'Facility', 'Plant Location'],
       owner: ['Owner', 'Client', 'Company', 'Facility Owner'],
       lastInspection: ['Last Inspection', 'Previous Inspection', 'Last Internal Inspection'],
-      findings: ['Findings', 'Report Write Up', 'Write Up', 'Report Summary', 'Inspection Findings']
+      findings: ['Findings', 'Report Write Up', 'Write Up', 'Report Summary', 'Inspection Findings'],
+      reportWriteUp: ['Report Write Up', 'REPORT WRITE UP', 'Report Writeup', 'Write Up'],
+      executiveSummary: ['Executive Summary', 'EXECUTIVE SUMMARY', 'Summary'],
+      repairRecommendations: ['Repair Recommendations', 'REPAIR RECOMMENDATIONS', 'Recommendations'],
+      nextInspectionDate: ['Next Inspection Date', 'NEXT INSPECTION DATE', 'Next Inspection']
     };
 
     const findFieldValue = (rowObj: any, patterns: string[]) => {
@@ -171,6 +175,13 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
             importedData[field] = String(value).toLowerCase();
           } else if (field === 'findings') {
             // Store findings but don't overwrite if already found
+            if (!importedData.findings) {
+              importedData.findings = String(value);
+            }
+          } else if (field === 'reportWriteUp') {
+            // Store the comprehensive report write up
+            importedData.reportWriteUp = String(value);
+            // Also use it as findings if findings not already set
             if (!importedData.findings) {
               importedData.findings = String(value);
             }
