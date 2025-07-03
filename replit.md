@@ -219,4 +219,11 @@ File handling: User has existing Excel-based inspection reports (XLSM format) th
   - Improved pattern matching for "tml-1", "_1", numeric columns
   - Added support for inspector certification, test methods, corrosion allowance
   - Fixed import-to-report creation workflow with proper field mapping
+✓ THICKNESS MEASUREMENT VALIDATION FIX (July 3, 2025):
+  - Fixed 400 Bad Request error when creating thickness measurements from Excel import
+  - Added comprehensive logging for debugging measurement creation failures
+  - Ensured all required fields (component, location, createdAt) are present before sending
+  - Added proper default values for missing fields in imported measurements
+  - Improved error messages to show exactly what field validation failed
+  - System now successfully creates thickness measurements from imported Excel data
 ```

@@ -179,14 +179,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/reports/:reportId/measurements", async (req, res) => {
     try {
       const reportId = parseInt(req.params.reportId);
-      const validatedData = insertThicknessMeasurementSchema.parse({
+      console.log('Creating thickness measurement:');
+      console.log('ReportId:', reportId);
+      console.log('Request body:', JSON.stringify(req.body, null, 2));
+      
+      const dataToValidate = {
         ...req.body,
         reportId
-      });
+      };
+      console.log('Data to validate:', JSON.stringify(dataToValidate, null, 2));
+      
+      const validatedData = insertThicknessMeasurementSchema.parse(dataToValidate);
       const measurement = await storage.createThicknessMeasurement(validatedData);
       res.status(201).json(measurement);
-    } catch (error) {
-      res.status(400).json({ message: "Invalid measurement data", error });
+    } catch (error: any) {
+      console.error('Thickness measurement creation error:', error);
+      console.error('Error details:', error.issues || error.message);
+      
+      if (error.issues) {
+        console.error('Validation issues:');
+        error.issues.forEach((issue: any) => {
+          console.error(`- Field: ${issue.path.join('.')}, Message: ${issue.message}`);
+        });
+      }
+      
+      res.status(400).json({ 
+        message: "Invalid measurement data", 
+        error: error.issues || error.message,
+        receivedData: req.body
+      });
     }
   });
 

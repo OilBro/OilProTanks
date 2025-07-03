@@ -87,10 +87,22 @@ export default function ImportReports() {
       // Then create thickness measurements if any
       if (data.thicknessMeasurements && data.thicknessMeasurements.length > 0) {
         for (const measurement of data.thicknessMeasurements) {
+          // Ensure all required fields are present
           const measurementData = {
-            ...measurement,
-            reportId: report.id
+            reportId: report.id,
+            component: measurement.component || 'Shell',
+            location: measurement.location || 'Unknown',
+            measurementType: measurement.measurementType || 'shell',
+            currentThickness: measurement.currentThickness || 0,
+            originalThickness: measurement.originalThickness || null,
+            elevation: measurement.elevation || null,
+            corrosionRate: measurement.corrosionRate || null,
+            remainingLife: measurement.remainingLife || null,
+            status: measurement.status || 'acceptable',
+            createdAt: new Date().toISOString()
           };
+          
+          console.log('Sending measurement:', measurementData);
           
           const measurementResponse = await fetch(`/api/reports/${report.id}/measurements`, {
             method: 'POST',
@@ -99,7 +111,10 @@ export default function ImportReports() {
           });
           
           if (!measurementResponse.ok) {
-            throw new Error('Failed to create thickness measurement');
+            const errorData = await measurementResponse.json();
+            console.error('Measurement creation failed:', errorData);
+            console.error('Sent measurement data:', measurementData);
+            throw new Error(`Failed to create thickness measurement: ${errorData.message || 'Unknown error'}`);
           }
         }
       }
