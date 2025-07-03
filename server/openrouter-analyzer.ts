@@ -239,6 +239,7 @@ export async function processSpreadsheetWithAI(
   thicknessMeasurements: any[];
   checklistItems: any[];
 }> {
+  console.log('AI Analysis reportData:', JSON.stringify(analysis.reportData, null, 2));
   const importedData: any = { ...analysis.reportData };
   const thicknessMeasurements: any[] = [...analysis.thicknessMeasurements];
   const checklistItems: any[] = [...analysis.checklistItems];

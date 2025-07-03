@@ -110,9 +110,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Report creation error:', error);
       console.error('Error details:', error.issues || error.message);
+      console.error('Received data:', JSON.stringify(req.body, null, 2));
+      
+      // Log specific missing fields
+      if (error.issues) {
+        console.error('Validation issues:');
+        error.issues.forEach((issue: any) => {
+          console.error(`- Field: ${issue.path.join('.')}, Message: ${issue.message}`);
+        });
+      }
+      
       res.status(400).json({ 
         message: "Invalid report data", 
-        error: error.issues || error.message 
+        error: error.issues || error.message,
+        receivedData: req.body
       });
     }
   });

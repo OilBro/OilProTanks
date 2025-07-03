@@ -279,6 +279,26 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
   if (!importedData.inspectionDate) {
     importedData.inspectionDate = new Date().toISOString().split('T')[0];
   }
+  
+  // Convert numeric fields from strings if necessary
+  if (importedData.diameter && typeof importedData.diameter === 'string') {
+    const parsed = parseFloat(importedData.diameter);
+    importedData.diameter = isNaN(parsed) ? null : parsed;
+  }
+  if (importedData.height && typeof importedData.height === 'string') {
+    const parsed = parseFloat(importedData.height);
+    importedData.height = isNaN(parsed) ? null : parsed;
+  }
+  if (importedData.originalThickness && typeof importedData.originalThickness === 'string') {
+    const parsed = parseFloat(importedData.originalThickness);
+    importedData.originalThickness = isNaN(parsed) ? null : parsed;
+  }
+  if (importedData.yearsSinceLastInspection && typeof importedData.yearsSinceLastInspection === 'string') {
+    const parsed = parseInt(importedData.yearsSinceLastInspection);
+    importedData.yearsSinceLastInspection = isNaN(parsed) ? 10 : parsed;
+  }
+  
+  console.log('Final importedData before return:', JSON.stringify(importedData, null, 2));
 
   return {
     importedData,
