@@ -41,7 +41,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({
         message: `Excel file processed successfully with AI analysis (${Math.round(result.aiAnalysis.confidence * 100)}% confidence)`,
-        extractedData: result.importedData,
+        importedData: result.importedData,
         thicknessMeasurements: result.thicknessMeasurements,
         checklistItems: result.checklistItems,
         totalRows: result.totalRows,
