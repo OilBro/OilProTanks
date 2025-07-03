@@ -97,6 +97,8 @@ const SERVICE_OPTIONS = [
   { value: "crude", label: "Crude Oil" },
   { value: "diesel", label: "Diesel" },
   { value: "gasoline", label: "Gasoline" },
+  { value: "welded", label: "Welded Tank (API 650)" },
+  { value: "bolted", label: "Bolted Tank (API RP 12C)" },
   { value: "other", label: "Other" }
 ];
 

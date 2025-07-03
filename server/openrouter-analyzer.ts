@@ -247,6 +247,23 @@ export async function processSpreadsheetWithAI(
 }> {
   console.log('AI Analysis reportData:', JSON.stringify(analysis.reportData, null, 2));
   const importedData: any = { ...analysis.reportData };
+  
+  // Ensure service is a string, not an object
+  if (importedData.service && typeof importedData.service === 'object') {
+    // If service is an object (e.g., {welded_tanks: ..., bolted_tanks: ...}), 
+    // extract a string value from it
+    if (importedData.service.welded_tanks) {
+      importedData.service = 'welded'; // API 650 construction
+    } else if (importedData.service.bolted_tanks) {
+      importedData.service = 'bolted'; // API RP 12C construction
+    } else {
+      // Default to the first value if it's an object
+      const values = Object.values(importedData.service);
+      importedData.service = values[0] || 'other';
+    }
+    console.log('Converted service object to string:', importedData.service);
+  }
+  
   const thicknessMeasurements: any[] = [...analysis.thicknessMeasurements];
   const checklistItems: any[] = [...analysis.checklistItems];
   

@@ -251,4 +251,10 @@ Business Rules: NO cost estimation for repair recommendations
   - Download button added to Import page for easy access
   - System respects N/A markers during import - skips those sections
   - Filename includes current date for version tracking
+✓ FIXED REACT RENDERING ERROR (July 3, 2025):
+  - Fixed "Minified React error #31" caused by AI returning object for service field
+  - Added handling for tank fabrication types: welded (API 650) and bolted (API RP 12C)
+  - Service field now properly converts objects to string values during import
+  - Added welded and bolted tank options to service dropdown
+  - System now handles complex AI responses without crashing
 ```
