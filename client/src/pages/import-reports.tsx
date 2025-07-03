@@ -119,11 +119,11 @@ export default function ImportReports() {
             component: measurement.component || 'Shell',
             location: measurement.location || 'Unknown',
             measurementType: measurement.measurementType || 'shell',
-            currentThickness: String(measurement.currentThickness), // Convert to string for API
-            originalThickness: measurement.originalThickness ? String(measurement.originalThickness) : null,
+            currentThickness: parseFloat(measurement.currentThickness) || 0,
+            originalThickness: measurement.originalThickness ? parseFloat(measurement.originalThickness) : null,
             elevation: measurement.elevation || null,
-            corrosionRate: measurement.corrosionRate ? String(measurement.corrosionRate) : null,
-            remainingLife: measurement.remainingLife ? String(measurement.remainingLife) : null,
+            corrosionRate: measurement.corrosionRate ? parseFloat(measurement.corrosionRate) : null,
+            remainingLife: measurement.remainingLife ? parseFloat(measurement.remainingLife) : null,
             status: measurement.status || 'acceptable'
           };
           
