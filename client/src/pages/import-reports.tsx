@@ -134,10 +134,11 @@ export default function ImportReports() {
       queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
       setLocation('/');
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Create report error:', error);
       toast({
         title: "Error",
-        description: "Failed to create report from imported data.",
+        description: error.message || "Failed to create report from imported data.",
         variant: "destructive",
       });
     }
@@ -196,10 +197,22 @@ export default function ImportReports() {
 
   const createReport = () => {
     if (importResult?.importedData) {
+      console.log('Creating report with data:', {
+        reportData: importResult.importedData,
+        thicknessMeasurements: importResult.thicknessMeasurements || [],
+        checklistItems: importResult.checklistItems || []
+      });
       createReportMutation.mutate({
         reportData: importResult.importedData,
         thicknessMeasurements: importResult.thicknessMeasurements || [],
         checklistItems: importResult.checklistItems || []
+      });
+    } else {
+      console.error('No imported data available');
+      toast({
+        title: "No Data",
+        description: "No imported data available to create report.",
+        variant: "destructive",
       });
     }
   };
