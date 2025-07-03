@@ -68,11 +68,29 @@ export default function ImportReports() {
 
   const createReportMutation = useMutation({
     mutationFn: async (data: any) => {
-      // First create the report
+      // First create the report with defaults for missing required fields
+      const reportData = {
+        reportNumber: data.reportData.reportNumber || `IMP-${Date.now()}`,
+        tankId: data.reportData.tankId || 'Unknown Tank',
+        service: data.reportData.service || 'Unknown Service',
+        inspector: data.reportData.inspector || 'Unknown Inspector',
+        inspectionDate: data.reportData.inspectionDate || new Date().toISOString().split('T')[0],
+        diameter: data.reportData.diameter || null,
+        height: data.reportData.height || null,
+        originalThickness: data.reportData.originalThickness || null,
+        yearsSinceLastInspection: data.reportData.yearsSinceLastInspection || null,
+        location: data.reportData.location || null,
+        owner: data.reportData.owner || null,
+        equipment_id: data.reportData.equipment_id || null,
+        capacity: data.reportData.capacity || null
+      };
+      
+      console.log('Creating report with data:', reportData);
+      
       const reportResponse = await fetch('/api/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data.reportData),
+        body: JSON.stringify(reportData),
       });
       
       if (!reportResponse.ok) {

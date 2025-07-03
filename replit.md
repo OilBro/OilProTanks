@@ -226,4 +226,11 @@ File handling: User has existing Excel-based inspection reports (XLSM format) th
   - Added proper default values for missing fields in imported measurements
   - Improved error messages to show exactly what field validation failed
   - System now successfully creates thickness measurements from imported Excel data
+✓ EXCEL IMPORT IMPROVEMENTS (July 3, 2025):
+  - Updated AI analyzer to prioritize AST COMP TML sheet for actual thickness readings
+  - System now ignores blank readings from base/summary pages 
+  - Added support for incomplete inspection reports with missing tank size, height, etc.
+  - Report creation now provides sensible defaults for missing required fields
+  - Missing fields are left blank for user to fill in later
+  - Import process is more forgiving of incomplete inspector data
 ```

@@ -139,8 +139,9 @@ Extract ALL available information into this JSON structure:
 }
 
 CRITICAL EXTRACTION RULES:
-1. Extract ALL thickness readings from EVERY sheet, especially:
-   - Sheets named: "Shell", "Thickness", "Course", "TML", "AST Comp TML", "Comp TML"
+1. PRIORITIZE AST COMP TML SHEET FOR THICKNESS READINGS:
+   - IGNORE thickness readings from base/summary pages - they are often blank placeholders
+   - Focus on sheets named: "AST COMP TML", "AST Comp", "Comp TML", "TML"
    - Columns: tml-1, tml-2, _1, _2, or any numeric columns with values 0.05-3.0
    - Shell course data (Course 1, Course 2, etc)
    - Look for patterns like "N", "S", "E", "W" with thickness values
@@ -254,11 +255,18 @@ export async function processSpreadsheetWithAI(
     console.log(`\nProcessing sheet "${sheetName}" with ${data.length} rows`);
     
     // Special handling for sheets that likely contain thickness data
-    if (sheetName.toLowerCase().includes('shell') || 
-        sheetName.toLowerCase().includes('thickness') ||
-        sheetName.toLowerCase().includes('course') ||
-        sheetName.toLowerCase().includes('readings') ||
-        data.length > 0) { // Process all sheets with data
+    // Skip base pages with empty readings - prioritize AST COMP TML sheets
+    const isBasePageWithEmptyReadings = sheetName.toLowerCase() === 'base' || 
+                                       sheetName.toLowerCase().includes('summary');
+    const isASTCompSheet = sheetName.toLowerCase().includes('ast comp') || 
+                          sheetName.toLowerCase().includes('tml');
+    
+    if ((sheetName.toLowerCase().includes('shell') || 
+         sheetName.toLowerCase().includes('thickness') ||
+         sheetName.toLowerCase().includes('course') ||
+         sheetName.toLowerCase().includes('readings') ||
+         isASTCompSheet ||
+         data.length > 0) && !isBasePageWithEmptyReadings) { // Process sheets with data, skip base pages
       
       // Process each row
       for (const row of data) {
