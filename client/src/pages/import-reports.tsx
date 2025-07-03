@@ -68,6 +68,10 @@ export default function ImportReports() {
 
   const createReportMutation = useMutation({
     mutationFn: async (data: any) => {
+      console.log('=== CREATE REPORT MUTATION STARTED ===');
+      console.log('Import result data:', data);
+      console.log('Report data from import:', data.reportData);
+      
       // First create the report with defaults for missing required fields
       const reportData = {
         reportNumber: data.reportData.reportNumber || `IMP-${Date.now()}`,
@@ -82,8 +86,8 @@ export default function ImportReports() {
         status: 'draft' as const
       };
       
-      console.log('Creating report with data:', reportData);
-      console.log('Full import data available:', data.reportData);
+      console.log('=== SENDING REPORT DATA TO SERVER ===');
+      console.log('Report data being sent:', reportData);
       
       const reportResponse = await fetch('/api/reports', {
         method: 'POST',
@@ -228,37 +232,57 @@ export default function ImportReports() {
   };
 
   const createReport = () => {
-    if (importResult?.importedData) {
-      console.log('Import Result:', importResult);
-      console.log('Creating report with data:', {
-        reportData: importResult.importedData,
-        thicknessMeasurements: importResult.thicknessMeasurements || [],
-        checklistItems: importResult.checklistItems || []
-      });
-      
-      // Check if reportData has required fields
-      if (!importResult.importedData.tankId) {
-        toast({
-          title: "Missing Tank ID",
-          description: "Tank ID is required. Please provide a tank identifier.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      createReportMutation.mutate({
-        reportData: importResult.importedData,
-        thicknessMeasurements: importResult.thicknessMeasurements || [],
-        checklistItems: importResult.checklistItems || []
-      });
-    } else {
-      console.error('No imported data available');
+    console.log('=== CREATE REPORT BUTTON CLICKED ===');
+    console.log('Full importResult:', importResult);
+    console.log('importResult.importedData:', importResult?.importedData);
+    
+    if (!importResult) {
+      console.error('No import result available');
       toast({
-        title: "No Data",
-        description: "No imported data available to create report.",
+        title: "No Import Data",
+        description: "Please import a file first before creating a report.",
         variant: "destructive",
       });
+      return;
     }
+    
+    if (!importResult.importedData) {
+      console.error('No importedData in result');
+      console.log('Available fields in importResult:', Object.keys(importResult));
+      toast({
+        title: "No Data Found",
+        description: "The imported file doesn't contain valid report data.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    console.log('Creating report with data:', {
+      reportData: importResult.importedData,
+      thicknessMeasurements: importResult.thicknessMeasurements || [],
+      checklistItems: importResult.checklistItems || []
+    });
+    
+    // Check if reportData has required fields
+    const requiredFields = ['tankId', 'service', 'inspector', 'inspectionDate'];
+    const missingFields = requiredFields.filter(field => !importResult.importedData[field]);
+    
+    if (missingFields.length > 0) {
+      console.error('Missing required fields:', missingFields);
+      toast({
+        title: "Missing Required Fields",
+        description: `The following fields are missing: ${missingFields.join(', ')}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    console.log('All required fields present, calling mutation...');
+    createReportMutation.mutate({
+      reportData: importResult.importedData,
+      thicknessMeasurements: importResult.thicknessMeasurements || [],
+      checklistItems: importResult.checklistItems || []
+    });
   };
 
   const downloadTemplate = () => {
