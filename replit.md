@@ -233,4 +233,16 @@ File handling: User has existing Excel-based inspection reports (XLSM format) th
   - Report creation now provides sensible defaults for missing required fields
   - Missing fields are left blank for user to fill in later
   - Import process is more forgiving of incomplete inspector data
+✓ STANDARDIZED EXCEL TEMPLATE FEATURE (July 3, 2025):
+  - Created downloadable API 653 inspection template with 6 sheets:
+    - Basic Information: Tank specs, inspection details, materials
+    - Shell Thickness: Course measurements with 8 directions
+    - Bottom Thickness: Grid references and annular ring measurements
+    - Roof & Nozzles: Roof thickness and nozzle inspection data
+    - Inspection Checklist: External/internal components with S/U/NA options
+    - Instructions: Detailed guide for template usage
+  - Template includes N/A markers for sections not applicable
+  - Download button added to Import page for easy access
+  - System respects N/A markers during import - skips those sections
+  - Filename includes current date for version tracking
 ```

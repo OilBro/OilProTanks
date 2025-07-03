@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle, Download } from "lucide-react";
 import { useLocation } from "wouter";
 
 interface ImportResult {
@@ -250,12 +250,43 @@ export default function ImportReports() {
     }
   };
 
+  const downloadTemplate = () => {
+    // Create a temporary link element
+    const link = document.createElement('a');
+    link.href = '/api/template/download';
+    link.download = `API_653_Inspection_Template_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Template Downloaded",
+      description: "The inspection template has been downloaded. Fill it out and import it back here.",
+    });
+  };
+
   return (
     <div>
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Import Excel Reports</h2>
         <p className="text-gray-600">Upload existing Excel inspection reports to convert them to the digital format</p>
       </div>
+
+      {/* Template Download Section */}
+      <Card className="mb-6">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Need a Template?</h3>
+              <p className="text-gray-600">Download our standardized API 653 inspection template. Fill it out and import it back for consistent data entry.</p>
+            </div>
+            <Button onClick={downloadTemplate} variant="outline" className="ml-4">
+              <Download className="mr-2 h-4 w-4" />
+              Download Template
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* File Upload Area */}
       <Card className="mb-6">

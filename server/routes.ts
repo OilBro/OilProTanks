@@ -8,6 +8,7 @@ import {
   insertInspectionChecklistSchema 
 } from "@shared/schema";
 import { handleExcelImport } from "./import-handler";
+import { generateInspectionTemplate } from "./template-generator";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -26,6 +27,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
                        file.originalname.toLowerCase().endsWith('.xls') ||
                        file.originalname.toLowerCase().endsWith('.xlsm');
       cb(null, isAllowed);
+    }
+  });
+
+  // Excel Template Download endpoint
+  app.get("/api/template/download", (req, res) => {
+    try {
+      const templateBuffer = generateInspectionTemplate();
+      const filename = `API_653_Inspection_Template_${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', templateBuffer.byteLength.toString());
+      
+      res.send(Buffer.from(templateBuffer));
+    } catch (error) {
+      console.error('Template generation error:', error);
+      res.status(500).json({ message: 'Failed to generate template' });
     }
   });
 

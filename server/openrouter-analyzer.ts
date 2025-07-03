@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { isMarkedAsNA } from './template-generator';
 
 interface OpenRouterMessage {
   role: 'user' | 'assistant' | 'system';
@@ -160,6 +161,10 @@ CRITICAL EXTRACTION RULES:
 4. Check every sheet for data - don't skip any
 5. If data is missing, use null (not "Not found")
 6. Include all data fields even if null
+7. RESPECT N/A MARKERS:
+   - If a cell or section is marked "N/A", skip that data
+   - For thickness sheets: If Course is "N/A", skip entire row
+   - Do not extract measurements from sections marked N/A
 
 For each thickness reading found, include it in the thicknessMeasurements array with complete information.`;
 
@@ -274,6 +279,11 @@ export async function processSpreadsheetWithAI(
         
         // Look for thickness values in any numeric column
         for (const [key, value] of Object.entries(rowObj)) {
+          // Skip N/A marked cells
+          if (isMarkedAsNA(value) || isMarkedAsNA(rowObj['Course'])) {
+            continue;
+          }
+          
           if (typeof value === 'number' && value > 0.05 && value < 3) {
             // This looks like a thickness measurement
             const location = rowObj['Location'] || rowObj['Course'] || rowObj['Point'] || 
