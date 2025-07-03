@@ -257,4 +257,10 @@ Business Rules: NO cost estimation for repair recommendations
   - Service field now properly converts objects to string values during import
   - Added welded and bolted tank options to service dropdown
   - System now handles complex AI responses without crashing
+✓ FIXED DATA TYPE VALIDATION ERROR (July 3, 2025):
+  - Resolved validation error where numeric values were incorrectly converted to strings
+  - Database schema expects decimal types for height, originalThickness, currentThickness, etc.
+  - Updated Excel import to use parseFloat() for all numeric fields
+  - All measurement values (thickness, corrosion rate, remaining life) now sent as numbers
+  - Import process now successfully creates reports with proper data type handling
 ```
