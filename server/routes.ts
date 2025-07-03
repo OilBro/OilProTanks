@@ -154,8 +154,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Create a more informative error message
+      let errorMessage = "Failed to create report: ";
+      if (error.issues) {
+        errorMessage += error.issues.map((issue: any) => 
+          `${issue.path.join('.')}: ${issue.message}`
+        ).join(', ');
+      } else {
+        errorMessage += error.message || "Unknown error";
+      }
+      
       res.status(400).json({ 
-        message: "Invalid report data", 
+        message: errorMessage,
         error: error.issues || error.message,
         receivedData: req.body
       });

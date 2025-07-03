@@ -71,21 +71,19 @@ export default function ImportReports() {
       // First create the report with defaults for missing required fields
       const reportData = {
         reportNumber: data.reportData.reportNumber || `IMP-${Date.now()}`,
-        tankId: data.reportData.tankId || 'Unknown Tank',
-        service: data.reportData.service || 'Unknown Service',
-        inspector: data.reportData.inspector || 'Unknown Inspector',
-        inspectionDate: data.reportData.inspectionDate || new Date().toISOString().split('T')[0],
-        diameter: data.reportData.diameter || null,
-        height: data.reportData.height || null,
-        originalThickness: data.reportData.originalThickness || null,
-        yearsSinceLastInspection: data.reportData.yearsSinceLastInspection || null,
-        location: data.reportData.location || null,
-        owner: data.reportData.owner || null,
-        equipment_id: data.reportData.equipment_id || null,
-        capacity: data.reportData.capacity || null
+        tankId: data.reportData.tankId || data.reportData.tank_id || data.reportData.equipmentId || 'Unknown Tank',
+        service: data.reportData.service || data.reportData.serviceType || 'Unknown Service',
+        inspector: data.reportData.inspector || data.reportData.inspectorName || 'Unknown Inspector',
+        inspectionDate: data.reportData.inspectionDate || data.reportData.inspection_date || new Date().toISOString().split('T')[0],
+        diameter: data.reportData.diameter ? parseFloat(data.reportData.diameter) : null,
+        height: data.reportData.height ? parseFloat(data.reportData.height) : null,
+        originalThickness: data.reportData.originalThickness ? parseFloat(data.reportData.originalThickness) : null,
+        yearsSinceLastInspection: data.reportData.yearsSinceLastInspection ? parseInt(data.reportData.yearsSinceLastInspection) : null,
+        status: 'draft' as const
       };
       
       console.log('Creating report with data:', reportData);
+      console.log('Full import data available:', data.reportData);
       
       const reportResponse = await fetch('/api/reports', {
         method: 'POST',
@@ -97,7 +95,7 @@ export default function ImportReports() {
         const errorData = await reportResponse.json();
         console.error('Report creation failed:', errorData);
         console.error('Sent data:', data.reportData);
-        throw new Error(errorData.error || errorData.message || 'Failed to create report');
+        throw new Error(errorData.message || errorData.error || 'Failed to create report');
       }
       
       const report = await reportResponse.json();
@@ -169,9 +167,10 @@ export default function ImportReports() {
     },
     onError: (error: any) => {
       console.error('Create report error:', error);
+      const errorMessage = error?.message || error?.toString() || "Failed to create report from imported data.";
       toast({
-        title: "Error",
-        description: error.message || "Failed to create report from imported data.",
+        title: "Error Creating Report",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -230,11 +229,23 @@ export default function ImportReports() {
 
   const createReport = () => {
     if (importResult?.importedData) {
+      console.log('Import Result:', importResult);
       console.log('Creating report with data:', {
         reportData: importResult.importedData,
         thicknessMeasurements: importResult.thicknessMeasurements || [],
         checklistItems: importResult.checklistItems || []
       });
+      
+      // Check if reportData has required fields
+      if (!importResult.importedData.tankId) {
+        toast({
+          title: "Missing Tank ID",
+          description: "Tank ID is required. Please provide a tank identifier.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       createReportMutation.mutate({
         reportData: importResult.importedData,
         thicknessMeasurements: importResult.thicknessMeasurements || [],
