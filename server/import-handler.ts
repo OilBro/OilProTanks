@@ -297,29 +297,84 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     importedData.inspectionDate = new Date().toISOString().split('T')[0];
   }
   
-  // Convert numeric fields from strings if necessary
-  if (importedData.diameter && typeof importedData.diameter === 'string') {
-    const parsed = parseFloat(importedData.diameter);
-    importedData.diameter = isNaN(parsed) ? null : parsed;
+  // Convert numeric fields from strings if necessary - handle units in values
+  const parseNumericWithUnits = (value: any): number | null => {
+    if (value === null || value === undefined) return null;
+    
+    // Convert to string and remove common units
+    const cleaned = String(value)
+      .replace(/\s*(ft|feet|ft\.|in|inches|in\.|gal|gallons|bbl|barrels|years|yrs|yr)\.?\s*$/i, '')
+      .replace(/[^\d.-]/g, '') // Remove any non-numeric characters except dots and minus
+      .trim();
+    
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? null : parsed;
+  };
+  
+  // Process all numeric fields
+  if (importedData.diameter !== undefined) {
+    importedData.diameter = parseNumericWithUnits(importedData.diameter);
+    console.log(`Parsed diameter: ${importedData.diameter}`);
   }
-  if (importedData.height && typeof importedData.height === 'string') {
-    const parsed = parseFloat(importedData.height);
-    importedData.height = isNaN(parsed) ? null : parsed;
+  if (importedData.height !== undefined) {
+    importedData.height = parseNumericWithUnits(importedData.height);
+    console.log(`Parsed height: ${importedData.height}`);
   }
-  if (importedData.originalThickness && typeof importedData.originalThickness === 'string') {
-    const parsed = parseFloat(importedData.originalThickness);
-    importedData.originalThickness = isNaN(parsed) ? null : parsed;
+  if (importedData.originalThickness !== undefined) {
+    importedData.originalThickness = parseNumericWithUnits(importedData.originalThickness);
+    console.log(`Parsed originalThickness: ${importedData.originalThickness}`);
   }
-  if (importedData.yearsSinceLastInspection && typeof importedData.yearsSinceLastInspection === 'string') {
-    const parsed = parseInt(importedData.yearsSinceLastInspection);
-    importedData.yearsSinceLastInspection = isNaN(parsed) ? 10 : parsed;
+  if (importedData.yearsSinceLastInspection !== undefined) {
+    const parsed = parseNumericWithUnits(importedData.yearsSinceLastInspection);
+    importedData.yearsSinceLastInspection = parsed ? Math.round(parsed) : 1;
+    console.log(`Parsed yearsSinceLastInspection: ${importedData.yearsSinceLastInspection}`);
   }
   
+  // Also parse capacity and other numeric fields if they exist
+  if (importedData.capacity !== undefined) {
+    importedData.capacity = parseNumericWithUnits(importedData.capacity);
+  }
+  if (importedData.specificGravity !== undefined) {
+    importedData.specificGravity = parseNumericWithUnits(importedData.specificGravity);
+  }
+  if (importedData.yearBuilt !== undefined) {
+    importedData.yearBuilt = parseNumericWithUnits(importedData.yearBuilt);
+  }
+  
+  // Final processing of thickness measurements to ensure proper data types
+  const processedMeasurements = thicknessMeasurements.map((measurement, index) => {
+    const processed = { ...measurement };
+    
+    // Convert all numeric fields
+    if (processed.currentThickness !== undefined) {
+      const value = parseNumericWithUnits(processed.currentThickness);
+      processed.currentThickness = value || 0;
+    }
+    if (processed.originalThickness !== undefined) {
+      processed.originalThickness = parseNumericWithUnits(processed.originalThickness);
+    }
+    if (processed.corrosionRate !== undefined) {
+      processed.corrosionRate = parseNumericWithUnits(processed.corrosionRate);
+    }
+    if (processed.remainingLife !== undefined) {
+      processed.remainingLife = parseNumericWithUnits(processed.remainingLife);
+    }
+    
+    // Ensure required fields
+    if (!processed.component) processed.component = 'Shell';
+    if (!processed.location) processed.location = `Location ${index + 1}`;
+    if (!processed.measurementType) processed.measurementType = 'shell';
+    if (!processed.createdAt) processed.createdAt = now;
+    
+    return processed;
+  });
+  
   console.log('Final importedData before return:', JSON.stringify(importedData, null, 2));
+  console.log(`Processed ${processedMeasurements.length} thickness measurements`);
 
   return {
     importedData,
-    thicknessMeasurements,
+    thicknessMeasurements: processedMeasurements,
     checklistItems,
     aiAnalysis,
     totalRows: data.length,

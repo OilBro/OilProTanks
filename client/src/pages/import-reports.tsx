@@ -78,18 +78,40 @@ export default function ImportReports() {
       console.log('Report data from import:', data.reportData);
       
       // First create the report with defaults for missing required fields
+      // Map all possible field variations from AI extraction
       const reportData = {
         reportNumber: data.reportData.reportNumber || `IMP-${Date.now()}`,
-        tankId: data.reportData.tankId || data.reportData.tank_id || data.reportData.equipmentId || data.reportData['Equipment ID'] || data.reportData['EQUIP ID'] || 'Unknown Tank',
-        service: data.reportData.service || data.reportData.serviceType || 'Unknown Service',
-        inspector: data.reportData.inspector || data.reportData.inspectorName || 'Unknown Inspector',
-        inspectionDate: data.reportData.inspectionDate || data.reportData.inspection_date || new Date().toISOString().split('T')[0],
-        diameter: data.reportData.diameter ? parseFloat(data.reportData.diameter) : null,
-        height: data.reportData.height ? parseFloat(data.reportData.height) : null,
-        originalThickness: data.reportData.originalThickness ? parseFloat(data.reportData.originalThickness) : null,
-        yearsSinceLastInspection: data.reportData.yearsSinceLastInspection ? parseInt(data.reportData.yearsSinceLastInspection) : null,
+        tankId: data.reportData.tankId || 
+                data.reportData.tank_id || 
+                data.reportData.equipment_id || 
+                data.reportData.equipmentId || 
+                data.reportData['Equipment ID'] || 
+                data.reportData['EQUIP ID'] || 
+                'Unknown Tank',
+        service: data.reportData.service || 
+                 data.reportData.serviceType || 
+                 data.reportData.product || 
+                 data.reportData.contents || 
+                 'crude_oil',
+        inspector: data.reportData.inspector || 
+                   data.reportData.inspectorName || 
+                   data.reportData.examiner || 
+                   data.reportData.surveyor || 
+                   data.reportData.technician || 
+                   'Unknown Inspector',
+        inspectionDate: data.reportData.inspectionDate || 
+                        data.reportData.inspection_date || 
+                        new Date().toISOString().split('T')[0],
+        diameter: data.reportData.diameter,
+        height: data.reportData.height,
+        originalThickness: data.reportData.originalThickness,
+        yearsSinceLastInspection: data.reportData.yearsSinceLastInspection || 1,
         status: 'draft' as const,
-        findings: data.reportData.findings || data.reportData.Findings || null
+        findings: data.reportData.findings || 
+                  data.reportData.Findings || 
+                  data.reportData.reportWriteUp || 
+                  data.reportData['Report Write Up'] || 
+                  null
       };
       
       console.log('=== SENDING REPORT DATA TO SERVER ===');
@@ -119,12 +141,13 @@ export default function ImportReports() {
             component: measurement.component || 'Shell',
             location: measurement.location || 'Unknown',
             measurementType: measurement.measurementType || 'shell',
-            currentThickness: parseFloat(measurement.currentThickness) || 0,
-            originalThickness: measurement.originalThickness ? parseFloat(measurement.originalThickness) : null,
+            currentThickness: measurement.currentThickness || 0,
+            originalThickness: measurement.originalThickness || null,
             elevation: measurement.elevation || null,
-            corrosionRate: measurement.corrosionRate ? parseFloat(measurement.corrosionRate) : null,
-            remainingLife: measurement.remainingLife ? parseFloat(measurement.remainingLife) : null,
-            status: measurement.status || 'acceptable'
+            corrosionRate: measurement.corrosionRate || null,
+            remainingLife: measurement.remainingLife || null,
+            status: measurement.status || 'acceptable',
+            createdAt: new Date().toISOString()
           };
           
           console.log('Sending measurement:', measurementData);

@@ -284,6 +284,32 @@ export async function processSpreadsheetWithAI(
   console.log('AI Analysis reportData:', JSON.stringify(analysis.reportData, null, 2));
   const importedData: any = { ...analysis.reportData };
   
+  // Ensure all numeric fields are properly converted from strings
+  const numericFields = [
+    'diameter', 'height', 'originalThickness', 'yearsSinceLastInspection',
+    'capacity', 'specificGravity', 'yearBuilt', 'numberOfCourses', 
+    'corrosionAllowance', 'jointEfficiency'
+  ];
+  
+  for (const field of numericFields) {
+    if (importedData[field] !== undefined && importedData[field] !== null) {
+      const value = importedData[field];
+      if (typeof value === 'string') {
+        // Remove units like 'ft', 'feet', 'gal', 'gallons', etc.
+        const cleanedValue = value.toString()
+          .replace(/[^\d.-]/g, '') // Keep only numbers, dots, and minus signs
+          .trim();
+        
+        const parsed = parseFloat(cleanedValue);
+        importedData[field] = isNaN(parsed) ? null : parsed;
+        
+        if (importedData[field] !== null) {
+          console.log(`Converted ${field}: "${value}" -> ${importedData[field]}`);
+        }
+      }
+    }
+  }
+  
   // Ensure service is a string, not an object
   if (importedData.service && typeof importedData.service === 'object') {
     // If service is an object (e.g., {welded_tanks: ..., bolted_tanks: ...}), 
@@ -300,8 +326,59 @@ export async function processSpreadsheetWithAI(
     console.log('Converted service object to string:', importedData.service);
   }
   
-  const thicknessMeasurements: any[] = [...analysis.thicknessMeasurements];
-  const checklistItems: any[] = [...analysis.checklistItems];
+  // Convert service to lowercase and map to valid values
+  if (importedData.service && typeof importedData.service === 'string') {
+    const serviceMap: { [key: string]: string } = {
+      'crude': 'crude_oil',
+      'crude oil': 'crude_oil',
+      'crude_oil': 'crude_oil',
+      'gasoline': 'gasoline',
+      'gas': 'gasoline',
+      'diesel': 'diesel',
+      'diesel fuel': 'diesel',
+      'jet fuel': 'jet_fuel',
+      'jet': 'jet_fuel',
+      'aviation': 'jet_fuel',
+      'water': 'water',
+      'chemical': 'chemical',
+      'chemicals': 'chemical',
+      'waste': 'waste',
+      'waste water': 'waste',
+      'slop': 'waste',
+      'welded': 'other',
+      'bolted': 'other'
+    };
+    
+    const serviceLower = importedData.service.toLowerCase().trim();
+    importedData.service = serviceMap[serviceLower] || 'other';
+    console.log(`Mapped service "${serviceLower}" to "${importedData.service}"`);
+  } else {
+    importedData.service = 'crude_oil'; // Default
+  }
+  
+  // Process thickness measurements to ensure proper data types
+  const thicknessMeasurements: any[] = [];
+  if (analysis.thicknessMeasurements && Array.isArray(analysis.thicknessMeasurements)) {
+    for (const measurement of analysis.thicknessMeasurements) {
+      const processed = {
+        ...measurement,
+        currentThickness: parseFloat(measurement.currentThickness) || 0,
+        originalThickness: measurement.originalThickness ? parseFloat(measurement.originalThickness) : null,
+        elevation: measurement.elevation || '0',
+        location: measurement.location || 'Unknown',
+        component: measurement.component || 'Shell',
+        measurementType: measurement.measurementType || 'shell'
+      };
+      
+      // Only add if we have a valid current thickness
+      if (processed.currentThickness > 0) {
+        thicknessMeasurements.push(processed);
+        console.log(`Processed thickness measurement: ${processed.location} = ${processed.currentThickness}`);
+      }
+    }
+  }
+  
+  const checklistItems: any[] = [...(analysis.checklistItems || [])];
   
   console.log(`Processing ${workbook.SheetNames.length} sheets for additional thickness data`);
   
@@ -378,6 +455,17 @@ export async function processSpreadsheetWithAI(
   if (!importedData.inspectionDate) {
     importedData.inspectionDate = new Date().toISOString().split('T')[0];
   }
+  
+  // Final validation logging
+  console.log('=== FINAL IMPORT DATA VALIDATION ===');
+  console.log('Tank ID:', importedData.tankId, 'Type:', typeof importedData.tankId);
+  console.log('Service:', importedData.service, 'Type:', typeof importedData.service);
+  console.log('Diameter:', importedData.diameter, 'Type:', typeof importedData.diameter);
+  console.log('Height:', importedData.height, 'Type:', typeof importedData.height);
+  console.log('Original Thickness:', importedData.originalThickness, 'Type:', typeof importedData.originalThickness);
+  console.log('Years Since Last:', importedData.yearsSinceLastInspection, 'Type:', typeof importedData.yearsSinceLastInspection);
+  console.log('Total Measurements:', thicknessMeasurements.length);
+  console.log('Total Checklist Items:', checklistItems.length);
   
   return {
     importedData,
