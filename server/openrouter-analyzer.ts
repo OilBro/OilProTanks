@@ -211,7 +211,7 @@ CRITICAL INSTRUCTIONS:
         { role: 'user', content: userPrompt }
       ],
       temperature: 0.1,
-      max_tokens: 6000 // Increased for comprehensive extraction
+      max_tokens: 18000 // Tripled for maximum extraction capability
     };
 
     const response = await fetch(OPENROUTER_API_URL, {
