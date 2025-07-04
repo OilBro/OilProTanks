@@ -205,7 +205,7 @@ CRITICAL INSTRUCTIONS:
 15. Return ONLY valid JSON, no explanations`;
 
     const request: OpenRouterRequest = {
-      model: 'anthropic/claude-3.5-sonnet',
+      model: 'anthropic/claude-sonnet-4-20250514', // Latest Claude Sonnet 4 model
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
