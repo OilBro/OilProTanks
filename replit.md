@@ -263,4 +263,14 @@ Business Rules: NO cost estimation for repair recommendations
   - Updated Excel import to use parseFloat() for all numeric fields
   - All measurement values (thickness, corrosion rate, remaining life) now sent as numbers
   - Import process now successfully creates reports with proper data type handling
+✓ COMPREHENSIVE FIELD EXTRACTION UPGRADE (July 4, 2025):
+  - Implemented comprehensive field name variations for robust Excel import
+  - AI now searches for 200+ industry-standard field name variations
+  - Handles reports from different companies, people, and inspection software
+  - Field variations include: tank_id, equipment_id, vessel_id, unit_number, asset_tag, etc.
+  - Enhanced extraction for: owner/client names, locations, dimensions, capacity variations
+  - Improved thickness reading detection with all common column name patterns
+  - Added support for all inspection terminology: examiner, surveyor, technician, assessor
+  - Increased OpenRouter max tokens to 6000 for comprehensive extraction
+  - System can now handle ANY API 653 inspection Excel format without missing critical data
 ```

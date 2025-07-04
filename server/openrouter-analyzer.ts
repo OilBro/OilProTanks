@@ -85,43 +85,59 @@ WORKBOOK DATA:
 ${allSheetData}
 
 EXTRACTION REQUIREMENTS:
-Extract ALL available information into this JSON structure:
+Extract information by searching for ANY of the listed field variations:
 
+1. TANK IDENTIFICATION:
+   Search for: tank_number, tank_id, equipment_id, tank_no, tank_num, unit_id, unit_number, vessel_id, vessel_number, tank_tag, equipment_tag, asset_id, asset_number, facility_id, tank_designation, unit_designation, vessel_designation, tank_identifier, equipment_identifier, tank_ref, reference_number, serial_number, tank_serial, equipment_serial, tank_code, unit_code, vessel_code, asset_tag, facility_tag, tank_name, unit_name, vessel_name, equipment_name, tank_label, unit_label, vessel_label
+
+2. CLIENT/OWNER:
+   Search for: client_name, customer, company, owner, client, customer_name, company_name, owner_name, facility_owner, tank_owner, operator, operator_name, facility_operator, site_owner, property_owner, lessee, tenant, facility_name, site_name, organization, organization_name, entity, entity_name, corporation, business_name, firm, firm_name, contractor, contractor_name, end_user, user, facility, site, installation, plant, plant_name, refinery, refinery_name, terminal, terminal_name
+
+3. LOCATION:
+   Search for: location, area, site, address, facility_location, tank_location, site_location, facility_address, tank_address, site_address, physical_address, mailing_address, street_address, installation_location, plant_location, refinery_location, terminal_location, depot_location, geographic_location, coordinates, gps_coordinates, latitude, longitude, state, province, country, region, zone, district, sector, field, field_location, yard, yard_location, plot, plot_number, area_designation
+
+4. DIMENSIONS:
+   Search for: diameter, diameter_ft, diameter_feet, tank_diameter, shell_diameter, internal_diameter, external_diameter, outside_diameter, inside_diameter, od, id, dia, diam, width, tank_width, vessel_width, height, height_ft, height_feet, tank_height, shell_height, overall_height, total_height, vessel_height, length, tank_length, vessel_length, radius, tank_radius, shell_radius, circumference, tank_circumference, shell_circumference
+
+5. CAPACITY:
+   Search for: capacity, capacity_gal, capacity_gallons, capacity_bbl, capacity_barrels, capacity_bbls, volume, volume_gal, volume_gallons, volume_bbl, volume_barrels, volume_bbls, tank_capacity, tank_volume, working_capacity, working_volume, nominal_capacity, nominal_volume, design_capacity, design_volume, rated_capacity, rated_volume, maximum_capacity, maximum_volume, max_capacity, max_volume, total_capacity, total_volume, shell_capacity, shell_volume, gross_capacity, gross_volume, net_capacity, net_volume, storage_capacity, storage_volume
+
+Return JSON structure:
 {
   "reportData": {
-    "tankId": "Tank identification (look for Tank #, Tank No, Unit, Vessel, AST)",
+    "tankId": "Extract using any tank identification variation",
     "reportNumber": "Report number if found",
-    "service": "Product type (crude oil, diesel, water, etc)",
-    "inspector": "Inspector name",
-    "inspectionDate": "YYYY-MM-DD format",
-    "diameter": "Tank diameter (feet or meters)",
-    "height": "Tank height (feet or meters)", 
-    "originalThickness": "Original/nominal thickness",
-    "location": "Physical location/facility name",
-    "owner": "Owner/company/client name",
-    "yearsSinceLastInspection": "Years since last inspection (number)",
-    "equipment_id": "Equipment tag if found",
-    "capacity": "Tank capacity if found",
-    "specificGravity": "Product specific gravity if found",
-    "constructionCode": "API-650, API-653, etc if found",
-    "yearBuilt": "Year of construction if found",
-    "shellMaterial": "Shell material if found",
-    "roofType": "Roof type if found",
-    "foundationType": "Foundation type if found",
-    "numberOfCourses": "Number of shell courses if found",
-    "inspectorCertification": "API-653 certification if found",
-    "inspectionCompany": "Inspection company if found",
-    "testMethods": "UT, VT, MT, etc if found",
-    "corrosionAllowance": "Corrosion allowance if found",
-    "jointEfficiency": "Joint efficiency if found"
+    "service": "Product stored (look for product, contents, service, etc)",
+    "inspector": "Inspector/examiner/surveyor/technician name",
+    "inspectionDate": "Date in YYYY-MM-DD format",
+    "diameter": "Tank diameter in feet",
+    "height": "Tank height in feet", 
+    "originalThickness": "Original/nominal/design thickness",
+    "location": "Physical location using any location variation",
+    "owner": "Owner/client using any owner variation",
+    "yearsSinceLastInspection": "Years since last inspection",
+    "equipment_id": "Equipment ID using any variation",
+    "capacity": "Tank capacity using any capacity variation",
+    "specificGravity": "SG/density/specific gravity",
+    "constructionCode": "API-650, API-653, ASME, etc",
+    "yearBuilt": "Year built/constructed/installed",
+    "shellMaterial": "Material/steel grade/alloy",
+    "roofType": "Roof type/design/style",
+    "foundationType": "Foundation/base/support type",
+    "numberOfCourses": "Courses/rings/strakes/tiers count",
+    "inspectorCertification": "API-653, API-510, ASNT, etc",
+    "inspectionCompany": "Company/firm/contractor name",
+    "testMethods": "UT, VT, MT, PT, RT, ET methods",
+    "corrosionAllowance": "CA/corrosion allowance/margin",
+    "jointEfficiency": "Joint/weld efficiency"
   },
   "thicknessMeasurements": [
     {
-      "location": "Measurement point/position",
-      "elevation": "Course number or elevation",
+      "location": "Position (N, S, E, W, degrees, etc)",
+      "elevation": "Course/ring/strake/tier number",
       "currentThickness": number,
       "component": "shell/bottom/roof/nozzle",
-      "originalThickness": "Original thickness if available",
+      "originalThickness": "Original/nominal thickness",
       "measurementType": "shell/bottom_plate/internal_annular/critical_zone/roof/nozzle"
     }
   ],
@@ -139,34 +155,54 @@ Extract ALL available information into this JSON structure:
   "detectedColumns": ["list", "of", "all", "relevant", "columns"]
 }
 
-CRITICAL EXTRACTION RULES:
-1. PRIORITIZE AST COMP TML SHEET FOR THICKNESS READINGS:
-   - IGNORE thickness readings from base/summary pages - they are often blank placeholders
-   - Focus on sheets named: "AST COMP TML", "AST Comp", "Comp TML", "TML"
-   - Columns: tml-1, tml-2, _1, _2, or any numeric columns with values 0.05-3.0
-   - Shell course data (Course 1, Course 2, etc)
-   - Look for patterns like "N", "S", "E", "W" with thickness values
-   
-2. Search patterns for tank data:
-   - Tank: "Tank", "Tank #", "Tank No", "Unit", "Vessel", "AST", "T-"
-   - Location: "Location", "Site", "Facility", "Plant"
-   - Owner: "Client", "Company", "Owner", "Customer"
-   - Dates: Convert any date format to YYYY-MM-DD
-   
-3. Extract numeric values properly:
-   - Thickness values should be numbers, not strings
-   - Typical thickness range: 0.05 to 3.0 inches
-   - Include values from cells even without headers
-   
-4. Check every sheet for data - don't skip any
-5. If data is missing, use null (not "Not found")
-6. Include all data fields even if null
-7. RESPECT N/A MARKERS:
-   - If a cell or section is marked "N/A", skip that data
-   - For thickness sheets: If Course is "N/A", skip entire row
-   - Do not extract measurements from sections marked N/A
+ADDITIONAL FIELD VARIATIONS TO SEARCH:
 
-For each thickness reading found, include it in the thicknessMeasurements array with complete information.`;
+6. PRODUCT/SERVICE:
+   Search for: product, product_stored, contents, tank_contents, stored_product, material, material_stored, substance, substance_stored, commodity, commodity_stored, fluid, fluid_stored, liquid, liquid_stored, medium, medium_stored, service, tank_service, vessel_service, application, tank_application, vessel_application, use, tank_use, vessel_use, purpose, tank_purpose, vessel_purpose
+
+7. INSPECTION DATE:
+   Search for: inspection_date, inspection, date, inspection_performed, inspection_completed, examination_date, examination, assessment_date, assessment, evaluation_date, evaluation, survey_date, survey, review_date, review, test_date, testing_date, inspection_start, inspection_end, inspection_period, inspection_interval, last_inspection, previous_inspection, next_inspection, due_date, inspection_due
+
+8. THICKNESS READINGS:
+   Search for: thickness, thickness_reading, thickness_measurement, wall_thickness, plate_thickness, shell_thickness, measured_thickness, actual_thickness, current_thickness, remaining_thickness, minimum_thickness, tmin, t_min, nominal_thickness, tnom, t_nom, original_thickness, torig, t_orig, design_thickness, tdes, t_des, required_thickness, treq, t_req, ultrasonic_thickness, ut_thickness, thickness_value, reading, measurement, gauge, gage
+
+9. SHELL COURSES:
+   Search for: course, shell_course, course_number, course_no, shell_number, shell_no, ring, ring_number, ring_no, strake, strake_number, strake_no, tier, tier_number, tier_no, level, level_number, level_no, section, section_number, section_no, plate, plate_number, plate_no, course_designation, shell_designation
+
+10. SPECIFIC GRAVITY:
+    Search for: specific_gravity, sg, s.g., density, relative_density, api_gravity, api, gravity, product_density, fluid_density, liquid_density, material_density, substance_density, weight, specific_weight, unit_weight
+
+11. MATERIALS:
+    Search for: material, shell_material, tank_material, vessel_material, construction_material, plate_material, steel_grade, material_grade, material_specification, material_spec, steel_specification, steel_spec, alloy, metal, steel_type, carbon_steel, stainless_steel, aluminum, material_type, construction_type, fabrication_material
+
+12. ROOF TYPES:
+    Search for: roof_type, roof, tank_roof, vessel_roof, roof_design, roof_style, fixed_roof, floating_roof, cone_roof, dome_roof, flat_roof, shed_roof, umbrella_roof, geodesic_roof, internal_floating_roof, external_floating_roof, ifr, efr, pontoon_roof, pan_roof, double_deck_roof, single_deck_roof
+
+13. FOUNDATION:
+    Search for: foundation, foundation_type, tank_foundation, vessel_foundation, base, base_type, tank_base, vessel_base, support, support_type, tank_support, vessel_support, footing, footing_type, tank_footing, vessel_footing, pad, concrete_pad, ring_wall, ringwall, slab, concrete_slab, foundation_design, base_design, support_design
+
+14. CORROSION DATA:
+    Search for: corrosion_allowance, ca, corrosion_margin, allowance, margin, safety_margin, design_margin, corrosion_factor, wear_allowance, wastage_allowance, metal_loss_allowance, thickness_allowance, minimum_allowance
+
+15. WELD DATA:
+    Search for: joint_efficiency, efficiency, weld_efficiency, joint_factor, efficiency_factor, weld_factor, radiographic_efficiency, rt_efficiency, spot_rt_efficiency, full_rt_efficiency, seamless_efficiency, welded_efficiency
+
+CRITICAL INSTRUCTIONS:
+1. Search for ANY variation of these terms across ALL sheets
+2. Be case-insensitive when searching
+3. Look for abbreviated forms (e.g., "Cap" for capacity, "Dia" for diameter)
+4. If multiple variations are found, use the most complete value
+5. Convert all measurements to standard units (feet, gallons, inches)
+6. Convert all dates to YYYY-MM-DD format
+7. PRIORITIZE AST COMP TML SHEET FOR THICKNESS READINGS
+8. RESPECT N/A MARKERS - skip data marked as N/A
+9. Check for data in merged cells, headers, and footers
+10. Look for data that might be split across multiple cells
+11. Extract thickness data from tables, grids, or lists
+12. Look for patterns like "Course 1", "Shell 1", "Ring 1" for shell course data
+13. Look for patterns like "N", "S", "E", "W", "0°", "90°", "180°", "270°" for positions
+14. Thickness values should be numbers in range 0.05 to 3.0 inches
+15. Return ONLY valid JSON, no explanations`;
 
     const request: OpenRouterRequest = {
       model: 'anthropic/claude-3.5-sonnet',
@@ -175,7 +211,7 @@ For each thickness reading found, include it in the thicknessMeasurements array 
         { role: 'user', content: userPrompt }
       ],
       temperature: 0.1,
-      max_tokens: 2000
+      max_tokens: 6000 // Increased for comprehensive extraction
     };
 
     const response = await fetch(OPENROUTER_API_URL, {
