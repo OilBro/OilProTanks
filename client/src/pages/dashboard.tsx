@@ -1,8 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Clock, CheckCircle, AlertTriangle, Eye, Edit, Download, TrendingUp, Search } from "lucide-react";
+import { FileText, Clock, CheckCircle, AlertTriangle, Eye, Edit, Download, TrendingUp, Search, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
 import { generateEnhancedPDF } from "@/components/enhanced-pdf-generator";
@@ -10,6 +10,17 @@ import { QuickPDFPreview } from "@/components/quick-pdf-preview";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { useState } from "react";
+import { queryClient } from "@/lib/queryClient";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { InspectionReport, ThicknessMeasurement, InspectionChecklist } from "@shared/schema";
 
 interface DashboardStats {
@@ -22,6 +33,7 @@ interface DashboardStats {
 export default function Dashboard() {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
+  const [reportToDelete, setReportToDelete] = useState<InspectionReport | null>(null);
   
   const { data: reports = [], isLoading: reportsLoading } = useQuery<InspectionReport[]>({
     queryKey: ["/api/reports"],
@@ -29,6 +41,34 @@ export default function Dashboard() {
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/reports/stats"],
+  });
+
+  const deleteReportMutation = useMutation({
+    mutationFn: async (reportId: number) => {
+      const response = await fetch(`/api/reports/${reportId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete report');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Report Deleted",
+        description: "The inspection report has been deleted successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/reports/stats'] });
+      setReportToDelete(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete report",
+        variant: "destructive",
+      });
+    }
   });
 
   const handleQuickPDFGeneration = async (report: InspectionReport) => {
@@ -257,6 +297,15 @@ export default function Dashboard() {
                         >
                           <Download className="h-4 w-4" />
                         </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-red-400 hover:text-red-600"
+                          onClick={() => setReportToDelete(report)}
+                          title="Delete Report"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -266,6 +315,28 @@ export default function Dashboard() {
           )}
         </div>
       </Card>
+      
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!reportToDelete} onOpenChange={() => setReportToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Report</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete report {reportToDelete?.reportNumber}? 
+              This action cannot be undone and will permanently delete all associated data including thickness measurements, checklists, and attachments.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => reportToDelete && deleteReportMutation.mutate(reportToDelete.id)}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete Report
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

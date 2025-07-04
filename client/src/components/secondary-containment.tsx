@@ -21,7 +21,7 @@ interface ContainmentComponent {
   priority: 'low' | 'medium' | 'high' | 'urgent';
 }
 
-interface ContainmentSystem {
+export interface ContainmentSystem {
   systemType: 'earthen_dyke' | 'concrete_dyke' | 'synthetic_liner' | 'clay_liner' | 'composite';
   capacity: number; // gallons or tank volume %
   drainageSystem: boolean;

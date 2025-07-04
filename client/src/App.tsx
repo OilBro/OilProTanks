@@ -12,7 +12,7 @@ import NewReport from "@/pages/new-report";
 import Templates from "@/pages/templates";
 import ImportReports from "@/pages/import-reports";
 import { ReportView } from "@/pages/report-view";
-import { EditReport } from "@/pages/edit-report";
+import { EditReportFull } from "@/pages/edit-report-full";
 import NotFound from "@/pages/not-found";
 
 function Header() {
@@ -72,7 +72,7 @@ function Router() {
       <Route path="/import" component={ImportReports} />
       <Route path="/templates" component={Templates} />
       <Route path="/report/:id" component={ReportView} />
-      <Route path="/edit-report/:id" component={EditReport} />
+      <Route path="/edit-report/:id" component={EditReportFull} />
       <Route component={NotFound} />
     </Switch>
   );

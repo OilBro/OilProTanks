@@ -271,6 +271,15 @@ Business Rules: NO cost estimation for repair recommendations
   - Enhanced extraction for: owner/client names, locations, dimensions, capacity variations
   - Improved thickness reading detection with all common column name patterns
   - Added support for all inspection terminology: examiner, surveyor, technician, assessor
-  - Increased OpenRouter max tokens to 6000 for comprehensive extraction
+  - Increased OpenRouter max tokens to 18000 (tripled) for comprehensive extraction
+  - Updated to use Claude Sonnet 4 model (anthropic/claude-sonnet-4-20250514)
   - System can now handle ANY API 653 inspection Excel format without missing critical data
+✓ ENHANCED EDIT FUNCTIONALITY AND DELETE CAPABILITY (July 4, 2025):
+  - Added delete report functionality with confirmation dialog to dashboard
+  - Delete button removes report and all associated data (measurements, checklists, attachments)
+  - Created comprehensive edit report form with all sections from new report
+  - Edit form now includes: Basic Info, Measurements, Checklist, Advanced sections, Attachments
+  - Advanced section includes: Appurtenance, Repairs, Venting, Settlement, NDE, Containment
+  - Edit functionality now matches the full capabilities of new report creation
+  - Users can edit ALL aspects of a report, not just basic fields
 ```
