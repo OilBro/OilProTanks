@@ -10,6 +10,52 @@ import {
 import { handleExcelImport } from "./import-handler";
 import { generateInspectionTemplate } from "./template-generator";
 
+// Unit converter utilities
+const UnitConverter = {
+  // Length conversions
+  toFeet: (value: number, unit: string): number => {
+    const conversions: Record<string, number> = {
+      'ft': 1,
+      'in': 0.0833333,
+      'm': 3.28084,
+      'mm': 0.00328084
+    };
+    return value * (conversions[unit] || 1);
+  },
+  
+  // Volume conversions
+  toGallons: (value: number, unit: string): number => {
+    const conversions: Record<string, number> = {
+      'gal': 1,
+      'L': 0.264172,
+      'bbl': 42,
+      'm3': 264.172
+    };
+    return value * (conversions[unit] || 1);
+  },
+  
+  // Thickness conversions
+  toInches: (value: number, unit: string): number => {
+    const conversions: Record<string, number> = {
+      'in': 1,
+      'mm': 0.0393701,
+      'mils': 0.001
+    };
+    return value * (conversions[unit] || 1);
+  },
+  
+  // Pressure conversions
+  toPSI: (value: number, unit: string): number => {
+    const conversions: Record<string, number> = {
+      'psi': 1,
+      'kPa': 0.145038,
+      'bar': 14.5038,
+      'atm': 14.6959
+    };
+    return value * (conversions[unit] || 1);
+  }
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   
   // Configure multer for file uploads
@@ -138,7 +184,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/reports", async (req, res) => {
     try {
       console.log('Creating report with data:', req.body);
-      const validatedData = insertInspectionReportSchema.parse(req.body);
+      
+      // Convert units to standard values before validation
+      const processedData = {
+        ...req.body,
+        // Convert dimensions to standard units as strings
+        diameter: req.body.diameter && req.body.diameterUnit ? 
+          UnitConverter.toFeet(req.body.diameter, req.body.diameterUnit).toString() : 
+          req.body.diameter?.toString(),
+        height: req.body.height && req.body.heightUnit ? 
+          UnitConverter.toFeet(req.body.height, req.body.heightUnit).toString() : 
+          req.body.height?.toString(),
+        capacity: req.body.capacity && req.body.capacityUnit ? 
+          UnitConverter.toGallons(req.body.capacity, req.body.capacityUnit).toString() : 
+          req.body.capacity?.toString(),
+        originalThickness: req.body.originalThickness && req.body.originalThicknessUnit ? 
+          UnitConverter.toInches(req.body.originalThickness, req.body.originalThicknessUnit).toString() : 
+          req.body.originalThickness?.toString(),
+        // Remove unit fields from validation
+        diameterUnit: undefined,
+        heightUnit: undefined,
+        capacityUnit: undefined,
+        originalThicknessUnit: undefined,
+        designPressureUnit: undefined,
+        operatingPressureUnit: undefined,
+        corrosionAllowanceUnit: undefined
+      };
+      
+      console.log('Processed data for validation:', processedData);
+      const validatedData = insertInspectionReportSchema.parse(processedData);
       const report = await storage.createInspectionReport(validatedData);
       res.status(201).json(report);
     } catch (error: any) {
