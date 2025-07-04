@@ -14,7 +14,7 @@ interface ContainmentComponent {
   material: string;
   condition: 'excellent' | 'good' | 'fair' | 'poor' | 'failed';
   findings: string;
-  dimensions?: string;
+  dimensions?: number;
   capacity?: number;
   lastMaintenance?: string;
   repairRequired: boolean;
@@ -69,7 +69,7 @@ export function SecondaryContainment({ data, onDataChange }: SecondaryContainmen
       material: newComponent.material,
       condition: newComponent.condition as any,
       findings: newComponent.findings,
-      dimensions: newComponent.dimensions,
+      dimensions: newComponent.dimensions ? parseFloat(newComponent.dimensions) : undefined,
       capacity: parseFloat(newComponent.capacity) || undefined,
       lastMaintenance: newComponent.lastMaintenance,
       repairRequired: newComponent.condition === 'poor' || newComponent.condition === 'failed',
@@ -319,9 +319,10 @@ export function SecondaryContainment({ data, onDataChange }: SecondaryContainmen
               />
             </div>
             <div>
-              <Label htmlFor="dimensions">Dimensions/Capacity</Label>
+              <Label htmlFor="dimensions">Dimensions/Capacity (numeric)</Label>
               <Input
-                placeholder="6ft H x 400ft L, 5000 gal, etc."
+                type="number"
+                placeholder="5000"
                 value={newComponent.dimensions}
                 onChange={(e) => setNewComponent(prev => ({ ...prev, dimensions: e.target.value }))}
               />

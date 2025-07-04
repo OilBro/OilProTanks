@@ -59,7 +59,7 @@ interface NDEResult {
   testMethod: string;
   acceptance: 'pass' | 'fail' | 'conditional';
   discontinuityType?: string;
-  discontinuitySize?: string;
+  discontinuitySize?: number;
   discontinuityDepth?: number;
   repairRequired: boolean;
   testDate: string;
@@ -75,7 +75,7 @@ interface ContainmentComponent {
   material: string;
   condition: 'excellent' | 'good' | 'fair' | 'poor' | 'failed';
   findings: string;
-  dimensions?: string;
+  dimensions?: number;
   capacity?: number;
   repairRequired: boolean;
   priority: 'low' | 'medium' | 'high' | 'urgent';

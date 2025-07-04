@@ -288,4 +288,6 @@ Business Rules: NO cost estimation for repair recommendations
   - Drizzle ORM returns decimal fields as strings for precision - added proper type conversion
   - All thickness measurement fields now convert between string/number types as needed
   - Report creation and thickness measurement creation now work without validation errors
+  - Fixed discontinuitySize field type from string to number for NDE test results
+  - Fixed dimensions field type from string to number for containment components
 ```
