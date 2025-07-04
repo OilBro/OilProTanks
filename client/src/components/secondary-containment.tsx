@@ -24,6 +24,7 @@ interface ContainmentComponent {
 export interface ContainmentSystem {
   systemType: 'earthen_dyke' | 'concrete_dyke' | 'synthetic_liner' | 'clay_liner' | 'composite';
   capacity: number; // gallons or tank volume %
+  capacityUnit: 'gal' | 'bbl' | 'L' | 'm3' | 'ft3';
   drainageSystem: boolean;
   monitoring: boolean;
   components: ContainmentComponent[];

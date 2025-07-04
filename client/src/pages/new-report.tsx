@@ -34,18 +34,91 @@ import type {
   ReportAttachment
 } from "@shared/schema";
 
+// CORRECTED: Proper unit definitions and types
+interface UnitValue {
+  value: number;
+  unit: string;
+}
+
+interface DimensionValue extends UnitValue {
+  unit: 'ft' | 'in' | 'm' | 'mm';
+}
+
+interface VolumeValue extends UnitValue {
+  unit: 'gal' | 'bbl' | 'L' | 'm3' | 'ft3';
+}
+
+interface ThicknessValue extends UnitValue {
+  unit: 'in' | 'mm' | 'mils';
+}
+
+interface PressureValue extends UnitValue {
+  unit: 'psi' | 'bar' | 'kPa' | 'MPa';
+}
+
+// CORRECTED: Utility functions for unit conversions
+const UnitConverter = {
+  // Length conversions to feet
+  toFeet: (value: number, fromUnit: string): number => {
+    const conversions: Record<string, number> = {
+      'ft': 1,
+      'in': 1/12,
+      'm': 3.28084,
+      'mm': 0.00328084
+    };
+    return value * (conversions[fromUnit] || 1);
+  },
+  
+  // Volume conversions to gallons
+  toGallons: (value: number, fromUnit: string): number => {
+    const conversions: Record<string, number> = {
+      'gal': 1,
+      'bbl': 42,
+      'L': 0.264172,
+      'm3': 264.172,
+      'ft3': 7.48052
+    };
+    return value * (conversions[fromUnit] || 1);
+  },
+  
+  // Thickness conversions to inches
+  toInches: (value: number, fromUnit: string): number => {
+    const conversions: Record<string, number> = {
+      'in': 1,
+      'mm': 0.0393701,
+      'mils': 0.001
+    };
+    return value * (conversions[fromUnit] || 1);
+  },
+  
+  // Pressure conversions to PSI
+  toPSI: (value: number, fromUnit: string): number => {
+    const conversions: Record<string, number> = {
+      'psi': 1,
+      'bar': 14.5038,
+      'kPa': 0.145038,
+      'MPa': 145.038
+    };
+    return value * (conversions[fromUnit] || 1);
+  }
+};
+
 // Additional interfaces for new components
 interface SettlementPoint {
   point: number;
   angle: number;
   elevation: number;
   distance: number;
+  elevationUnit: 'ft' | 'in' | 'm' | 'mm';
+  distanceUnit: 'ft' | 'in' | 'm' | 'mm';
 }
 
 interface SettlementData {
   referenceElevation: number;
+  referenceElevationUnit: 'ft' | 'in' | 'm' | 'mm';
   points: SettlementPoint[];
   maxDifferentialSettlement: number;
+  maxDifferentialSettlementUnit: 'ft' | 'in' | 'm' | 'mm';
   analysisMethod: 'circumferential' | 'differential';
   notes: string;
 }
@@ -60,7 +133,9 @@ interface NDEResult {
   acceptance: 'pass' | 'fail' | 'conditional';
   discontinuityType?: string;
   discontinuitySize?: number;
+  discontinuitySizeUnit?: 'in' | 'mm';
   discontinuityDepth?: number;
+  discontinuityDepthUnit?: 'in' | 'mm' | '%';
   repairRequired: boolean;
   testDate: string;
   technician: string;
@@ -76,7 +151,9 @@ interface ContainmentComponent {
   condition: 'excellent' | 'good' | 'fair' | 'poor' | 'failed';
   findings: string;
   dimensions?: number;
+  dimensionsUnit?: 'ft' | 'in' | 'm' | 'mm';
   capacity?: number;
+  capacityUnit?: 'gal' | 'bbl' | 'L' | 'm3' | 'ft3';
   repairRequired: boolean;
   priority: 'low' | 'medium' | 'high' | 'urgent';
 }
@@ -84,6 +161,7 @@ interface ContainmentComponent {
 interface ContainmentSystem {
   systemType: 'earthen_dyke' | 'concrete_dyke' | 'synthetic_liner' | 'clay_liner' | 'composite';
   capacity: number;
+  capacityUnit: 'gal' | 'bbl' | 'L' | 'm3' | 'ft3';
   drainageSystem: boolean;
   monitoring: boolean;
   components: ContainmentComponent[];
@@ -93,24 +171,89 @@ interface ContainmentSystem {
 }
 import { useLocation } from "wouter";
 
+// CORRECTED: Enhanced service options with proper categorization
 const SERVICE_OPTIONS = [
-  { value: "crude", label: "Crude Oil" },
-  { value: "diesel", label: "Diesel" },
-  { value: "gasoline", label: "Gasoline" },
-  { value: "welded", label: "Welded Tank (API 650)" },
-  { value: "bolted", label: "Bolted Tank (API RP 12C)" },
-  { value: "other", label: "Other" }
+  { value: "crude_oil", label: "Crude Oil", category: "petroleum" },
+  { value: "diesel", label: "Diesel Fuel", category: "petroleum" },
+  { value: "gasoline", label: "Gasoline", category: "petroleum" },
+  { value: "jet_fuel", label: "Jet Fuel", category: "petroleum" },
+  { value: "heating_oil", label: "Heating Oil", category: "petroleum" },
+  { value: "lubricating_oil", label: "Lubricating Oil", category: "petroleum" },
+  { value: "water", label: "Water", category: "utility" },
+  { value: "wastewater", label: "Wastewater", category: "utility" },
+  { value: "chemical", label: "Chemical Product", category: "chemical" },
+  { value: "other", label: "Other (Specify)", category: "other" }
 ];
 
+// CORRECTED: Tank construction standards with proper API references
+const CONSTRUCTION_STANDARDS = [
+  { value: "api_650", label: "API 650 - Welded Steel Tanks" },
+  { value: "api_12c", label: "API RP 12C - Bolted Tanks" },
+  { value: "api_12d", label: "API RP 12D - Field Welded Tanks" },
+  { value: "api_12f", label: "API RP 12F - Shop Welded Tanks" },
+  { value: "awwa_d100", label: "AWWA D100 - Water Storage Tanks" },
+  { value: "ul_142", label: "UL 142 - Steel Aboveground Tanks" },
+  { value: "asme_viii", label: "ASME Section VIII - Pressure Vessels" },
+  { value: "other", label: "Other Standard" }
+];
+
+// CORRECTED: Material specifications with proper grades
+const SHELL_MATERIALS = [
+  { value: "carbon_steel_a36", label: "Carbon Steel - ASTM A36" },
+  { value: "carbon_steel_a283c", label: "Carbon Steel - ASTM A283 Grade C" },
+  { value: "carbon_steel_a285c", label: "Carbon Steel - ASTM A285 Grade C" },
+  { value: "carbon_steel_a516_70", label: "Carbon Steel - ASTM A516 Grade 70" },
+  { value: "stainless_304", label: "Stainless Steel - 304" },
+  { value: "stainless_316", label: "Stainless Steel - 316" },
+  { value: "aluminum", label: "Aluminum Alloy" },
+  { value: "other", label: "Other Material" }
+];
+
+// CORRECTED: Roof types with proper API 653 classifications
+const ROOF_TYPES = [
+  { value: "fixed_cone", label: "Fixed Cone Roof" },
+  { value: "fixed_dome", label: "Fixed Dome Roof" },
+  { value: "external_floating", label: "External Floating Roof" },
+  { value: "internal_floating", label: "Internal Floating Roof" },
+  { value: "umbrella", label: "Umbrella Roof" },
+  { value: "geodesic", label: "Geodesic Dome" },
+  { value: "other", label: "Other Type" }
+];
+
+// CORRECTED: Foundation types with engineering classifications
+const FOUNDATION_TYPES = [
+  { value: "concrete_pad", label: "Concrete Pad" },
+  { value: "concrete_ring_wall", label: "Concrete Ring Wall" },
+  { value: "compacted_earth", label: "Compacted Earth" },
+  { value: "gravel_pad", label: "Gravel Pad" },
+  { value: "asphalt", label: "Asphalt" },
+  { value: "other", label: "Other Foundation" }
+];
+
+// CORRECTED: Enhanced checklist with proper API 653 requirements
 const DEFAULT_CHECKLIST_ITEMS = [
-  { category: "external", item: "Foundation condition assessed", checked: false },
-  { category: "external", item: "Shell external condition checked", checked: false },
-  { category: "external", item: "Coating condition evaluated", checked: false },
-  { category: "external", item: "Appurtenances inspected", checked: false },
-  { category: "internal", item: "Bottom plate condition assessed", checked: false },
-  { category: "internal", item: "Shell internal condition checked", checked: false },
-  { category: "internal", item: "Roof structure inspected", checked: false },
-  { category: "internal", item: "Internal appurtenances checked", checked: false }
+  // External Inspection Items (API 653 Section 6.3)
+  { category: "external", item: "Foundation condition and settlement assessment", checked: false, required: true },
+  { category: "external", item: "Shell external visual examination", checked: false, required: true },
+  { category: "external", item: "Coating and corrosion protection evaluation", checked: false, required: true },
+  { category: "external", item: "Appurtenances and attachments inspection", checked: false, required: true },
+  { category: "external", item: "Roof structure and condition assessment", checked: false, required: true },
+  { category: "external", item: "Venting system inspection", checked: false, required: false },
+  { category: "external", item: "Secondary containment evaluation", checked: false, required: false },
+  
+  // Internal Inspection Items (API 653 Section 6.4)
+  { category: "internal", item: "Bottom plate condition assessment", checked: false, required: true },
+  { category: "internal", item: "Shell internal visual examination", checked: false, required: true },
+  { category: "internal", item: "Roof structure internal inspection", checked: false, required: true },
+  { category: "internal", item: "Internal appurtenances and fittings check", checked: false, required: true },
+  { category: "internal", item: "Weld joint examination", checked: false, required: true },
+  { category: "internal", item: "Corrosion and pitting assessment", checked: false, required: true },
+  
+  // Thickness Testing (API 653 Section 6.5)
+  { category: "thickness", item: "Shell course thickness measurements", checked: false, required: true },
+  { category: "thickness", item: "Bottom plate thickness measurements", checked: false, required: true },
+  { category: "thickness", item: "Roof plate thickness measurements", checked: false, required: false },
+  { category: "thickness", item: "Nozzle and attachment thickness check", checked: false, required: true }
 ];
 
 export default function NewReport() {
@@ -124,8 +267,10 @@ export default function NewReport() {
   const [attachments, setAttachments] = useState<ReportAttachment[]>([]);
   const [settlementData, setSettlementData] = useState<SettlementData>({
     referenceElevation: 0,
+    referenceElevationUnit: 'ft',
     points: [],
     maxDifferentialSettlement: 0,
+    maxDifferentialSettlementUnit: 'in',
     analysisMethod: 'circumferential',
     notes: ''
   });
@@ -141,6 +286,7 @@ export default function NewReport() {
   const [containmentData, setContainmentData] = useState<ContainmentSystem>({
     systemType: 'earthen_dyke',
     capacity: 110,
+    capacityUnit: 'gal',
     drainageSystem: true,
     monitoring: false,
     components: [],
@@ -153,6 +299,7 @@ export default function NewReport() {
   const [showPreview, setShowPreview] = useState(false);
   const [createdReport, setCreatedReport] = useState<InspectionReport | null>(null);
 
+  // CORRECTED: Enhanced form with proper unit handling
   const form = useForm({
     // Disable strict validation to prevent auto-focus issues
     resolver: undefined,
@@ -160,12 +307,30 @@ export default function NewReport() {
       reportNumber: '',
       tankId: '',
       service: '',
-      diameter: '',
-      height: '',
+      diameter: 0,
+      diameterUnit: 'ft',
+      height: 0,
+      heightUnit: 'ft',
+      capacity: 0,
+      capacityUnit: 'gal',
       inspector: '',
       inspectionDate: new Date().toISOString().split('T')[0],
-      originalThickness: '0.5',
-      yearsSinceLastInspection: '1',
+      originalThickness: 0.5,
+      originalThicknessUnit: 'in',
+      yearsSinceLastInspection: 1,
+      constructionStandard: '',
+      shellMaterial: '',
+      roofType: '',
+      foundationType: '',
+      designPressure: 0,
+      designPressureUnit: 'psi',
+      operatingPressure: 0,
+      operatingPressureUnit: 'psi',
+      designTemperature: 0,
+      operatingTemperature: 0,
+      specificGravity: 1.0,
+      corrosionAllowance: 0,
+      corrosionAllowanceUnit: 'in',
       status: 'draft' as const
     },
     mode: 'onSubmit',
@@ -248,18 +413,42 @@ export default function NewReport() {
         return;
       }
 
-      // Process data with proper defaults and ensure correct types
+      // CORRECTED: Process data with unit conversions to standard units
       const processedData = {
         reportNumber: data.reportNumber,
         tankId: data.tankId,
         service: data.service || '',
-        diameter: data.diameter ? parseFloat(data.diameter) : null,
-        height: data.height ? parseFloat(data.height) : null,
+        // Convert all dimensions to standard units for storage (as strings for decimal columns)
+        diameter: data.diameter ? UnitConverter.toFeet(data.diameter, data.diameterUnit || 'ft').toString() : null,
+        height: data.height ? UnitConverter.toFeet(data.height, data.heightUnit || 'ft').toString() : null,
+        capacity: data.capacity ? UnitConverter.toGallons(data.capacity, data.capacityUnit || 'gal').toString() : null,
         inspector: data.inspector || 'Unknown',
         inspectionDate: data.inspectionDate,
-        originalThickness: data.originalThickness ? parseFloat(data.originalThickness) : null,
-        yearsSinceLastInspection: data.yearsSinceLastInspection ? Number(data.yearsSinceLastInspection) : 1,
-        status: data.status || 'draft'
+        originalThickness: data.originalThickness ? UnitConverter.toInches(data.originalThickness, data.originalThicknessUnit || 'in').toString() : null,
+        yearsSinceLastInspection: data.yearsSinceLastInspection || 1,
+        constructionStandard: data.constructionStandard || null,
+        shellMaterial: data.shellMaterial || null,
+        roofType: data.roofType || null,
+        foundationType: data.foundationType || null,
+        designPressure: data.designPressure ? UnitConverter.toPSI(data.designPressure, data.designPressureUnit || 'psi') : null,
+        operatingPressure: data.operatingPressure ? UnitConverter.toPSI(data.operatingPressure, data.operatingPressureUnit || 'psi') : null,
+        designTemperature: data.designTemperature || null,
+        operatingTemperature: data.operatingTemperature || null,
+        specificGravity: data.specificGravity || 1.0,
+        corrosionAllowance: data.corrosionAllowance ? UnitConverter.toInches(data.corrosionAllowance, data.corrosionAllowanceUnit || 'in') : null,
+        status: data.status || 'draft',
+        // Store original units as metadata for future reference
+        metadata: {
+          originalUnits: {
+            diameter: data.diameterUnit || 'ft',
+            height: data.heightUnit || 'ft',
+            capacity: data.capacityUnit || 'gal',
+            originalThickness: data.originalThicknessUnit || 'in',
+            designPressure: data.designPressureUnit || 'psi',
+            operatingPressure: data.operatingPressureUnit || 'psi',
+            corrosionAllowance: data.corrosionAllowanceUnit || 'in'
+          }
+        }
       };
 
       console.log('Processed data to send:', processedData);
@@ -314,10 +503,10 @@ export default function NewReport() {
     const previewReport: InspectionReport = {
       id: 0,
       ...formData,
-      diameter: formData.diameter || null,
-      height: formData.height || null,
-      originalThickness: formData.originalThickness || null,
-      yearsSinceLastInspection: formData.yearsSinceLastInspection ? parseInt(formData.yearsSinceLastInspection) : null,
+      diameter: formData.diameter ? formData.diameter.toString() : null,
+      height: formData.height ? formData.height.toString() : null,
+      originalThickness: formData.originalThickness ? formData.originalThickness.toString() : null,
+      yearsSinceLastInspection: formData.yearsSinceLastInspection || null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -333,8 +522,8 @@ export default function NewReport() {
   };
 
   const watchedValues = form.watch();
-  const originalThickness = parseFloat(watchedValues.originalThickness) || 0;
-  const yearsSince = parseInt(watchedValues.yearsSinceLastInspection) || 0;
+  const originalThickness = watchedValues.originalThickness || 0;
+  const yearsSince = watchedValues.yearsSinceLastInspection || 0;
 
   return (
     <div>
@@ -431,23 +620,53 @@ export default function NewReport() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="diameter">Diameter (ft)</Label>
-                    <Input
-                      id="diameter"
-                      type="number"
-                      placeholder="120"
-                      tabIndex={4}
-                      {...form.register('diameter')}
-                    />
+                    <Label htmlFor="diameter">Diameter</Label>
+                    <div className="flex space-x-2">
+                      <Input
+                        id="diameter"
+                        type="number"
+                        step="0.1"
+                        placeholder="120"
+                        tabIndex={4}
+                        {...form.register('diameter', { valueAsNumber: true })}
+                        className="flex-1"
+                      />
+                      <Select value={watchedValues.diameterUnit} onValueChange={(value) => form.setValue('diameterUnit', value)}>
+                        <SelectTrigger className="w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ft">ft</SelectItem>
+                          <SelectItem value="in">in</SelectItem>
+                          <SelectItem value="m">m</SelectItem>
+                          <SelectItem value="mm">mm</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div>
-                    <Label htmlFor="height">Height (ft)</Label>
-                    <Input
-                      id="height"
-                      type="number"
-                      placeholder="48"
-                      {...form.register('height')}
-                    />
+                    <Label htmlFor="height">Height</Label>
+                    <div className="flex space-x-2">
+                      <Input
+                        id="height"
+                        type="number"
+                        step="0.1"
+                        placeholder="48"
+                        {...form.register('height', { valueAsNumber: true })}
+                        className="flex-1"
+                      />
+                      <Select value={watchedValues.heightUnit} onValueChange={(value) => form.setValue('heightUnit', value)}>
+                        <SelectTrigger className="w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ft">ft</SelectItem>
+                          <SelectItem value="in">in</SelectItem>
+                          <SelectItem value="m">m</SelectItem>
+                          <SelectItem value="mm">mm</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -484,15 +703,28 @@ export default function NewReport() {
                   )}
                 </div>
                 <div>
-                  <Label htmlFor="originalThickness">Original Plate Thickness (in)</Label>
-                  <Input
-                    id="originalThickness"
-                    type="number"
-                    step="0.001"
-                    placeholder="0.500"
-                    tabIndex={8}
-                    {...form.register('originalThickness')}
-                  />
+                  <Label htmlFor="originalThickness">Original Plate Thickness</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="originalThickness"
+                      type="number"
+                      step="0.001"
+                      placeholder="0.500"
+                      tabIndex={8}
+                      {...form.register('originalThickness', { valueAsNumber: true })}
+                      className="flex-1"
+                    />
+                    <Select value={watchedValues.originalThicknessUnit} onValueChange={(value) => form.setValue('originalThicknessUnit', value)}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="in">in</SelectItem>
+                        <SelectItem value="mm">mm</SelectItem>
+                        <SelectItem value="mils">mils</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div>
                   <div className="flex items-center">
@@ -560,7 +792,7 @@ export default function NewReport() {
         {/* Secondary Containment Section */}
         <SecondaryContainment
           data={containmentData}
-          onDataChange={setContainmentData}
+          onDataChange={(data) => setContainmentData(data)}
         />
 
         {/* Visual Documentation Section */}

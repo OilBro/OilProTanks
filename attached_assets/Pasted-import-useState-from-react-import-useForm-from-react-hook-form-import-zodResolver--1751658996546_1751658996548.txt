@@ -1,0 +1,1184 @@
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
+import { ThicknessTable } from "@/components/thickness-table";
+import { ReportPreviewModal } from "@/components/report-preview-modal";
+import { AppurtenanceInspection } from "@/components/appurtenance-inspection";
+import { RepairRecommendations } from "@/components/repair-recommendations";
+import { VentingSystemInspection } from "@/components/venting-system-inspection";
+import { ReportAttachments } from "@/components/report-attachments";
+import { SettlementDataEntry } from "@/components/settlement-data-entry";
+import { SettlementSurvey } from "@/components/settlement-survey";
+import { NDETestLocations } from "@/components/nde-test-locations";
+import { SecondaryContainment } from "@/components/secondary-containment";
+import { VisualDocumentation } from "@/components/visual-documentation";
+import { HelpTooltip } from "@/components/help-tooltip";
+import { insertInspectionReportSchema } from "@shared/schema";
+import { z } from "zod";
+import type { 
+  InspectionReport, 
+  ThicknessMeasurement, 
+  InspectionChecklist,
+  AppurtenanceInspection as AppurtenanceInspectionType,
+  RepairRecommendation,
+  VentingSystemInspection as VentingSystemInspectionType,
+  ReportAttachment
+} from "@shared/schema";
+import { useLocation } from "wouter";
+
+// CORRECTED: Proper unit definitions and types
+interface UnitValue {
+  value: number;
+  unit: string;
+}
+
+interface DimensionValue extends UnitValue {
+  unit: 'ft' | 'in' | 'm' | 'mm';
+}
+
+interface VolumeValue extends UnitValue {
+  unit: 'gal' | 'bbl' | 'L' | 'm3' | 'ft3';
+}
+
+interface ThicknessValue extends UnitValue {
+  unit: 'in' | 'mm' | 'mils';
+}
+
+interface PressureValue extends UnitValue {
+  unit: 'psi' | 'bar' | 'kPa' | 'MPa';
+}
+
+// CORRECTED: Enhanced service options with proper categorization
+const SERVICE_OPTIONS = [
+  { value: "crude_oil", label: "Crude Oil", category: "petroleum" },
+  { value: "diesel", label: "Diesel Fuel", category: "petroleum" },
+  { value: "gasoline", label: "Gasoline", category: "petroleum" },
+  { value: "jet_fuel", label: "Jet Fuel", category: "petroleum" },
+  { value: "heating_oil", label: "Heating Oil", category: "petroleum" },
+  { value: "lubricating_oil", label: "Lubricating Oil", category: "petroleum" },
+  { value: "water", label: "Water", category: "utility" },
+  { value: "wastewater", label: "Wastewater", category: "utility" },
+  { value: "chemical", label: "Chemical Product", category: "chemical" },
+  { value: "other", label: "Other (Specify)", category: "other" }
+];
+
+// CORRECTED: Tank construction standards with proper API references
+const CONSTRUCTION_STANDARDS = [
+  { value: "api_650", label: "API 650 - Welded Steel Tanks" },
+  { value: "api_12c", label: "API RP 12C - Bolted Tanks" },
+  { value: "api_12d", label: "API RP 12D - Field Welded Tanks" },
+  { value: "api_12f", label: "API RP 12F - Shop Welded Tanks" },
+  { value: "awwa_d100", label: "AWWA D100 - Water Storage Tanks" },
+  { value: "ul_142", label: "UL 142 - Steel Aboveground Tanks" },
+  { value: "asme_viii", label: "ASME Section VIII - Pressure Vessels" },
+  { value: "other", label: "Other Standard" }
+];
+
+// CORRECTED: Material specifications with proper grades
+const SHELL_MATERIALS = [
+  { value: "carbon_steel_a36", label: "Carbon Steel - ASTM A36" },
+  { value: "carbon_steel_a283c", label: "Carbon Steel - ASTM A283 Grade C" },
+  { value: "carbon_steel_a285c", label: "Carbon Steel - ASTM A285 Grade C" },
+  { value: "carbon_steel_a516_70", label: "Carbon Steel - ASTM A516 Grade 70" },
+  { value: "stainless_304", label: "Stainless Steel - 304" },
+  { value: "stainless_316", label: "Stainless Steel - 316" },
+  { value: "aluminum", label: "Aluminum Alloy" },
+  { value: "other", label: "Other Material" }
+];
+
+// CORRECTED: Roof types with proper API 653 classifications
+const ROOF_TYPES = [
+  { value: "fixed_cone", label: "Fixed Cone Roof" },
+  { value: "fixed_dome", label: "Fixed Dome Roof" },
+  { value: "external_floating", label: "External Floating Roof" },
+  { value: "internal_floating", label: "Internal Floating Roof" },
+  { value: "umbrella", label: "Umbrella Roof" },
+  { value: "geodesic", label: "Geodesic Dome" },
+  { value: "other", label: "Other Type" }
+];
+
+// CORRECTED: Foundation types with engineering classifications
+const FOUNDATION_TYPES = [
+  { value: "concrete_pad", label: "Concrete Pad" },
+  { value: "concrete_ring_wall", label: "Concrete Ring Wall" },
+  { value: "compacted_earth", label: "Compacted Earth" },
+  { value: "gravel_pad", label: "Gravel Pad" },
+  { value: "asphalt", label: "Asphalt" },
+  { value: "other", label: "Other Foundation" }
+];
+
+// CORRECTED: Enhanced checklist with proper API 653 requirements
+const DEFAULT_CHECKLIST_ITEMS = [
+  // External Inspection Items (API 653 Section 6.3)
+  { category: "external", item: "Foundation condition and settlement assessment", checked: false, required: true },
+  { category: "external", item: "Shell external visual examination", checked: false, required: true },
+  { category: "external", item: "Coating and corrosion protection evaluation", checked: false, required: true },
+  { category: "external", item: "Appurtenances and attachments inspection", checked: false, required: true },
+  { category: "external", item: "Roof structure and condition assessment", checked: false, required: true },
+  { category: "external", item: "Venting system inspection", checked: false, required: false },
+  { category: "external", item: "Secondary containment evaluation", checked: false, required: false },
+  
+  // Internal Inspection Items (API 653 Section 6.4)
+  { category: "internal", item: "Bottom plate condition assessment", checked: false, required: true },
+  { category: "internal", item: "Shell internal visual examination", checked: false, required: true },
+  { category: "internal", item: "Roof structure internal inspection", checked: false, required: true },
+  { category: "internal", item: "Internal appurtenances and fittings check", checked: false, required: true },
+  { category: "internal", item: "Weld joint examination", checked: false, required: true },
+  { category: "internal", item: "Corrosion and pitting assessment", checked: false, required: true },
+  
+  // Thickness Testing (API 653 Section 6.5)
+  { category: "thickness", item: "Shell course thickness measurements", checked: false, required: true },
+  { category: "thickness", item: "Bottom plate thickness measurements", checked: false, required: true },
+  { category: "thickness", item: "Roof plate thickness measurements", checked: false, required: false },
+  { category: "thickness", item: "Nozzle and attachment thickness check", checked: false, required: true }
+];
+
+// CORRECTED: Utility functions for unit conversions
+const UnitConverter = {
+  // Length conversions to feet
+  toFeet: (value: number, fromUnit: string): number => {
+    const conversions: Record<string, number> = {
+      'ft': 1,
+      'in': 1/12,
+      'm': 3.28084,
+      'mm': 0.00328084
+    };
+    return value * (conversions[fromUnit] || 1);
+  },
+  
+  // Volume conversions to gallons
+  toGallons: (value: number, fromUnit: string): number => {
+    const conversions: Record<string, number> = {
+      'gal': 1,
+      'bbl': 42,
+      'L': 0.264172,
+      'm3': 264.172,
+      'ft3': 7.48052
+    };
+    return value * (conversions[fromUnit] || 1);
+  },
+  
+  // Thickness conversions to inches
+  toInches: (value: number, fromUnit: string): number => {
+    const conversions: Record<string, number> = {
+      'in': 1,
+      'mm': 0.0393701,
+      'mils': 0.001
+    };
+    return value * (conversions[fromUnit] || 1);
+  },
+  
+  // Pressure conversions to PSI
+  toPSI: (value: number, fromUnit: string): number => {
+    const conversions: Record<string, number> = {
+      'psi': 1,
+      'bar': 14.5038,
+      'kPa': 0.145038,
+      'MPa': 145.038
+    };
+    return value * (conversions[fromUnit] || 1);
+  }
+};
+
+// CORRECTED: Enhanced form validation schema
+const reportFormSchema = z.object({
+  reportNumber: z.string().min(1, "Report number is required"),
+  tankId: z.string().min(1, "Tank ID is required"),
+  service: z.string().min(1, "Service type is required"),
+  diameter: z.number().positive("Diameter must be positive").optional(),
+  diameterUnit: z.enum(['ft', 'in', 'm', 'mm']).default('ft'),
+  height: z.number().positive("Height must be positive").optional(),
+  heightUnit: z.enum(['ft', 'in', 'm', 'mm']).default('ft'),
+  capacity: z.number().positive("Capacity must be positive").optional(),
+  capacityUnit: z.enum(['gal', 'bbl', 'L', 'm3', 'ft3']).default('gal'),
+  inspector: z.string().min(1, "Inspector name is required"),
+  inspectionDate: z.string().min(1, "Inspection date is required"),
+  originalThickness: z.number().positive("Original thickness must be positive").optional(),
+  originalThicknessUnit: z.enum(['in', 'mm', 'mils']).default('in'),
+  yearsSinceLastInspection: z.number().int().positive("Years must be positive").default(1),
+  constructionStandard: z.string().optional(),
+  shellMaterial: z.string().optional(),
+  roofType: z.string().optional(),
+  foundationType: z.string().optional(),
+  designPressure: z.number().optional(),
+  designPressureUnit: z.enum(['psi', 'bar', 'kPa', 'MPa']).default('psi'),
+  operatingPressure: z.number().optional(),
+  operatingPressureUnit: z.enum(['psi', 'bar', 'kPa', 'MPa']).default('psi'),
+  designTemperature: z.number().optional(),
+  operatingTemperature: z.number().optional(),
+  specificGravity: z.number().positive().optional(),
+  corrosionAllowance: z.number().optional(),
+  corrosionAllowanceUnit: z.enum(['in', 'mm', 'mils']).default('in'),
+  status: z.enum(['draft', 'final', 'approved']).default('draft')
+});
+
+type ReportFormData = z.infer<typeof reportFormSchema>;
+
+// Additional interfaces for enhanced components
+interface SettlementPoint {
+  point: number;
+  angle: number;
+  elevation: number;
+  distance: number;
+  elevationUnit: 'ft' | 'in' | 'm' | 'mm';
+  distanceUnit: 'ft' | 'in' | 'm' | 'mm';
+}
+
+interface SettlementData {
+  referenceElevation: number;
+  referenceElevationUnit: 'ft' | 'in' | 'm' | 'mm';
+  points: SettlementPoint[];
+  maxDifferentialSettlement: number;
+  maxDifferentialSettlementUnit: 'ft' | 'in' | 'm' | 'mm';
+  analysisMethod: 'circumferential' | 'differential';
+  notes: string;
+}
+
+interface NDEResult {
+  id: number;
+  testType: 'UT' | 'MT' | 'PT' | 'VT' | 'RT' | 'ET';
+  location: string;
+  component: string;
+  gridReference?: string;
+  testMethod: string;
+  acceptance: 'pass' | 'fail' | 'conditional';
+  discontinuityType?: string;
+  discontinuitySize?: number;
+  discontinuitySizeUnit?: 'in' | 'mm';
+  discontinuityDepth?: number;
+  discontinuityDepthUnit?: 'in' | 'mm' | '%';
+  repairRequired: boolean;
+  testDate: string;
+  technician: string;
+  equipment: string;
+  findings: string;
+}
+
+interface ContainmentComponent {
+  id: number;
+  componentType: 'dyke' | 'liner' | 'drain' | 'sump' | 'valve' | 'piping' | 'foundation';
+  location: string;
+  material: string;
+  condition: 'excellent' | 'good' | 'fair' | 'poor' | 'failed';
+  findings: string;
+  dimensions?: number;
+  dimensionsUnit?: 'ft' | 'in' | 'm' | 'mm';
+  capacity?: number;
+  capacityUnit?: 'gal' | 'bbl' | 'L' | 'm3' | 'ft3';
+  repairRequired: boolean;
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+}
+
+interface ContainmentSystem {
+  systemType: 'earthen_dyke' | 'concrete_dyke' | 'synthetic_liner' | 'clay_liner' | 'composite';
+  capacity: number;
+  capacityUnit: 'gal' | 'bbl' | 'L' | 'm3' | 'ft3';
+  drainageSystem: boolean;
+  monitoring: boolean;
+  components: ContainmentComponent[];
+  overallCondition: 'satisfactory' | 'marginal' | 'unsatisfactory';
+  complianceStatus: 'compliant' | 'non_compliant' | 'conditional';
+  notes: string;
+}
+
+export default function NewReport() {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const [measurements, setMeasurements] = useState<ThicknessMeasurement[]>([]);
+  const [checklist, setChecklist] = useState(DEFAULT_CHECKLIST_ITEMS);
+  const [appurtenanceInspections, setAppurtenanceInspections] = useState<AppurtenanceInspectionType[]>([]);
+  const [repairRecommendations, setRepairRecommendations] = useState<RepairRecommendation[]>([]);
+  const [ventingInspections, setVentingInspections] = useState<VentingSystemInspectionType[]>([]);
+  const [attachments, setAttachments] = useState<ReportAttachment[]>([]);
+  
+  // CORRECTED: Settlement data with proper units
+  const [settlementData, setSettlementData] = useState<SettlementData>({
+    referenceElevation: 0,
+    referenceElevationUnit: 'ft',
+    points: [],
+    maxDifferentialSettlement: 0,
+    maxDifferentialSettlementUnit: 'in',
+    analysisMethod: 'circumferential',
+    notes: ''
+  });
+  
+  const [settlementSurveyData, setSettlementSurveyData] = useState({
+    referenceElevation: 0,
+    referenceElevationUnit: 'ft' as const,
+    measurementDate: new Date().toISOString().split('T')[0],
+    instrument: '',
+    points: [] as any[],
+    analysisNotes: ''
+  });
+  
+  const [ndeResults, setNDEResults] = useState<NDEResult[]>([]);
+  
+  // CORRECTED: Containment data with proper units
+  const [containmentData, setContainmentData] = useState<ContainmentSystem>({
+    systemType: 'earthen_dyke',
+    capacity: 110,
+    capacityUnit: '%', // Percentage of tank capacity
+    drainageSystem: true,
+    monitoring: false,
+    components: [],
+    overallCondition: 'satisfactory',
+    complianceStatus: 'compliant',
+    notes: ''
+  });
+
+  const [visualDocuments, setVisualDocuments] = useState<any[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
+  const [createdReport, setCreatedReport] = useState<InspectionReport | null>(null);
+
+  // CORRECTED: Enhanced form with proper validation and default values
+  const form = useForm<ReportFormData>({
+    resolver: zodResolver(reportFormSchema),
+    defaultValues: {
+      reportNumber: '',
+      tankId: '',
+      service: '',
+      diameter: undefined,
+      diameterUnit: 'ft',
+      height: undefined,
+      heightUnit: 'ft',
+      capacity: undefined,
+      capacityUnit: 'gal',
+      inspector: '',
+      inspectionDate: new Date().toISOString().split('T')[0],
+      originalThickness: undefined,
+      originalThicknessUnit: 'in',
+      yearsSinceLastInspection: 1,
+      constructionStandard: '',
+      shellMaterial: '',
+      roofType: '',
+      foundationType: '',
+      designPressure: undefined,
+      designPressureUnit: 'psi',
+      operatingPressure: undefined,
+      operatingPressureUnit: 'psi',
+      designTemperature: undefined,
+      operatingTemperature: undefined,
+      specificGravity: undefined,
+      corrosionAllowance: undefined,
+      corrosionAllowanceUnit: 'in',
+      status: 'draft'
+    },
+    mode: 'onSubmit',
+    shouldFocusError: false,
+    shouldUseNativeValidation: false
+  });
+
+  const createReportMutation = useMutation({
+    mutationFn: async (data: ReportFormData) => {
+      // CORRECTED: Proper data transformation with unit conversions
+      const processedData = {
+        reportNumber: data.reportNumber,
+        tankId: data.tankId,
+        service: data.service,
+        // Convert all dimensions to standard units (feet)
+        diameter: data.diameter ? UnitConverter.toFeet(data.diameter, data.diameterUnit) : null,
+        height: data.height ? UnitConverter.toFeet(data.height, data.heightUnit) : null,
+        capacity: data.capacity ? UnitConverter.toGallons(data.capacity, data.capacityUnit) : null,
+        inspector: data.inspector,
+        inspectionDate: data.inspectionDate,
+        // Convert thickness to standard units (inches)
+        originalThickness: data.originalThickness ? UnitConverter.toInches(data.originalThickness, data.originalThicknessUnit) : null,
+        yearsSinceLastInspection: data.yearsSinceLastInspection,
+        constructionStandard: data.constructionStandard || null,
+        shellMaterial: data.shellMaterial || null,
+        roofType: data.roofType || null,
+        foundationType: data.foundationType || null,
+        // Convert pressures to standard units (PSI)
+        designPressure: data.designPressure ? UnitConverter.toPSI(data.designPressure, data.designPressureUnit) : null,
+        operatingPressure: data.operatingPressure ? UnitConverter.toPSI(data.operatingPressure, data.operatingPressureUnit) : null,
+        designTemperature: data.designTemperature || null,
+        operatingTemperature: data.operatingTemperature || null,
+        specificGravity: data.specificGravity || null,
+        corrosionAllowance: data.corrosionAllowance ? UnitConverter.toInches(data.corrosionAllowance, data.corrosionAllowanceUnit) : null,
+        status: data.status,
+        // Add metadata about units used
+        metadata: {
+          originalUnits: {
+            diameter: data.diameterUnit,
+            height: data.heightUnit,
+            capacity: data.capacityUnit,
+            originalThickness: data.originalThicknessUnit,
+            designPressure: data.designPressureUnit,
+            operatingPressure: data.operatingPressureUnit,
+            corrosionAllowance: data.corrosionAllowanceUnit
+          },
+          standardUnits: {
+            diameter: 'ft',
+            height: 'ft',
+            capacity: 'gal',
+            originalThickness: 'in',
+            designPressure: 'psi',
+            operatingPressure: 'psi',
+            corrosionAllowance: 'in'
+          }
+        }
+      };
+
+      const response = await apiRequest('POST', '/api/reports', processedData);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create report');
+      }
+      return response.json();
+    },
+    onSuccess: (report: InspectionReport) => {
+      setCreatedReport(report);
+      toast({
+        title: "Report Created",
+        description: "Your inspection report has been created successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/reports/stats'] });
+    },
+    onError: (error: any) => {
+      console.error('Mutation error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create report. Please try again.",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // CORRECTED: Enhanced measurements mutation with proper unit handling
+  const saveMeasurementsMutation = useMutation({
+    mutationFn: async ({ reportId, measurements }: { reportId: number; measurements: ThicknessMeasurement[] }) => {
+      const promises = measurements.map(measurement => {
+        // Ensure all thickness values are properly converted to inches
+        const processedMeasurement = {
+          component: measurement.component,
+          location: measurement.location,
+          measurementType: measurement.measurementType || 'shell',
+          currentThickness: measurement.currentThickness ? 
+            (typeof measurement.currentThickness === 'string' ? 
+              parseFloat(measurement.currentThickness) : 
+              measurement.currentThickness) : 0,
+          originalThickness: measurement.originalThickness || null,
+          corrosionRate: typeof measurement.corrosionRate === 'string' ? 
+            parseFloat(measurement.corrosionRate) : 
+            measurement.corrosionRate,
+          remainingLife: typeof measurement.remainingLife === 'string' ? 
+            parseFloat(measurement.remainingLife) : 
+            measurement.remainingLife,
+          status: measurement.status,
+          elevation: measurement.elevation || null,
+          // Add unit information
+          thicknessUnit: 'in', // Standard unit
+          elevationUnit: 'ft', // Standard unit
+          createdAt: new Date().toISOString()
+        };
+        
+        return apiRequest('POST', `/api/reports/${reportId}/measurements`, processedMeasurement);
+      });
+      return Promise.all(promises);
+    }
+  });
+
+  const saveChecklistMutation = useMutation({
+    mutationFn: async ({ reportId, checklist }: { reportId: number; checklist: typeof DEFAULT_CHECKLIST_ITEMS }) => {
+      const promises = checklist.map(item =>
+        apiRequest('POST', `/api/reports/${reportId}/checklists`, {
+          category: item.category,
+          item: item.item,
+          checked: item.checked,
+          required: item.required || false
+        })
+      );
+      return Promise.all(promises);
+    }
+  });
+
+  const onSubmit = async (data: ReportFormData) => {
+    try {
+      console.log('Form data before validation:', data);
+      
+      const report = await createReportMutation.mutateAsync(data);
+      
+      if (measurements.length > 0) {
+        await saveMeasurementsMutation.mutateAsync({ 
+          reportId: report.id, 
+          measurements 
+        });
+      }
+      
+      await saveChecklistMutation.mutateAsync({ 
+        reportId: report.id, 
+        checklist 
+      });
+      
+      toast({
+        title: "Report Created Successfully",
+        description: `Report ${data.reportNumber} has been saved with proper unit conversions.`,
+      });
+      
+      setLocation('/');
+    } catch (error: any) {
+      console.error('Failed to save report - Full error:', error);
+      
+      const errorMessage = error?.response?.data?.message || error?.message || "Unable to save the report. Please check unit values and try again.";
+      
+      toast({
+        title: "Save Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePreviewReport = () => {
+    const formData = form.getValues();
+    if (!formData.reportNumber || !formData.tankId) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in at least the report number and tank ID to preview.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // CORRECTED: Create preview with proper unit conversions
+    const previewReport: InspectionReport = {
+      id: 0,
+      ...formData,
+      diameter: formData.diameter ? UnitConverter.toFeet(formData.diameter, formData.diameterUnit) : null,
+      height: formData.height ? UnitConverter.toFeet(formData.height, formData.heightUnit) : null,
+      capacity: formData.capacity ? UnitConverter.toGallons(formData.capacity, formData.capacityUnit) : null,
+      originalThickness: formData.originalThickness ? UnitConverter.toInches(formData.originalThickness, formData.originalThicknessUnit) : null,
+      designPressure: formData.designPressure ? UnitConverter.toPSI(formData.designPressure, formData.designPressureUnit) : null,
+      operatingPressure: formData.operatingPressure ? UnitConverter.toPSI(formData.operatingPressure, formData.operatingPressureUnit) : null,
+      corrosionAllowance: formData.corrosionAllowance ? UnitConverter.toInches(formData.corrosionAllowance, formData.corrosionAllowanceUnit) : null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    setCreatedReport(previewReport);
+    setShowPreview(true);
+  };
+
+  const updateChecklistItem = (index: number, checked: boolean) => {
+    const updated = [...checklist];
+    updated[index].checked = checked;
+    setChecklist(updated);
+  };
+
+  const watchedValues = form.watch();
+
+  return (
+    <div>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">New Inspection Report</h2>
+        <p className="text-gray-600">Create a new API 653 tank inspection report with proper unit handling</p>
+      </div>
+
+      {/* Enhanced Progress Indicator */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="flex items-center text-blue-600">
+              <div className="flex items-center justify-center w-8 h-8 bg-blue-600 rounded-full text-white text-sm font-semibold">1</div>
+              <span className="ml-2 text-sm font-medium">Tank Specifications</span>
+            </div>
+          </div>
+          <div className="flex-1 mx-4 h-1 bg-gray-200 rounded">
+            <div className="h-1 bg-blue-600 rounded" style={{ width: "25%" }}></div>
+          </div>
+          <div className="flex items-center text-gray-400">
+            <div className="flex items-center justify-center w-8 h-8 bg-gray-200 rounded-full text-gray-600 text-sm font-semibold">2</div>
+            <span className="ml-2 text-sm font-medium">Measurements</span>
+          </div>
+          <div className="flex-1 mx-4 h-1 bg-gray-200 rounded"></div>
+          <div className="flex items-center text-gray-400">
+            <div className="flex items-center justify-center w-8 h-8 bg-gray-200 rounded-full text-gray-600 text-sm font-semibold">3</div>
+            <span className="ml-2 text-sm font-medium">Inspection</span>
+          </div>
+          <div className="flex-1 mx-4 h-1 bg-gray-200 rounded"></div>
+          <div className="flex items-center text-gray-400">
+            <div className="flex items-center justify-center w-8 h-8 bg-gray-200 rounded-full text-gray-600 text-sm font-semibold">4</div>
+            <span className="ml-2 text-sm font-medium">Review</span>
+          </div>
+        </div>
+      </div>
+
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        {/* CORRECTED: Enhanced Tank Information Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Tank Identification</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="reportNumber">Report Number *</Label>
+                  <Input
+                    id="reportNumber"
+                    placeholder="RPT-2024-XXX"
+                    {...form.register('reportNumber')}
+                  />
+                  {form.formState.errors.reportNumber && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.reportNumber.message}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <Label htmlFor="tankId">Tank ID *</Label>
+                  <Input
+                    id="tankId"
+                    placeholder="TANK-101A"
+                    {...form.register('tankId')}
+                  />
+                  {form.formState.errors.tankId && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.tankId.message}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <Label htmlFor="service">Service *</Label>
+                  <Select value={watchedValues.service} onValueChange={(value) => form.setValue('service', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Service Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SERVICE_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {form.formState.errors.service && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.service.message}</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* CORRECTED: Enhanced Tank Dimensions with Units */}
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Tank Dimensions</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label>Diameter</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      type="number"
+                      step="0.1"
+                      placeholder="120"
+                      {...form.register('diameter', { valueAsNumber: true })}
+                      className="flex-1"
+                    />
+                    <Select value={watchedValues.diameterUnit} onValueChange={(value) => form.setValue('diameterUnit', value as any)}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ft">ft</SelectItem>
+                        <SelectItem value="in">in</SelectItem>
+                        <SelectItem value="m">m</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.formState.errors.diameter && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.diameter.message}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <Label>Height</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      type="number"
+                      step="0.1"
+                      placeholder="48"
+                      {...form.register('height', { valueAsNumber: true })}
+                      className="flex-1"
+                    />
+                    <Select value={watchedValues.heightUnit} onValueChange={(value) => form.setValue('heightUnit', value as any)}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ft">ft</SelectItem>
+                        <SelectItem value="in">in</SelectItem>
+                        <SelectItem value="m">m</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.formState.errors.height && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.height.message}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <Label>Capacity</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      type="number"
+                      step="1"
+                      placeholder="500000"
+                      {...form.register('capacity', { valueAsNumber: true })}
+                      className="flex-1"
+                    />
+                    <Select value={watchedValues.capacityUnit} onValueChange={(value) => form.setValue('capacityUnit', value as any)}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="gal">gal</SelectItem>
+                        <SelectItem value="bbl">bbl</SelectItem>
+                        <SelectItem value="m3">m³</SelectItem>
+                        <SelectItem value="ft3">ft³</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.formState.errors.capacity && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.capacity.message}</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* CORRECTED: Enhanced Construction Details */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Construction Details</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="constructionStandard">Construction Standard</Label>
+                  <Select value={watchedValues.constructionStandard} onValueChange={(value) => form.setValue('constructionStandard', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Standard" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CONSTRUCTION_STANDARDS.map(standard => (
+                        <SelectItem key={standard.value} value={standard.value}>
+                          {standard.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="shellMaterial">Shell Material</Label>
+                  <Select value={watchedValues.shellMaterial} onValueChange={(value) => form.setValue('shellMaterial', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Material" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SHELL_MATERIALS.map(material => (
+                        <SelectItem key={material.value} value={material.value}>
+                          {material.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="roofType">Roof Type</Label>
+                  <Select value={watchedValues.roofType} onValueChange={(value) => form.setValue('roofType', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Roof Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ROOF_TYPES.map(roof => (
+                        <SelectItem key={roof.value} value={roof.value}>
+                          {roof.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label htmlFor="foundationType">Foundation Type</Label>
+                  <Select value={watchedValues.foundationType} onValueChange={(value) => form.setValue('foundationType', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Foundation" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FOUNDATION_TYPES.map(foundation => (
+                        <SelectItem key={foundation.value} value={foundation.value}>
+                          {foundation.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* CORRECTED: Enhanced Inspection Details */}
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Inspection Details</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="inspector">Inspector *</Label>
+                  <Input
+                    id="inspector"
+                    placeholder="John Smith, API 653 Certified"
+                    {...form.register('inspector')}
+                  />
+                  {form.formState.errors.inspector && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.inspector.message}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <Label htmlFor="inspectionDate">Inspection Date *</Label>
+                  <Input
+                    id="inspectionDate"
+                    type="date"
+                    {...form.register('inspectionDate')}
+                  />
+                  {form.formState.errors.inspectionDate && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.inspectionDate.message}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <Label>Original Plate Thickness</Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      type="number"
+                      step="0.001"
+                      placeholder="0.500"
+                      {...form.register('originalThickness', { valueAsNumber: true })}
+                      className="flex-1"
+                    />
+                    <Select value={watchedValues.originalThicknessUnit} onValueChange={(value) => form.setValue('originalThicknessUnit', value as any)}>
+                      <SelectTrigger className="w-20">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="in">in</SelectItem>
+                        <SelectItem value="mm">mm</SelectItem>
+                        <SelectItem value="mils">mils</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.formState.errors.originalThickness && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.originalThickness.message}</p>
+                  )}
+                </div>
+                
+                <div>
+                  <div className="flex items-center">
+                    <Label htmlFor="yearsSinceLastInspection">Years Since Last Inspection</Label>
+                    <HelpTooltip content="Time elapsed since the previous API 653 inspection. Used for corrosion rate calculations." />
+                  </div>
+                  <Input
+                    id="yearsSinceLastInspection"
+                    type="number"
+                    min="1"
+                    placeholder="10"
+                    {...form.register('yearsSinceLastInspection', { valueAsNumber: true })}
+                  />
+                  {form.formState.errors.yearsSinceLastInspection && (
+                    <p className="text-sm text-red-600 mt-1">{form.formState.errors.yearsSinceLastInspection.message}</p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* CORRECTED: Enhanced Operating Conditions */}
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Operating Conditions</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <Label>Design Pressure</Label>
+                <div className="flex space-x-2">
+                  <Input
+                    type="number"
+                    step="0.1"
+                    placeholder="2.5"
+                    {...form.register('designPressure', { valueAsNumber: true })}
+                    className="flex-1"
+                  />
+                  <Select value={watchedValues.designPressureUnit} onValueChange={(value) => form.setValue('designPressureUnit', value as any)}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="psi">psi</SelectItem>
+                      <SelectItem value="bar">bar</SelectItem>
+                      <SelectItem value="kPa">kPa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div>
+                <Label>Operating Pressure</Label>
+                <div className="flex space-x-2">
+                  <Input
+                    type="number"
+                    step="0.1"
+                    placeholder="1.5"
+                    {...form.register('operatingPressure', { valueAsNumber: true })}
+                    className="flex-1"
+                  />
+                  <Select value={watchedValues.operatingPressureUnit} onValueChange={(value) => form.setValue('operatingPressureUnit', value as any)}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="psi">psi</SelectItem>
+                      <SelectItem value="bar">bar</SelectItem>
+                      <SelectItem value="kPa">kPa</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div>
+                <Label htmlFor="specificGravity">Specific Gravity</Label>
+                <Input
+                  id="specificGravity"
+                  type="number"
+                  step="0.001"
+                  placeholder="0.850"
+                  {...form.register('specificGravity', { valueAsNumber: true })}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="designTemperature">Design Temperature (°F)</Label>
+                <Input
+                  id="designTemperature"
+                  type="number"
+                  placeholder="200"
+                  {...form.register('designTemperature', { valueAsNumber: true })}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="operatingTemperature">Operating Temperature (°F)</Label>
+                <Input
+                  id="operatingTemperature"
+                  type="number"
+                  placeholder="150"
+                  {...form.register('operatingTemperature', { valueAsNumber: true })}
+                />
+              </div>
+              
+              <div>
+                <Label>Corrosion Allowance</Label>
+                <div className="flex space-x-2">
+                  <Input
+                    type="number"
+                    step="0.001"
+                    placeholder="0.125"
+                    {...form.register('corrosionAllowance', { valueAsNumber: true })}
+                    className="flex-1"
+                  />
+                  <Select value={watchedValues.corrosionAllowanceUnit} onValueChange={(value) => form.setValue('corrosionAllowanceUnit', value as any)}>
+                    <SelectTrigger className="w-20">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="in">in</SelectItem>
+                      <SelectItem value="mm">mm</SelectItem>
+                      <SelectItem value="mils">mils</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Enhanced Thickness Measurements Section */}
+        <ThicknessTable
+          measurements={measurements}
+          onMeasurementsChange={setMeasurements}
+          yearsSinceLastInspection={watchedValues.yearsSinceLastInspection || 1}
+        />
+
+        {/* Other sections remain the same but with enhanced unit handling */}
+        <AppurtenanceInspection
+          inspections={appurtenanceInspections}
+          onInspectionsChange={setAppurtenanceInspections}
+        />
+
+        <VentingSystemInspection
+          inspections={ventingInspections}
+          onInspectionsChange={setVentingInspections}
+        />
+
+        <RepairRecommendations
+          recommendations={repairRecommendations}
+          onRecommendationsChange={setRepairRecommendations}
+        />
+
+        <SettlementSurvey
+          data={settlementSurveyData as any}
+          onDataChange={(data: any) => setSettlementSurveyData(data)}
+        />
+
+        <NDETestLocations
+          results={ndeResults as any}
+          onResultsChange={(results: any) => setNDEResults(results)}
+        />
+
+        <SecondaryContainment
+          data={containmentData}
+          onDataChange={setContainmentData}
+        />
+
+        <VisualDocumentation
+          documents={visualDocuments}
+          onDocumentsChange={setVisualDocuments}
+        />
+
+        <ReportAttachments
+          attachments={attachments}
+          onAttachmentsChange={setAttachments}
+        />
+
+        {/* CORRECTED: Enhanced Inspection Checklist */}
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">API 653 Inspection Checklist</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div>
+                <h4 className="font-medium text-gray-900 mb-3">External Inspection</h4>
+                <div className="space-y-2">
+                  {checklist.filter(item => item.category === 'external').map((item, index) => {
+                    const originalIndex = checklist.findIndex(original => original === item);
+                    return (
+                      <div key={originalIndex} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`external-${originalIndex}`}
+                          checked={item.checked}
+                          onCheckedChange={(checked) => updateChecklistItem(originalIndex, checked as boolean)}
+                        />
+                        <Label htmlFor={`external-${originalIndex}`} className={`text-sm ${item.required ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
+                          {item.item} {item.required && <span className="text-red-500">*</span>}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium text-gray-900 mb-3">Internal Inspection</h4>
+                <div className="space-y-2">
+                  {checklist.filter(item => item.category === 'internal').map((item, index) => {
+                    const originalIndex = checklist.findIndex(original => original === item);
+                    return (
+                      <div key={originalIndex} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`internal-${originalIndex}`}
+                          checked={item.checked}
+                          onCheckedChange={(checked) => updateChecklistItem(originalIndex, checked as boolean)}
+                        />
+                        <Label htmlFor={`internal-${originalIndex}`} className={`text-sm ${item.required ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
+                          {item.item} {item.required && <span className="text-red-500">*</span>}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="font-medium text-gray-900 mb-3">Thickness Testing</h4>
+                <div className="space-y-2">
+                  {checklist.filter(item => item.category === 'thickness').map((item, index) => {
+                    const originalIndex = checklist.findIndex(original => original === item);
+                    return (
+                      <div key={originalIndex} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`thickness-${originalIndex}`}
+                          checked={item.checked}
+                          onCheckedChange={(checked) => updateChecklistItem(originalIndex, checked as boolean)}
+                        />
+                        <Label htmlFor={`thickness-${originalIndex}`} className={`text-sm ${item.required ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
+                          {item.item} {item.required && <span className="text-red-500">*</span>}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* CORRECTED: Enhanced Action Buttons */}
+        <div className="flex justify-between">
+          <Button 
+            type="button" 
+            variant="outline"
+            onClick={() => {
+              form.setValue('status', 'draft');
+              form.handleSubmit(onSubmit)();
+            }}
+          >
+            Save Draft
+          </Button>
+          <div className="space-x-4">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handlePreviewReport}
+              className="bg-slate-600 text-white hover:bg-slate-700"
+            >
+              Preview Report
+            </Button>
+            <Button 
+              type="submit"
+              disabled={createReportMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {createReportMutation.isPending ? 'Creating...' : 'Generate Report'}
+            </Button>
+          </div>
+        </div>
+      </form>
+
+      {/* Enhanced Report Preview Modal */}
+      <ReportPreviewModal
+        open={showPreview}
+        onClose={() => setShowPreview(false)}
+        report={createdReport}
+        measurements={measurements}
+        checklists={checklist.map((item, index) => ({
+          id: index,
+          reportId: 0,
+          category: item.category,
+          item: item.item,
+          checked: item.checked,
+          required: item.required || false,
+          notes: null
+        }))}
+      />
+    </div>
+  );
+}
+
