@@ -64,7 +64,6 @@ const REPAD_TYPES = [
 export function ThicknessTable({ 
   measurements, 
   onMeasurementsChange, 
-  originalThickness, 
   yearsSinceLastInspection 
 }: ThicknessTableProps) {
   const [newMeasurement, setNewMeasurement] = useState<Partial<ThicknessMeasurement>>({
@@ -114,18 +113,18 @@ export function ThicknessTable({
       component: newMeasurement.component!,
       measurementType: newMeasurement.measurementType || "shell",
       location: newMeasurement.location!,
-      elevation: newMeasurement.elevation,
-      gridReference: newMeasurement.gridReference,
-      plateNumber: newMeasurement.plateNumber,
-      annularRingPosition: newMeasurement.annularRingPosition,
-      criticalZoneType: newMeasurement.criticalZoneType,
-      repadNumber: newMeasurement.repadNumber,
-      repadType: newMeasurement.repadType,
-      repadThickness: newMeasurement.repadThickness,
-      nozzleId: newMeasurement.nozzleId,
-      nozzleSize: newMeasurement.nozzleSize,
-      flangeClass: newMeasurement.flangeClass,
-      flangeType: newMeasurement.flangeType,
+      elevation: newMeasurement.elevation || null,
+      gridReference: newMeasurement.gridReference || null,
+      plateNumber: newMeasurement.plateNumber || null,
+      annularRingPosition: newMeasurement.annularRingPosition || null,
+      criticalZoneType: newMeasurement.criticalZoneType || null,
+      repadNumber: newMeasurement.repadNumber || null,
+      repadType: newMeasurement.repadType || null,
+      repadThickness: newMeasurement.repadThickness || null,
+      nozzleId: newMeasurement.nozzleId || null,
+      nozzleSize: newMeasurement.nozzleSize || null,
+      flangeClass: newMeasurement.flangeClass || null,
+      flangeType: newMeasurement.flangeType || null,
       originalThickness: originalThickness.toString(),
       currentThickness: currentThickness.toFixed(3),
       corrosionRate: calculation.corrosionRate.toFixed(4),
@@ -155,15 +154,17 @@ export function ThicknessTable({
         // Recalculate if thickness changed and we have both original and current thickness
         if ((field === 'currentThickness' || field === 'originalThickness') && 
             updated.originalThickness && updated.currentThickness) {
+          const originalThickness = parseFloat(updated.originalThickness.toString());
+          const currentThickness = parseFloat(updated.currentThickness.toString());
           const calculation = calculateMeasurement(
-            updated.originalThickness,
-            parseFloat(updated.currentThickness.toString()),
+            originalThickness,
+            currentThickness,
             yearsSinceLastInspection
           );
           return {
             ...updated,
-            corrosionRate: calculation.corrosionRate,
-            remainingLife: calculation.remainingLife,
+            corrosionRate: calculation.corrosionRate.toFixed(4),
+            remainingLife: calculation.remainingLife.toFixed(1),
             status: calculation.status
           };
         }
@@ -291,7 +292,7 @@ export function ThicknessTable({
                     setNewMeasurement({
                       ...newMeasurement, 
                       component: value,
-                      originalThickness: component?.defaultThickness || null
+                      originalThickness: component?.defaultThickness?.toString() || null
                     });
                   }}
                 >
@@ -320,7 +321,7 @@ export function ThicknessTable({
                   type="number"
                   step="0.001"
                   value={newMeasurement.originalThickness || ''}
-                  onChange={(e) => setNewMeasurement({...newMeasurement, originalThickness: parseFloat(e.target.value) || null})}
+                  onChange={(e) => setNewMeasurement({...newMeasurement, originalThickness: e.target.value || null})}
                   placeholder="0.500"
                   className="w-20"
                 />

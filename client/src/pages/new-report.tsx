@@ -207,10 +207,14 @@ export default function NewReport() {
         apiRequest('POST', `/api/reports/${reportId}/measurements`, {
           component: measurement.component,
           location: measurement.location,
-          currentThickness: measurement.currentThickness,
-          corrosionRate: measurement.corrosionRate,
-          remainingLife: measurement.remainingLife,
-          status: measurement.status
+          measurementType: measurement.measurementType || 'shell',
+          currentThickness: measurement.currentThickness ? (typeof measurement.currentThickness === 'string' ? parseFloat(measurement.currentThickness) : measurement.currentThickness) : 0,
+          originalThickness: measurement.originalThickness || null,
+          corrosionRate: typeof measurement.corrosionRate === 'string' ? parseFloat(measurement.corrosionRate) : measurement.corrosionRate,
+          remainingLife: typeof measurement.remainingLife === 'string' ? parseFloat(measurement.remainingLife) : measurement.remainingLife,
+          status: measurement.status,
+          elevation: measurement.elevation || null,
+          createdAt: new Date().toISOString()
         })
       );
       return Promise.all(promises);
@@ -249,11 +253,11 @@ export default function NewReport() {
         reportNumber: data.reportNumber,
         tankId: data.tankId,
         service: data.service || '',
-        diameter: data.diameter ? String(data.diameter) : null,
-        height: data.height ? String(data.height) : null,
+        diameter: data.diameter ? parseFloat(data.diameter) : null,
+        height: data.height ? parseFloat(data.height) : null,
         inspector: data.inspector || 'Unknown',
         inspectionDate: data.inspectionDate,
-        originalThickness: data.originalThickness ? String(data.originalThickness) : null,
+        originalThickness: data.originalThickness ? parseFloat(data.originalThickness) : null,
         yearsSinceLastInspection: data.yearsSinceLastInspection ? Number(data.yearsSinceLastInspection) : 1,
         status: data.status || 'draft'
       };

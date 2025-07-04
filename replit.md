@@ -282,4 +282,10 @@ Business Rules: NO cost estimation for repair recommendations
   - Advanced section includes: Appurtenance, Repairs, Venting, Settlement, NDE, Containment
   - Edit functionality now matches the full capabilities of new report creation
   - Users can edit ALL aspects of a report, not just basic fields
+✓ DATA TYPE VALIDATION FIXES (July 4, 2025):
+  - Fixed original thickness validation error - now properly handles numeric/string conversion
+  - Fixed current thickness validation - decimal fields from database handled correctly
+  - Drizzle ORM returns decimal fields as strings for precision - added proper type conversion
+  - All thickness measurement fields now convert between string/number types as needed
+  - Report creation and thickness measurement creation now work without validation errors
 ```
