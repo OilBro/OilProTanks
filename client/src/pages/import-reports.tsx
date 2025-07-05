@@ -9,12 +9,20 @@ import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle, Download } from "l
 import { useLocation } from "wouter";
 
 interface ImportResult {
+  success?: boolean;
   message: string;
+  reportId?: number;
+  reportNumber?: string;
   importedData: any;
-  thicknessMeasurements: any[];
-  checklistItems: any[];
+  thicknessMeasurements: number | any[];
+  checklistItems: number | any[];
   totalRows: number;
-  preview: any[];
+  preview?: any[];
+  aiInsights?: {
+    confidence: number;
+    detectedColumns: string[];
+    mappingSuggestions: Record<string, string>;
+  };
 }
 
 export default function ImportReports() {
@@ -23,6 +31,16 @@ export default function ImportReports() {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  
+  // Helper functions to handle number | array types
+  const getCount = (field: number | any[] | undefined): number => {
+    if (field === undefined) return 0;
+    return typeof field === 'number' ? field : field.length;
+  };
+  
+  const isArray = (field: number | any[] | undefined): field is any[] => {
+    return field !== undefined && typeof field !== 'number';
+  };
 
   const importMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -53,14 +71,28 @@ export default function ImportReports() {
     onSuccess: (result: ImportResult) => {
       console.log('=== EXCEL IMPORT SUCCESS ===');
       console.log('Full import result:', result);
-      console.log('importedData field:', result.importedData);
       console.log('Result structure:', Object.keys(result));
       
-      setImportResult(result);
-      toast({
-        title: "File Processed",
-        description: `Successfully processed Excel file with ${result.totalRows} rows.`,
-      });
+      // If report was successfully created, navigate to it
+      if (result.success && result.reportId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
+        toast({
+          title: "Import Successful",
+          description: `Successfully imported report ${result.reportNumber}. Redirecting...`,
+        });
+        
+        // Navigate to the newly created report
+        setTimeout(() => {
+          setLocation(`/report/${result.reportId}`);
+        }, 1000);
+      } else {
+        // Show the import result for review
+        setImportResult(result);
+        toast({
+          title: "File Processed",
+          description: `Processed Excel file with ${result.totalRows} rows. Review the data below.`,
+        });
+      }
     },
     onError: (error: any) => {
       toast({
@@ -444,20 +476,20 @@ export default function ImportReports() {
                 <h4 className="font-medium text-gray-900 mb-3">Import Summary</h4>
                 <div className="bg-gray-50 p-4 rounded space-y-2 text-sm">
                   <div><strong>Total Rows:</strong> {importResult.totalRows}</div>
-                  <div><strong>Thickness Measurements:</strong> {importResult.thicknessMeasurements?.length || 0}</div>
-                  <div><strong>Checklist Items:</strong> {importResult.checklistItems?.length || 0}</div>
+                  <div><strong>Thickness Measurements:</strong> {getCount(importResult.thicknessMeasurements)}</div>
+                  <div><strong>Checklist Items:</strong> {getCount(importResult.checklistItems)}</div>
                   <div><strong>Status:</strong> <span className="text-green-600">Ready to import</span></div>
                 </div>
               </div>
             </div>
 
             {/* Thickness Measurements Preview */}
-            {importResult.thicknessMeasurements && importResult.thicknessMeasurements.length > 0 && (
+            {isArray(importResult.thicknessMeasurements) && importResult.thicknessMeasurements.length > 0 && (
               <div className="mt-6">
                 <h4 className="font-medium text-gray-900 mb-3">Thickness Measurements Found ({importResult.thicknessMeasurements.length})</h4>
                 <div className="bg-gray-50 p-4 rounded">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {importResult.thicknessMeasurements.slice(0, 6).map((measurement, index) => (
+                    {importResult.thicknessMeasurements.slice(0, 6).map((measurement: any, index: number) => (
                       <div key={index} className="bg-white p-3 rounded border text-sm">
                         <div><strong>Location:</strong> {measurement.location}</div>
                         <div><strong>Elevation:</strong> {measurement.elevation}</div>
@@ -475,12 +507,12 @@ export default function ImportReports() {
             )}
 
             {/* Checklist Items Preview */}
-            {importResult.checklistItems && importResult.checklistItems.length > 0 && (
+            {isArray(importResult.checklistItems) && importResult.checklistItems.length > 0 && (
               <div className="mt-6">
                 <h4 className="font-medium text-gray-900 mb-3">Checklist Items Found ({importResult.checklistItems.length})</h4>
                 <div className="bg-gray-50 p-4 rounded">
                   <div className="space-y-2">
-                    {importResult.checklistItems.slice(0, 5).map((item, index) => (
+                    {importResult.checklistItems.slice(0, 5).map((item: any, index: number) => (
                       <div key={index} className="bg-white p-3 rounded border text-sm flex items-center justify-between">
                         <div className="flex-1">
                           <div className="font-medium">{item.item}</div>
@@ -494,9 +526,9 @@ export default function ImportReports() {
                       </div>
                     ))}
                   </div>
-                  {importResult.checklistItems.length > 5 && (
+                  {getCount(importResult.checklistItems) > 5 && (
                     <p className="text-sm text-gray-600 mt-2">
-                      ... and {importResult.checklistItems.length - 5} more checklist items
+                      ... and {getCount(importResult.checklistItems) - 5} more checklist items
                     </p>
                   )}
                 </div>
@@ -504,12 +536,12 @@ export default function ImportReports() {
             )}
 
             {/* Raw Data Preview */}
-            {importResult.preview.length > 0 && (
+            {importResult.preview && importResult.preview.length > 0 && (
               <div className="mt-6">
                 <h4 className="font-medium text-gray-900 mb-2">Raw Data Preview (First 3 rows)</h4>
                 <div className="bg-gray-50 p-3 rounded text-xs overflow-x-auto">
                   <pre className="whitespace-pre-wrap">
-                    {JSON.stringify(importResult.preview.slice(0, 3), null, 2)}
+                    {JSON.stringify(importResult.preview?.slice(0, 3) || [], null, 2)}
                   </pre>
                 </div>
               </div>
