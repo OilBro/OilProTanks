@@ -112,11 +112,11 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
             if (!exists) {
               const measurement = {
                 location: location,
-                elevation: rowObj['Elevation'] || rowObj['Height'] || '0',
+                elevation: rowObj['Elevation'] || rowObj['Height'] || null,
                 currentThickness: value,
                 component: 'Shell',
                 measurementType: 'shell',
-                originalThickness: rowObj['Original'] || rowObj['Nominal'] || '0.375',
+                originalThickness: rowObj['Original'] || rowObj['Nominal'] || null,
                 createdAt: new Date().toISOString()
               };
               

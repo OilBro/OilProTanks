@@ -4,26 +4,26 @@ import { z } from "zod";
 
 export const inspectionReports = pgTable("inspection_reports", {
   id: serial("id").primaryKey(),
-  reportNumber: text("report_number").notNull().unique(),
-  tankId: text("tank_id").notNull(),
-  service: text("service").notNull(),
+  reportNumber: text("report_number").unique(),
+  tankId: text("tank_id"),
+  service: text("service"),
   diameter: decimal("diameter", { precision: 10, scale: 2 }),
   height: decimal("height", { precision: 10, scale: 2 }),
-  inspector: text("inspector").notNull(),
-  inspectionDate: text("inspection_date").notNull(),
+  inspector: text("inspector"),
+  inspectionDate: text("inspection_date"),
   originalThickness: decimal("original_thickness", { precision: 10, scale: 3 }),
   yearsSinceLastInspection: integer("years_since_last_inspection"),
-  status: text("status").notNull().default("draft"), // draft, in_progress, completed, action_required
-  createdAt: text("created_at").notNull(),
-  updatedAt: text("updated_at").notNull(),
+  status: text("status"), // draft, in_progress, completed, action_required
+  createdAt: text("created_at"),
+  updatedAt: text("updated_at"),
 });
 
 export const thicknessMeasurements = pgTable("thickness_measurements", {
   id: serial("id").primaryKey(),
-  reportId: integer("report_id").notNull(),
-  component: text("component").notNull(),
-  measurementType: text("measurement_type").notNull().default("shell"), // shell, bottom_plate, internal_annular, critical_zone, roof, internal_component, external_repad, nozzle, flange, chime
-  location: text("location").notNull(),
+  reportId: integer("report_id"),
+  component: text("component"),
+  measurementType: text("measurement_type"), // shell, bottom_plate, internal_annular, critical_zone, roof, internal_component, external_repad, nozzle, flange, chime
+  location: text("location"),
   elevation: text("elevation"),
   gridReference: text("grid_reference"), // For bottom plate grids (A1, B2, etc.)
   plateNumber: text("plate_number"), // Bottom plate identification
@@ -31,124 +31,124 @@ export const thicknessMeasurements = pgTable("thickness_measurements", {
   criticalZoneType: text("critical_zone_type"), // Settlement, corrosion, repair area
   repadNumber: text("repad_number"), // External repad identification
   repadType: text("repad_type"), // Full face, partial, reinforcement
-  repadThickness: text("repad_thickness"), // Thickness of repad material
+  repadThickness: decimal("repad_thickness", { precision: 10, scale: 3 }), // Thickness of repad material
   nozzleId: text("nozzle_id"), // Nozzle identification (N1, N2, etc.)
   nozzleSize: text("nozzle_size"), // Nozzle diameter
   flangeClass: text("flange_class"), // ANSI flange class
   flangeType: text("flange_type"), // Weld neck, slip-on, blind, etc.
-  originalThickness: text("original_thickness"),
+  originalThickness: decimal("original_thickness", { precision: 10, scale: 3 }),
   currentThickness: decimal("current_thickness", { precision: 10, scale: 3 }),
   corrosionRate: decimal("corrosion_rate", { precision: 10, scale: 4 }),
   remainingLife: decimal("remaining_life", { precision: 10, scale: 1 }),
-  status: text("status").notNull().default("acceptable"), // acceptable, monitor, action_required
-  createdAt: text("created_at").notNull(),
+  status: text("status"), // acceptable, monitor, action_required
+  createdAt: text("created_at"),
 });
 
 // Appurtenance inspection records for detailed component tracking
 export const appurtenanceInspections = pgTable("appurtenance_inspections", {
   id: serial("id").primaryKey(),
-  reportId: integer("report_id").notNull(),
-  appurtenanceType: text("appurtenance_type").notNull(), // nozzle, manway, vent, ladder, platform, gauge, valve
-  appurtenanceId: text("appurtenance_id").notNull(),
-  location: text("location").notNull(),
-  condition: text("condition").notNull(), // good, fair, poor, defective
+  reportId: integer("report_id"),
+  appurtenanceType: text("appurtenance_type"), // nozzle, manway, vent, ladder, platform, gauge, valve
+  appurtenanceId: text("appurtenance_id"),
+  location: text("location"),
+  condition: text("condition"), // good, fair, poor, defective
   findings: text("findings"),
   recommendations: text("recommendations"),
-  priority: text("priority").default("routine"), // urgent, high, medium, routine
-  photosAttached: boolean("photos_attached").default(false),
-  createdAt: text("created_at").notNull(),
+  priority: text("priority"), // urgent, high, medium, routine
+  photosAttached: boolean("photos_attached"),
+  createdAt: text("created_at"),
 });
 
 // Document attachments for photos and supporting files
 export const reportAttachments = pgTable("report_attachments", {
   id: serial("id").primaryKey(),
-  reportId: integer("report_id").notNull(),
-  filename: text("filename").notNull(),
-  fileType: text("file_type").notNull(), // photo, document, drawing, ndt_report
+  reportId: integer("report_id"),
+  filename: text("filename"),
+  fileType: text("file_type"), // photo, document, drawing, ndt_report
   description: text("description"),
-  category: text("category").notNull(), // general, defect, repair, nde, historical
-  uploadedAt: text("uploaded_at").notNull(),
+  category: text("category"), // general, defect, repair, nde, historical
+  uploadedAt: text("uploaded_at"),
 });
 
 // Repair recommendations with tracking
 export const repairRecommendations = pgTable("repair_recommendations", {
   id: serial("id").primaryKey(),
-  reportId: integer("report_id").notNull(),
-  component: text("component").notNull(),
-  defectDescription: text("defect_description").notNull(),
-  recommendation: text("recommendation").notNull(),
-  priority: text("priority").notNull(), // urgent, high, medium, routine
+  reportId: integer("report_id"),
+  component: text("component"),
+  defectDescription: text("defect_description"),
+  recommendation: text("recommendation"),
+  priority: text("priority"), // urgent, high, medium, routine
   dueDate: text("due_date"),
-  status: text("status").default("open"), // open, in_progress, completed, deferred
+  status: text("status"), // open, in_progress, completed, deferred
   apiReference: text("api_reference"), // API 653 clause reference
   completedDate: text("completed_date"),
   completionNotes: text("completion_notes"),
-  createdAt: text("created_at").notNull(),
+  createdAt: text("created_at"),
 });
 
 // Venting system inspection
 export const ventingSystemInspections = pgTable("venting_system_inspections", {
   id: serial("id").primaryKey(),
-  reportId: integer("report_id").notNull(),
-  ventType: text("vent_type").notNull(), // pressure_relief, vacuum_relief, conservation, emergency
-  ventId: text("vent_id").notNull(),
+  reportId: integer("report_id"),
+  ventType: text("vent_type"), // pressure_relief, vacuum_relief, conservation, emergency
+  ventId: text("vent_id"),
   setpoint: text("setpoint"),
-  condition: text("condition").notNull(),
+  condition: text("condition"),
   testResults: text("test_results"),
   findings: text("findings"),
   recommendations: text("recommendations"),
-  createdAt: text("created_at").notNull(),
+  createdAt: text("created_at"),
 });
 
 export const inspectionChecklists = pgTable("inspection_checklists", {
   id: serial("id").primaryKey(),
-  reportId: integer("report_id").notNull(),
-  category: text("category").notNull(), // external, internal
-  item: text("item").notNull(),
-  checked: boolean("checked").notNull().default(false),
+  reportId: integer("report_id"),
+  category: text("category"), // external, internal
+  item: text("item"),
+  checked: boolean("checked"),
   notes: text("notes"),
 });
 
 export const reportTemplates = pgTable("report_templates", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  service: text("service").notNull(),
+  name: text("name"),
+  service: text("service"),
   description: text("description"),
   defaultComponents: jsonb("default_components"), // JSON array of components
   defaultChecklist: jsonb("default_checklist"), // JSON array of checklist items
-  createdAt: text("created_at").notNull(),
+  createdAt: text("created_at"),
 });
 
 export const settlementSurveys = pgTable("settlement_surveys", {
   id: serial("id").primaryKey(),
-  reportId: integer("report_id").notNull(),
-  surveyType: text("survey_type", { enum: ["internal", "external"] }).notNull(),
-  measurementDate: text("measurement_date").notNull(),
-  referencePoint: text("reference_point").notNull(),
-  elevation: text("elevation").notNull(),
-  location: text("location").notNull(),
+  reportId: integer("report_id"),
+  surveyType: text("survey_type", { enum: ["internal", "external"] }),
+  measurementDate: text("measurement_date"),
+  referencePoint: text("reference_point"),
+  elevation: text("elevation"),
+  location: text("location"),
   notes: text("notes"),
-  createdAt: text("created_at").notNull(),
+  createdAt: text("created_at"),
 });
 
 export const dykeInspections = pgTable("dyke_inspections", {
   id: serial("id").primaryKey(),
-  reportId: integer("report_id").notNull(),
-  dykeType: text("dyke_type").notNull(), // primary, secondary, ring_wall
-  location: text("location").notNull(),
-  condition: text("condition").notNull(), // excellent, good, fair, poor, failed
+  reportId: integer("report_id"),
+  dykeType: text("dyke_type"), // primary, secondary, ring_wall
+  location: text("location"),
+  condition: text("condition"), // excellent, good, fair, poor, failed
   height: text("height"), // Measured height
   width: text("width"), // Measured width at top
   material: text("material"), // Concrete, earth, steel, composite
-  drainage: text("drainage").notNull().default("adequate"), // adequate, inadequate, blocked, none
-  cracking: boolean("cracking").notNull().default(false),
-  settlement: boolean("settlement").notNull().default(false),
-  erosion: boolean("erosion").notNull().default(false),
-  vegetation: boolean("vegetation").notNull().default(false),
-  spillageEvidence: boolean("spillage_evidence").notNull().default(false),
+  drainage: text("drainage"), // adequate, inadequate, blocked, none
+  cracking: boolean("cracking"),
+  settlement: boolean("settlement"),
+  erosion: boolean("erosion"),
+  vegetation: boolean("vegetation"),
+  spillageEvidence: boolean("spillage_evidence"),
   capacity: text("capacity"), // Calculated or design capacity
   notes: text("notes"),
-  createdAt: text("created_at").notNull(),
+  createdAt: text("created_at"),
 });
 
 export const insertInspectionReportSchema = createInsertSchema(inspectionReports).omit({

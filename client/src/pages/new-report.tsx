@@ -266,32 +266,32 @@ export default function NewReport() {
   const [ventingInspections, setVentingInspections] = useState<VentingSystemInspectionType[]>([]);
   const [attachments, setAttachments] = useState<ReportAttachment[]>([]);
   const [settlementData, setSettlementData] = useState<SettlementData>({
-    referenceElevation: 0,
+    referenceElevation: null,
     referenceElevationUnit: 'ft',
     points: [],
-    maxDifferentialSettlement: 0,
+    maxDifferentialSettlement: null,
     maxDifferentialSettlementUnit: 'in',
-    analysisMethod: 'circumferential',
+    analysisMethod: '',
     notes: ''
   });
   
   const [settlementSurveyData, setSettlementSurveyData] = useState({
-    referenceElevation: 0,
-    measurementDate: new Date().toISOString().split('T')[0],
+    referenceElevation: null,
+    measurementDate: '',
     instrument: '',
     points: [] as any[],
     analysisNotes: ''
   });
   const [ndeResults, setNDEResults] = useState<any[]>([]);
   const [containmentData, setContainmentData] = useState<ContainmentSystem>({
-    systemType: 'earthen_dyke',
-    capacity: 110,
+    systemType: '',
+    capacity: null,
     capacityUnit: 'gal',
-    drainageSystem: true,
+    drainageSystem: false,
     monitoring: false,
     components: [],
-    overallCondition: 'satisfactory',
-    complianceStatus: 'compliant',
+    overallCondition: '',
+    complianceStatus: '',
     notes: ''
   });
 
@@ -307,31 +307,31 @@ export default function NewReport() {
       reportNumber: '',
       tankId: '',
       service: '',
-      diameter: 0,
+      diameter: null,
       diameterUnit: 'ft',
-      height: 0,
+      height: null,
       heightUnit: 'ft',
-      capacity: 0,
+      capacity: null,
       capacityUnit: 'gal',
       inspector: '',
-      inspectionDate: new Date().toISOString().split('T')[0],
-      originalThickness: 0.5,
+      inspectionDate: '',
+      originalThickness: null,
       originalThicknessUnit: 'in',
-      yearsSinceLastInspection: 1,
+      yearsSinceLastInspection: null,
       constructionStandard: '',
       shellMaterial: '',
       roofType: '',
       foundationType: '',
-      designPressure: 0,
+      designPressure: null,
       designPressureUnit: 'psi',
-      operatingPressure: 0,
+      operatingPressure: null,
       operatingPressureUnit: 'psi',
-      designTemperature: 0,
-      operatingTemperature: 0,
-      specificGravity: 1.0,
-      corrosionAllowance: 0,
+      designTemperature: null,
+      operatingTemperature: null,
+      specificGravity: null,
+      corrosionAllowance: null,
       corrosionAllowanceUnit: 'in',
-      status: 'draft' as const
+      status: ''
     },
     mode: 'onSubmit',
     shouldFocusError: false,

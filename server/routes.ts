@@ -156,8 +156,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Parse and validate the report data
         const validatedData = insertInspectionReportSchema.parse({
           ...reportData,
-          status: reportData.status || 'draft',
-          yearsSinceLastInspection: parseInt(reportData.yearsSinceLastInspection) || 1
+          status: reportData.status || null,
+          yearsSinceLastInspection: reportData.yearsSinceLastInspection ? parseInt(reportData.yearsSinceLastInspection) : null
         });
         
         // Create the report

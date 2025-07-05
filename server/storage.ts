@@ -220,7 +220,7 @@ export class MemStorage implements IStorage {
       height: report.height || null,
       originalThickness: report.originalThickness || null,
       yearsSinceLastInspection: report.yearsSinceLastInspection || null,
-      status: report.status || 'draft',
+      status: report.status || null,
       id, 
       createdAt: now, 
       updatedAt: now 
