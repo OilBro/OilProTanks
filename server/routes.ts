@@ -281,6 +281,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all reports
+  app.get("/api/reports", async (req, res) => {
+    try {
+      const reports = await storage.getInspectionReports();
+      res.json(reports);
+    } catch (error) {
+      console.error('Failed to fetch reports:', error);
+      res.status(500).json({ message: "Failed to fetch reports" });
+    }
+  });
+
   // Inspection Reports
   app.get("/api/reports/:id", async (req, res) => {
     try {
