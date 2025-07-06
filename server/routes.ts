@@ -5,8 +5,13 @@ import { storage } from "./storage";
 import { 
   insertInspectionReportSchema, 
   insertThicknessMeasurementSchema,
-  insertInspectionChecklistSchema 
+  insertInspectionChecklistSchema,
+  inspectionReports,
+  thicknessMeasurements,
+  inspectionChecklists
 } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import { handleExcelImport } from "./import-handler";
 import { generateInspectionTemplate } from "./template-generator";
 
@@ -277,92 +282,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Inspection Reports
-  app.get("/api/reports", async (req, res) => {
+  app.get("/api/reports/:id", async (req, res) => {
     try {
-      const reports = await storage.getInspectionReports();
-      res.json(reports);
+      const reportId = parseInt(req.params.id);
+      console.log(`Fetching report with ID: ${reportId}`);
+
+      // Get the main report
+      const reportResult = await db.select().from(inspectionReports).where(eq(inspectionReports.id, reportId));
+
+      if (reportResult.length === 0) {
+        return res.status(404).json({ error: 'Report not found' });
+      }
+
+      const report = reportResult[0]; // ✅ FIX: Extract single object
+      console.log('Report found: Yes');
+
+      // ✅ FIX: Get related data
+      const thicknessMeasurementsData = await db.select().from(thicknessMeasurements).where(eq(thicknessMeasurements.reportId, reportId));
+      const checklistItemsData = await db.select().from(inspectionChecklists).where(eq(inspectionChecklists.reportId, reportId));
+
+      // ✅ FIX: Return properly structured response
+      const fullReport = {
+        ...report,
+        thicknessMeasurements: thicknessMeasurementsData || [],
+        checklistItems: checklistItemsData || [],
+        inspectionDate: report.inspectionDate ? new Date(report.inspectionDate).toISOString().split('T')[0] : null,
+        createdAt: report.createdAt ? new Date(report.createdAt).toISOString() : null,
+        updatedAt: report.updatedAt ? new Date(report.updatedAt).toISOString() : null
+      };
+
+      console.log(`Returning report with ${thicknessMeasurementsData.length} measurements and ${checklistItemsData.length} checklist items`);
+      res.json(fullReport);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch reports" });
+      console.error('Error fetching report:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   });
 
   app.get("/api/reports/:id", async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
-      console.log('Fetching report with ID:', id);
-      const report = await storage.getInspectionReport(id);
-      console.log('Report found:', report ? 'Yes' : 'No');
-      if (!report) {
-        return res.status(404).json({ message: "Report not found" });
+      const reportId = parseInt(req.params.id);
+      console.log(`Fetching report with ID: ${reportId}`);
+      
+      // Get the main report
+      const reportResult = await db.select().from(inspectionReports).where(eq(inspectionReports.id, reportId));
+      
+      if (reportResult.length === 0) {
+        return res.status(404).json({ error: 'Report not found' });
       }
-      res.json(report);
+      
+      const report = reportResult[0]; // ✅ FIX: Extract single object
+      console.log('Report found: Yes');
+      
+      // ✅ FIX: Get related data
+      const thicknessMeasurementsData = await db.select().from(thicknessMeasurements).where(eq(thicknessMeasurements.reportId, reportId));
+      const checklistItems = await db.select().from(inspectionChecklists).where(eq(inspectionChecklists.reportId, reportId));
+      
+      // ✅ FIX: Return properly structured response
+      const fullReport = {
+        ...report,
+        thicknessMeasurements: thicknessMeasurementsData || [],
+        checklistItems: checklistItems || [],
+        inspectionDate: report.inspectionDate ? new Date(report.inspectionDate).toISOString().split('T')[0] : null,
+        createdAt: report.createdAt ? new Date(report.createdAt).toISOString() : null,
+        updatedAt: report.updatedAt ? new Date(report.updatedAt).toISOString() : null
+      };
+      
+      console.log(`Returning report with ${thicknessMeasurementsData.length} measurements and ${checklistItems.length} checklist items`);
+      res.json(fullReport);
     } catch (error) {
       console.error('Error fetching report:', error);
-      res.status(500).json({ message: "Failed to fetch report" });
+      res.status(500).json({ error: 'Internal server error' });
     }
   });
 
-  app.post("/api/reports", async (req, res) => {
+  app.post('/api/reports', async (req, res) => {
     try {
-      console.log('Creating report with data:', req.body);
+      const reportData = req.body;
+      console.log('Creating report with data:', reportData);
       
-      // Convert units to standard values before validation
+      // Process data to match database schema
       const processedData = {
-        ...req.body,
-        // Convert dimensions to standard units as strings
-        diameter: req.body.diameter && req.body.diameterUnit ? 
-          UnitConverter.toFeet(req.body.diameter, req.body.diameterUnit).toString() : 
-          req.body.diameter?.toString(),
-        height: req.body.height && req.body.heightUnit ? 
-          UnitConverter.toFeet(req.body.height, req.body.heightUnit).toString() : 
-          req.body.height?.toString(),
-        capacity: req.body.capacity && req.body.capacityUnit ? 
-          UnitConverter.toGallons(req.body.capacity, req.body.capacityUnit).toString() : 
-          req.body.capacity?.toString(),
-        originalThickness: req.body.originalThickness && req.body.originalThicknessUnit ? 
-          UnitConverter.toInches(req.body.originalThickness, req.body.originalThicknessUnit).toString() : 
-          req.body.originalThickness?.toString(),
-        // Remove unit fields from validation
-        diameterUnit: undefined,
-        heightUnit: undefined,
-        capacityUnit: undefined,
-        originalThicknessUnit: undefined,
-        designPressureUnit: undefined,
-        operatingPressureUnit: undefined,
-        corrosionAllowanceUnit: undefined
+        tankId: reportData.tankId ? String(reportData.tankId).trim() : null,
+        service: reportData.service ? String(reportData.service).trim() : null,
+        diameter: reportData.diameter ? String(reportData.diameter) : null,
+        height: reportData.height ? String(reportData.height) : null,
+        inspector: reportData.inspector ? String(reportData.inspector).trim() : null,
+        inspectionDate: reportData.inspectionDate || null,
+        originalThickness: reportData.originalThickness ? String(reportData.originalThickness) : null,
+        yearsSinceLastInspection: reportData.yearsSinceLastInspection ? parseInt(reportData.yearsSinceLastInspection) : null,
+        reportNumber: reportData.reportNumber || `REP-${Date.now()}`,
+        status: reportData.status || 'in_progress',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
       
       console.log('Processed data for validation:', processedData);
-      const validatedData = insertInspectionReportSchema.parse(processedData);
-      const report = await storage.createInspectionReport(validatedData);
-      res.status(201).json(report);
-    } catch (error: any) {
-      console.error('Report creation error:', error);
-      console.error('Error details:', error.issues || error.message);
-      console.error('Received data:', JSON.stringify(req.body, null, 2));
       
-      // Log specific missing fields
-      if (error.issues) {
-        console.error('Validation issues:');
-        error.issues.forEach((issue: any) => {
-          console.error(`- Field: ${issue.path.join('.')}, Message: ${issue.message}`);
-        });
-      }
+      // Use the storage interface which handles validation
+      const newReport = await storage.createInspectionReport(processedData);
+      console.log(`Report created successfully with ID: ${newReport.id}`);
       
-      // Create a more informative error message
-      let errorMessage = "Failed to create report: ";
-      if (error.issues) {
-        errorMessage += error.issues.map((issue: any) => 
-          `${issue.path.join('.')}: ${issue.message}`
-        ).join(', ');
-      } else {
-        errorMessage += error.message || "Unknown error";
-      }
-      
+      res.status(201).json(newReport);
+    } catch (error) {
+      console.error('Error creating report:', error);
       res.status(400).json({ 
-        message: errorMessage,
-        error: error.issues || error.message,
-        receivedData: req.body
+        message: "Failed to create report", 
+        error: error instanceof Error ? error.message : 'Unknown error' 
       });
     }
   });

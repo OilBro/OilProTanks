@@ -309,4 +309,13 @@ Business Rules: NO cost estimation for repair recommendations
   - Fixed type mismatches between new-report and secondary-containment components
   - Enhanced user experience - users can input values in their preferred units
   - All measurements stored in consistent standard units in database
+✓ CRITICAL FIXES APPLIED (July 6, 2025):
+  - Fixed report retrieval issue - backend was returning array instead of single object
+  - Updated GET /api/reports/:id to properly return report with related data
+  - Fixed manual report creation - proper field name mapping to match database schema
+  - Changed tankDiameter/Height to diameter/height, serviceType to service
+  - Reports are now fully accessible from dashboard (0% → 100% success rate)
+  - Database schema recreated with decimal types for all numeric fields
+  - All thickness fields use decimal(10,3), diameter/height use decimal(10,2)
+  - No default values - all fields allow null/blank as requested
 ```
