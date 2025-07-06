@@ -413,19 +413,19 @@ export default function NewReport() {
         return;
       }
 
-      // CORRECTED: Process data with unit conversions to standard units
+      // Process data with unit conversions - NO DEFAULTS per user requirement
       const processedData = {
-        reportNumber: data.reportNumber,
-        tankId: data.tankId,
-        service: data.service || '',
+        reportNumber: data.reportNumber || null,
+        tankId: data.tankId || null,
+        service: data.service || null,
         // Convert all dimensions to standard units for storage (as strings for decimal columns)
         diameter: data.diameter ? UnitConverter.toFeet(data.diameter, data.diameterUnit || 'ft').toString() : null,
         height: data.height ? UnitConverter.toFeet(data.height, data.heightUnit || 'ft').toString() : null,
         capacity: data.capacity ? UnitConverter.toGallons(data.capacity, data.capacityUnit || 'gal').toString() : null,
-        inspector: data.inspector || 'Unknown',
-        inspectionDate: data.inspectionDate,
+        inspector: data.inspector || null,
+        inspectionDate: data.inspectionDate || null,
         originalThickness: data.originalThickness ? UnitConverter.toInches(data.originalThickness, data.originalThicknessUnit || 'in').toString() : null,
-        yearsSinceLastInspection: data.yearsSinceLastInspection || 1,
+        yearsSinceLastInspection: data.yearsSinceLastInspection ? parseInt(data.yearsSinceLastInspection) : null,
         constructionStandard: data.constructionStandard || null,
         shellMaterial: data.shellMaterial || null,
         roofType: data.roofType || null,
@@ -434,21 +434,9 @@ export default function NewReport() {
         operatingPressure: data.operatingPressure ? UnitConverter.toPSI(data.operatingPressure, data.operatingPressureUnit || 'psi') : null,
         designTemperature: data.designTemperature || null,
         operatingTemperature: data.operatingTemperature || null,
-        specificGravity: data.specificGravity || 1.0,
+        specificGravity: data.specificGravity || null,
         corrosionAllowance: data.corrosionAllowance ? UnitConverter.toInches(data.corrosionAllowance, data.corrosionAllowanceUnit || 'in') : null,
-        status: data.status || 'draft',
-        // Store original units as metadata for future reference
-        metadata: {
-          originalUnits: {
-            diameter: data.diameterUnit || 'ft',
-            height: data.heightUnit || 'ft',
-            capacity: data.capacityUnit || 'gal',
-            originalThickness: data.originalThicknessUnit || 'in',
-            designPressure: data.designPressureUnit || 'psi',
-            operatingPressure: data.operatingPressureUnit || 'psi',
-            corrosionAllowance: data.corrosionAllowanceUnit || 'in'
-          }
-        }
+        status: data.status || null
       };
 
       console.log('Processed data to send:', processedData);
@@ -744,7 +732,7 @@ export default function NewReport() {
                       }
                     }}
 
-                    {...form.register('yearsSinceLastInspection')}
+                    {...form.register('yearsSinceLastInspection', { valueAsNumber: true })}
                   />
                 </div>
               </div>

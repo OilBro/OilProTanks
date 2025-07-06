@@ -82,11 +82,19 @@ export class MemStorage implements IStorage {
   private thicknessMeasurements: Map<number, ThicknessMeasurement>;
   private inspectionChecklists: Map<number, InspectionChecklist>;
   private reportTemplates: Map<number, ReportTemplate>;
+  private appurtenanceInspections: Map<number, AppurtenanceInspection>;
+  private reportAttachments: Map<number, ReportAttachment>;
+  private repairRecommendations: Map<number, RepairRecommendation>;
+  private ventingSystemInspections: Map<number, VentingSystemInspection>;
   private currentUserId: number;
   private currentReportId: number;
   private currentMeasurementId: number;
   private currentChecklistId: number;
   private currentTemplateId: number;
+  private currentAppurtenanceId: number;
+  private currentAttachmentId: number;
+  private currentRecommendationId: number;
+  private currentVentingId: number;
 
   constructor() {
     this.users = new Map();
@@ -94,11 +102,19 @@ export class MemStorage implements IStorage {
     this.thicknessMeasurements = new Map();
     this.inspectionChecklists = new Map();
     this.reportTemplates = new Map();
+    this.appurtenanceInspections = new Map();
+    this.reportAttachments = new Map();
+    this.repairRecommendations = new Map();
+    this.ventingSystemInspections = new Map();
     this.currentUserId = 1;
     this.currentReportId = 1;
     this.currentMeasurementId = 1;
     this.currentChecklistId = 1;
     this.currentTemplateId = 1;
+    this.currentAppurtenanceId = 1;
+    this.currentAttachmentId = 1;
+    this.currentRecommendationId = 1;
+    this.currentVentingId = 1;
     
     this.initializeTemplates();
   }
@@ -348,6 +364,70 @@ export class MemStorage implements IStorage {
     };
     this.reportTemplates.set(id, newTemplate);
     return newTemplate;
+  }
+
+  async getAppurtenanceInspections(reportId: number): Promise<AppurtenanceInspection[]> {
+    return Array.from(this.appurtenanceInspections.values())
+      .filter(inspection => inspection.reportId === reportId);
+  }
+
+  async createAppurtenanceInspection(inspection: InsertAppurtenanceInspection): Promise<AppurtenanceInspection> {
+    const id = this.currentAppurtenanceId++;
+    const newInspection: AppurtenanceInspection = { 
+      ...inspection, 
+      id,
+      createdAt: new Date().toISOString()
+    };
+    this.appurtenanceInspections.set(id, newInspection);
+    return newInspection;
+  }
+
+  async getReportAttachments(reportId: number): Promise<ReportAttachment[]> {
+    return Array.from(this.reportAttachments.values())
+      .filter(attachment => attachment.reportId === reportId);
+  }
+
+  async createReportAttachment(attachment: InsertReportAttachment): Promise<ReportAttachment> {
+    const id = this.currentAttachmentId++;
+    const newAttachment: ReportAttachment = { 
+      ...attachment, 
+      id,
+      uploadedAt: new Date().toISOString()
+    };
+    this.reportAttachments.set(id, newAttachment);
+    return newAttachment;
+  }
+
+  async getRepairRecommendations(reportId: number): Promise<RepairRecommendation[]> {
+    return Array.from(this.repairRecommendations.values())
+      .filter(recommendation => recommendation.reportId === reportId);
+  }
+
+  async createRepairRecommendation(recommendation: InsertRepairRecommendation): Promise<RepairRecommendation> {
+    const id = this.currentRecommendationId++;
+    const newRecommendation: RepairRecommendation = { 
+      ...recommendation, 
+      id,
+      createdAt: new Date().toISOString()
+    };
+    this.repairRecommendations.set(id, newRecommendation);
+    return newRecommendation;
+  }
+
+  async getVentingSystemInspections(reportId: number): Promise<VentingSystemInspection[]> {
+    return Array.from(this.ventingSystemInspections.values())
+      .filter(inspection => inspection.reportId === reportId);
+  }
+
+  async createVentingSystemInspection(inspection: InsertVentingSystemInspection): Promise<VentingSystemInspection> {
+    const id = this.currentVentingId++;
+    const newInspection: VentingSystemInspection = { 
+      ...inspection, 
+      id,
+      createdAt: new Date().toISOString()
+    };
+    this.ventingSystemInspections.set(id, newInspection);
+    return newInspection;
   }
 }
 

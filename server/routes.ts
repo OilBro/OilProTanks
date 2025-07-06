@@ -289,12 +289,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/reports/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      console.log('Fetching report with ID:', id);
       const report = await storage.getInspectionReport(id);
+      console.log('Report found:', report ? 'Yes' : 'No');
       if (!report) {
         return res.status(404).json({ message: "Report not found" });
       }
       res.json(report);
     } catch (error) {
+      console.error('Error fetching report:', error);
       res.status(500).json({ message: "Failed to fetch report" });
     }
   });
