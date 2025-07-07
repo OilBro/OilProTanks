@@ -205,7 +205,7 @@ CRITICAL INSTRUCTIONS:
 15. Return ONLY valid JSON, no explanations`;
 
     const request: OpenRouterRequest = {
-      model: 'anthropic/claude-sonnet-4-20250514', // Latest Claude Sonnet 4 model
+      model: 'anthropic/claude-3.5-sonnet:beta', // Valid Claude 3.5 Sonnet model
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
@@ -227,8 +227,12 @@ CRITICAL INSTRUCTIONS:
 
     if (!response.ok) {
       const error = await response.text();
-      console.error('OpenRouter API error:', error);
-      throw new Error(`OpenRouter API error: ${response.status}`);
+      console.error('=== OpenRouter API Error ===');
+      console.error('Status:', response.status);
+      console.error('Response:', error);
+      console.error('API Key exists:', !!process.env.OPENROUTER_API_KEY);
+      console.error('API Key prefix:', process.env.OPENROUTER_API_KEY?.substring(0, 10) + '...');
+      throw new Error(`OpenRouter API error: ${response.status} - ${error}`);
     }
 
     const result = await response.json();
@@ -259,7 +263,10 @@ CRITICAL INSTRUCTIONS:
     }
     
   } catch (error) {
-    console.error('OpenRouter analysis error:', error);
+    console.error('=== OpenRouter Analysis Failed ===');
+    console.error('Error:', error);
+    console.error('This means your OpenRouter AI is NOT being used!');
+    console.error('Falling back to standard parsing...');
     
     // Return a basic analysis as fallback
     return {

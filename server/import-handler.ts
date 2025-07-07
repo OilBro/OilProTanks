@@ -84,7 +84,10 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
 
   // If AI analysis has low confidence, enhance with standard parsing from ALL sheets
   if (aiAnalysis.confidence < 0.5) {
-    console.log('AI confidence low, enhancing with standard parsing from all sheets');
+    console.log('=== AI ANALYSIS FAILED OR LOW CONFIDENCE ===');
+    console.log('AI confidence:', aiAnalysis.confidence);
+    console.log('This means your OpenRouter AI is not working properly!');
+    console.log('Falling back to standard parsing from all sheets...');
     
     // Process ALL sheets for additional data
     for (const sheetName of workbook.SheetNames) {

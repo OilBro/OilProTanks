@@ -332,4 +332,11 @@ Business Rules: NO cost estimation for repair recommendations
   - Reports now accessible via both /report/17 and /report/IMP-1751863325467 formats
   - All imported reports with report numbers now fully accessible
   - System achieves 100% report accessibility across all access methods
+✓ OPENROUTER AI INTEGRATION FIXED (July 7, 2025):
+  - Fixed OpenRouter model ID from invalid "anthropic/claude-sonnet-4-20250514" to valid "anthropic/claude-3.5-sonnet:beta"
+  - OpenRouter API now works correctly with user's API key
+  - Added comprehensive error logging to show when AI analysis fails vs succeeds
+  - Added user feedback on import page showing AI analysis status and confidence scores
+  - Users can now see whether OpenRouter AI was used successfully or fell back to standard parsing
+  - Excel imports now leverage full AI-powered data extraction capabilities
 ```

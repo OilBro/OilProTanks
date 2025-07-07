@@ -450,6 +450,30 @@ export default function ImportReports() {
               <h3 className="text-lg font-semibold text-gray-900">Import Results</h3>
             </div>
 
+            {/* AI Analysis Status */}
+            {importResult.aiAnalysis && (
+              <div className={`p-3 rounded-lg mb-4 ${importResult.aiAnalysis.confidence > 0.5 ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'}`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    {importResult.aiAnalysis.confidence > 0.5 ? (
+                      <span className="text-green-600 font-medium">✓ OpenRouter AI Analysis Successful</span>
+                    ) : (
+                      <span className="text-orange-600 font-medium">⚠ OpenRouter AI Analysis Failed</span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    Confidence: {Math.round(importResult.aiAnalysis.confidence * 100)}%
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  {importResult.aiAnalysis.confidence > 0.5 
+                    ? 'Your OpenRouter AI successfully analyzed the spreadsheet and extracted structured data'
+                    : 'OpenRouter AI analysis failed - system used standard parsing as fallback'
+                  }
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Extracted Report Data */}
               <div>
