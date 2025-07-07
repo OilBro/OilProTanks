@@ -1,7 +1,14 @@
 import * as XLSX from "xlsx";
 import { analyzeSpreadsheetWithOpenRouter, processSpreadsheetWithAI } from "./openrouter-analyzer";
+import { analyzePDFWithOpenRouter, processPDFWithAI } from "./pdf-analyzer";
 
 export async function handleExcelImport(buffer: Buffer, fileName: string) {
+  // Check if this is a PDF file
+  if (fileName.toLowerCase().endsWith('.pdf')) {
+    return handlePDFImport(buffer, fileName);
+  }
+  
+  // Continue with Excel processing
   // Parse the Excel file
   let workbook: XLSX.WorkBook;
   try {
@@ -404,4 +411,72 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     totalRows: data.length,
     preview: data.slice(0, 5)
   };
+}
+
+export async function handlePDFImport(buffer: Buffer, fileName: string) {
+  console.log('=== PDF Import Request ===');
+  console.log('Processing PDF file:', fileName);
+  console.log('File size:', buffer.length, 'bytes');
+  
+  try {
+    // Use OpenRouter AI to analyze the PDF
+    console.log('=== ATTEMPTING OPENROUTER PDF ANALYSIS ===');
+    console.log('About to call analyzePDFWithOpenRouter...');
+    console.log('Filename:', fileName);
+    
+    let pdfAnalysis;
+    try {
+      console.log('Calling OpenRouter PDF analyzer...');
+      pdfAnalysis = await analyzePDFWithOpenRouter(buffer, fileName);
+      console.log('OpenRouter PDF analysis completed');
+    } catch (error) {
+      console.error('=== OPENROUTER PDF ANALYSIS FAILED ===');
+      console.error('Error calling analyzePDFWithOpenRouter:', error);
+      pdfAnalysis = {
+        reportData: {},
+        thicknessMeasurements: [],
+        checklistItems: [],
+        confidence: 0,
+        mappingSuggestions: {},
+        detectedFields: [],
+        extractedText: ''
+      };
+    }
+    
+    // Process PDF with AI insights
+    const { importedData, thicknessMeasurements, checklistItems, totalPages, preview, aiAnalysis } = await processPDFWithAI(pdfAnalysis);
+    
+    console.log('=== FINAL PDF IMPORT DATA VALIDATION ===');
+    console.log('Tank ID:', importedData.tankId, 'Type:', typeof importedData.tankId);
+    console.log('Service:', importedData.service, 'Type:', typeof importedData.service);
+    console.log('Inspector:', importedData.inspector, 'Type:', typeof importedData.inspector);
+    console.log('Total Measurements:', thicknessMeasurements.length);
+    console.log('Total Checklist Items:', checklistItems.length);
+    console.log('Total Pages:', totalPages);
+    
+    if (aiAnalysis.confidence >= 30) {
+      console.log('=== AI ANALYSIS SUCCESSFUL ===');
+      console.log('AI confidence:', aiAnalysis.confidence);
+      console.log('This means your OpenRouter AI successfully analyzed the PDF!');
+    } else {
+      console.log('=== AI ANALYSIS FAILED OR LOW CONFIDENCE ===');
+      console.log('AI confidence:', aiAnalysis.confidence);
+      console.log('This means your OpenRouter AI could not analyze the PDF properly!');
+      console.log('Falling back to basic PDF parsing...');
+    }
+    
+    return {
+      importedData,
+      thicknessMeasurements,
+      checklistItems,
+      totalRows: totalPages,
+      preview,
+      aiAnalysis
+    };
+    
+  } catch (error) {
+    console.error('PDF import error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    throw error;
+  }
 }

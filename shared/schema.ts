@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, decimal, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, decimal, boolean, timestamp, jsonb, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -221,6 +221,28 @@ export type InsertRepairRecommendation = z.infer<typeof insertRepairRecommendati
 export type RepairRecommendation = typeof repairRecommendations.$inferSelect;
 export type InsertVentingSystemInspection = z.infer<typeof insertVentingSystemInspectionSchema>;
 export type VentingSystemInspection = typeof ventingSystemInspections.$inferSelect;
+
+// Inspection checklist templates
+export const checklistTemplates = pgTable("checklist_templates", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  category: varchar("category", { length: 100 }).notNull(), // external, internal, foundation, roof, etc.
+  items: text("items").notNull(), // JSON array of checklist items
+  isActive: boolean("is_active").default(true),
+  createdBy: varchar("created_by", { length: 255 }),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const insertChecklistTemplateSchema = createInsertSchema(checklistTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type ChecklistTemplate = typeof checklistTemplates.$inferSelect;
+export type InsertChecklistTemplate = z.infer<typeof insertChecklistTemplateSchema>;
 
 // Users table for basic auth
 export const users = pgTable("users", {

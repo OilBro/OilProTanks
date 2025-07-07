@@ -11,6 +11,7 @@ import Dashboard from "@/pages/dashboard";
 import NewReport from "@/pages/new-report";
 import Templates from "@/pages/templates";
 import ImportReports from "@/pages/import-reports";
+import ChecklistTemplates from "@/pages/checklist-templates";
 import { ReportView } from "@/pages/report-view";
 import { EditReportFull } from "@/pages/edit-report-full";
 import NotFound from "@/pages/not-found";
@@ -47,6 +48,9 @@ function Header() {
               <Link href="/templates" className={getTabClass('templates')}>
                 Templates
               </Link>
+              <Link href="/checklists" className={getTabClass('checklists')}>
+                Checklists
+              </Link>
             </nav>
           </div>
           <div className="flex items-center space-x-4">
@@ -71,6 +75,7 @@ function Router() {
       <Route path="/new-report" component={NewReport} />
       <Route path="/import" component={ImportReports} />
       <Route path="/templates" component={Templates} />
+      <Route path="/checklists" component={ChecklistTemplates} />
       <Route path="/report/:id" component={ReportView} />
       <Route path="/edit-report/:id" component={EditReportFull} />
       <Route component={NotFound} />

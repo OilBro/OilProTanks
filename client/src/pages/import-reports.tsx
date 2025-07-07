@@ -417,12 +417,12 @@ export default function ImportReports() {
               <input
                 id="file-upload"
                 type="file"
-                accept=".xlsx,.xls"
+                accept=".xlsx,.xls,.xlsm,.pdf"
                 onChange={handleFileInput}
                 className="hidden"
               />
               <p className="text-xs text-gray-400">
-                Supports .xlsx and .xls files up to 10MB
+                Supports .xlsx, .xls, .xlsm, and .pdf files up to 25MB
               </p>
             </div>
           </div>

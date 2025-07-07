@@ -13,6 +13,8 @@ import {
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { handleExcelImport } from "./import-handler";
+import { handleChecklistUpload, standardChecklists } from "./checklist-handler";
+import { checklistTemplates, insertChecklistTemplateSchema } from "@shared/schema";
 import { generateInspectionTemplate } from "./template-generator";
 
 // Unit converter utilities
@@ -66,17 +68,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Configure multer for file uploads
   const upload = multer({ 
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+    limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit for PDFs
     fileFilter: (req, file, cb) => {
       const allowedTypes = [
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
         'application/vnd.ms-excel', // .xls
-        'application/vnd.ms-excel.sheet.macroEnabled.12' // .xlsm
+        'application/vnd.ms-excel.sheet.macroEnabled.12', // .xlsm
+        'application/pdf' // .pdf
       ];
       const isAllowed = allowedTypes.includes(file.mimetype) || 
                        file.originalname.toLowerCase().endsWith('.xlsx') ||
                        file.originalname.toLowerCase().endsWith('.xls') ||
-                       file.originalname.toLowerCase().endsWith('.xlsm');
+                       file.originalname.toLowerCase().endsWith('.xlsm') ||
+                       file.originalname.toLowerCase().endsWith('.pdf');
       cb(null, isAllowed);
     }
   });
@@ -101,7 +105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Excel Import endpoint
   app.post("/api/reports/import", upload.single('excelFile'), async (req, res) => {
     try {
-      console.log('=== Excel Import Request ===');
+      console.log('=== File Import Request ===');
       console.log('File received:', req.file ? {
         originalname: req.file.originalname,
         size: req.file.size,
@@ -112,9 +116,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      // Use the import handler with AI analysis
-      console.log('Calling handleExcelImport...');
-      const result = await handleExcelImport(req.file.buffer, req.file.originalname);
+      // Check file type and route to appropriate handler
+      const fileName = req.file.originalname.toLowerCase();
+      let result;
+      
+      if (fileName.endsWith('.pdf')) {
+        console.log('Calling handlePDFImport...');
+        // Import handlePDFImport here since it's in the same file
+        const { handlePDFImport } = await import('./import-handler');
+        result = await handlePDFImport(req.file.buffer, req.file.originalname);
+      } else {
+        console.log('Calling handleExcelImport...');
+        result = await handleExcelImport(req.file.buffer, req.file.originalname);
+      }
       
       console.log('Import result summary:');
       console.log('- Total rows:', result.totalRows);
@@ -669,6 +683,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(template);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch template" });
+    }
+  });
+
+  // Checklist Templates Management
+  app.get("/api/checklist-templates", async (req, res) => {
+    try {
+      const templates = await db.select().from(checklistTemplates).where(eq(checklistTemplates.isActive, true));
+      res.json(templates);
+    } catch (error) {
+      console.error('Failed to fetch checklist templates:', error);
+      res.status(500).json({ message: "Failed to fetch checklist templates" });
+    }
+  });
+
+  app.post("/api/checklist-templates", async (req, res) => {
+    try {
+      const validatedData = insertChecklistTemplateSchema.parse(req.body);
+      const [template] = await db.insert(checklistTemplates).values(validatedData).returning();
+      res.json(template);
+    } catch (error) {
+      console.error('Failed to create checklist template:', error);
+      res.status(500).json({ message: "Failed to create checklist template" });
+    }
+  });
+
+  app.post("/api/checklist-templates/upload", upload.single('checklistFile'), async (req, res) => {
+    try {
+      console.log('=== Checklist Upload Request ===');
+      console.log('File received:', req.file ? {
+        originalname: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      } : 'No file');
+      
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Extract checklist data from file
+      const checklistData = await handleChecklistUpload(req.file.buffer, req.file.originalname);
+      
+      // Save to database
+      const templateData = {
+        name: checklistData.name,
+        description: checklistData.description || '',
+        category: checklistData.category,
+        items: JSON.stringify(checklistData.items),
+        createdBy: 'Uploaded'
+      };
+      
+      const [template] = await db.insert(checklistTemplates).values(templateData).returning();
+      
+      res.json({
+        success: true,
+        message: `Successfully uploaded checklist template: ${template.name}`,
+        template,
+        itemsCount: checklistData.items.length
+      });
+      
+    } catch (error) {
+      console.error('Checklist upload error:', error);
+      res.status(500).json({ 
+        message: "Failed to process checklist file", 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  });
+
+  app.post("/api/checklist-templates/standard", async (req, res) => {
+    try {
+      const { templateType } = req.body;
+      
+      if (!standardChecklists[templateType as keyof typeof standardChecklists]) {
+        return res.status(400).json({ message: "Invalid template type" });
+      }
+      
+      const standardTemplate = standardChecklists[templateType as keyof typeof standardChecklists];
+      
+      // Check if template already exists
+      const existing = await db.select().from(checklistTemplates)
+        .where(eq(checklistTemplates.name, standardTemplate.name));
+      
+      if (existing.length > 0) {
+        return res.status(400).json({ message: "Standard template already exists" });
+      }
+      
+      const templateData = {
+        name: standardTemplate.name,
+        description: standardTemplate.description,
+        category: standardTemplate.category,
+        items: JSON.stringify(standardTemplate.items),
+        createdBy: 'System'
+      };
+      
+      const [template] = await db.insert(checklistTemplates).values(templateData).returning();
+      
+      res.json({
+        success: true,
+        message: `Successfully created standard template: ${template.name}`,
+        template
+      });
+      
+    } catch (error) {
+      console.error('Standard template creation error:', error);
+      res.status(500).json({ 
+        message: "Failed to create standard template", 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
     }
   });
 
