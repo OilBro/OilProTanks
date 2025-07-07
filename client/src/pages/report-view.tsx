@@ -20,37 +20,36 @@ import type {
 
 export function ReportView() {
   const { id } = useParams();
-  const reportId = parseInt(id || "0");
   const { toast } = useToast();
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
 
-  const { data: report, isLoading: reportLoading } = useQuery<InspectionReport>({
-    queryKey: [`/api/reports/${reportId}`],
+  // Check if the id is a number (report ID) or string (report number)
+  const isNumericId = !isNaN(parseInt(id || "0")) && parseInt(id || "0") > 0;
+  const reportId = isNumericId ? parseInt(id || "0") : 0;
+  const reportNumber = !isNumericId ? id : null;
+
+  // Choose the appropriate API endpoint based on the parameter type
+  const apiEndpoint = isNumericId ? `/api/reports/${reportId}` : `/api/reports/by-number/${reportNumber}`;
+
+  const { data: reportWithRelations, isLoading: reportLoading } = useQuery<InspectionReport & {
+    thicknessMeasurements: ThicknessMeasurement[];
+    inspectionChecklists: InspectionChecklist[];
+    appurtenanceInspections: AppurtenanceInspection[];
+    repairRecommendations: RepairRecommendation[];
+    ventingInspections: VentingSystemInspection[];
+    attachments: ReportAttachment[];
+  }>({
+    queryKey: [apiEndpoint],
   });
 
-  const { data: measurements = [] } = useQuery<ThicknessMeasurement[]>({
-    queryKey: [`/api/reports/${reportId}/measurements`],
-  });
-
-  const { data: checklists = [] } = useQuery<InspectionChecklist[]>({
-    queryKey: [`/api/reports/${reportId}/checklists`],
-  });
-
-  const { data: appurtenanceInspections = [] } = useQuery<AppurtenanceInspection[]>({
-    queryKey: [`/api/reports/${reportId}/appurtenances`],
-  });
-
-  const { data: repairRecommendations = [] } = useQuery<RepairRecommendation[]>({
-    queryKey: [`/api/reports/${reportId}/repairs`],
-  });
-
-  const { data: ventingInspections = [] } = useQuery<VentingSystemInspection[]>({
-    queryKey: [`/api/reports/${reportId}/venting`],
-  });
-
-  const { data: attachments = [] } = useQuery<ReportAttachment[]>({
-    queryKey: [`/api/reports/${reportId}/attachments`],
-  });
+  // Extract data from the combined response
+  const report = reportWithRelations;
+  const measurements = reportWithRelations?.thicknessMeasurements || [];
+  const checklists = reportWithRelations?.inspectionChecklists || [];
+  const appurtenanceInspections = reportWithRelations?.appurtenanceInspections || [];
+  const repairRecommendations = reportWithRelations?.repairRecommendations || [];
+  const ventingInspections = reportWithRelations?.ventingInspections || [];
+  const attachments = reportWithRelations?.attachments || [];
 
   if (reportLoading) {
     return (

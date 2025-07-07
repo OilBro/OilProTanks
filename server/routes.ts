@@ -292,6 +292,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get report by number (for URL compatibility)
+  app.get("/api/reports/by-number/:reportNumber", async (req, res) => {
+    try {
+      const reportNumber = req.params.reportNumber;
+      console.log(`Fetching report with number: ${reportNumber}`);
+
+      // Get the main report by report number
+      const reports = await storage.getInspectionReports();
+      const report = reports.find(r => r.reportNumber === reportNumber);
+      
+      if (!report) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+
+      // Get related data (basic measurements and checklists first)
+      const [measurements, checklists] = await Promise.all([
+        storage.getThicknessMeasurements(report.id),
+        storage.getInspectionChecklists(report.id)
+      ]);
+
+      const reportWithRelations = {
+        ...report,
+        thicknessMeasurements: measurements,
+        inspectionChecklists: checklists,
+        appurtenanceInspections: [],
+        repairRecommendations: [],
+        ventingInspections: [],
+        attachments: []
+      };
+
+      console.log(`Report found: Yes`);
+      console.log(`Returning report with ${measurements.length} measurements and ${checklists.length} checklist items`);
+      
+      res.json(reportWithRelations);
+    } catch (error) {
+      console.error('Error fetching report by number:', error);
+      res.status(500).json({ message: "Failed to fetch report" });
+    }
+  });
+
   // Inspection Reports
   app.get("/api/reports/:id", async (req, res) => {
     try {
