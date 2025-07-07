@@ -28,10 +28,18 @@ export async function analyzeSpreadsheetWithOpenRouter(
   workbook: XLSX.WorkBook,
   fileName: string
 ): Promise<SpreadsheetAnalysis> {
+  console.log('=== OPENROUTER FUNCTION CALLED ===');
+  console.log('Function parameters received:', {
+    workbook: !!workbook,
+    fileName,
+    sheetCount: workbook?.SheetNames?.length || 0
+  });
+  
   try {
     console.log('=== OpenRouter AI Analysis Starting ===');
     console.log('Analyzing file:', fileName);
     console.log('Sheet names:', workbook.SheetNames);
+    console.log('API Key available:', !!process.env.OPENROUTER_API_KEY);
     
     // Analyze ALL sheets in the workbook
     let allSheetData = '';

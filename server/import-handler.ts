@@ -77,7 +77,28 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
   }
 
   // Use AI to analyze the ENTIRE workbook
-  const aiAnalysis = await analyzeSpreadsheetWithOpenRouter(workbook, fileName);
+  console.log('=== ATTEMPTING OPENROUTER AI ANALYSIS ===');
+  console.log('About to call analyzeSpreadsheetWithOpenRouter...');
+  console.log('Workbook sheets:', workbook.SheetNames);
+  console.log('Filename:', fileName);
+  
+  let aiAnalysis;
+  try {
+    console.log('Calling OpenRouter AI analyzer...');
+    aiAnalysis = await analyzeSpreadsheetWithOpenRouter(workbook, fileName);
+    console.log('OpenRouter AI analysis completed');
+  } catch (error) {
+    console.error('=== OPENROUTER CALL FAILED ===');
+    console.error('Error calling analyzeSpreadsheetWithOpenRouter:', error);
+    aiAnalysis = {
+      reportData: {},
+      thicknessMeasurements: [],
+      checklistItems: [],
+      confidence: 0,
+      mappingSuggestions: {},
+      detectedColumns: []
+    };
+  }
   
   // Process with AI insights
   let { importedData, thicknessMeasurements, checklistItems } = await processSpreadsheetWithAI(workbook, aiAnalysis);
