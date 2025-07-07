@@ -242,7 +242,10 @@ CRITICAL INSTRUCTIONS:
       throw new Error('No content in OpenRouter response');
     }
 
-    console.log('OpenRouter AI raw response:', content);
+    console.log('=== OpenRouter AI Raw Response ===');
+    console.log('Response length:', content?.length || 0);
+    console.log('First 500 chars:', content?.substring(0, 500));
+    console.log('Full response:', content);
 
     // Parse the JSON response
     try {
@@ -251,21 +254,33 @@ CRITICAL INSTRUCTIONS:
       console.log(`AI found ${analysis.thicknessMeasurements?.length || 0} thickness measurements`);
       return analysis as SpreadsheetAnalysis;
     } catch (parseError) {
+      console.error('=== JSON Parse Error ===');
+      console.error('Parse error:', parseError);
+      console.error('Trying to extract JSON from response...');
+      
       // Try to extract JSON from the response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        const analysis = JSON.parse(jsonMatch[0]) as SpreadsheetAnalysis;
-        console.log('Extracted AI analysis from text:', JSON.stringify(analysis, null, 2));
-        return analysis;
+        console.log('Found JSON match:', jsonMatch[0].substring(0, 200) + '...');
+        try {
+          const analysis = JSON.parse(jsonMatch[0]) as SpreadsheetAnalysis;
+          console.log('Successfully extracted AI analysis from text');
+          return analysis;
+        } catch (secondParseError) {
+          console.error('Second parse also failed:', secondParseError);
+        }
+      } else {
+        console.error('No JSON found in response');
       }
-      console.error('Failed to parse AI response:', parseError);
       throw new Error('Failed to parse AI response as JSON');
     }
     
   } catch (error) {
     console.error('=== OpenRouter Analysis Failed ===');
-    console.error('Error:', error);
-    console.error('This means your OpenRouter AI is NOT being used!');
+    console.error('Error type:', error.constructor.name);
+    console.error('Error message:', error.message);
+    console.error('Full error:', error);
+    console.error('This means your OpenRouter AI call failed!');
     console.error('Falling back to standard parsing...');
     
     // Return a basic analysis as fallback
