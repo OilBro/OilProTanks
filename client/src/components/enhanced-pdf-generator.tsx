@@ -109,10 +109,15 @@ export function generateEnhancedPDF(data: EnhancedReportData): void {
   const specs = [
     `Tank ID: ${report.tankId}`,
     `Service: ${report.service}`,
-    `Diameter: ${report.diameter || 'N/A'} ft`,
-    `Height: ${report.height || 'N/A'} ft`,
-    `Original Thickness: ${report.originalThickness || 'N/A'} in`,
-    `Years Since Last Inspection: ${report.yearsSinceLastInspection || 'N/A'}`
+    `Diameter: ${report.diameter || 'TBD'} ft`,
+    `Height: ${report.height || 'TBD'} ft`,
+    `Original Thickness: ${report.originalThickness || 'TBD'} in`,
+    `Years Since Last Inspection: ${report.yearsSinceLastInspection || 'TBD'}`,
+    `Inspector: ${report.inspector || 'TBD'}`,
+    `Inspection Date: ${report.inspectionDate || 'TBD'}`,
+    `Report Number: ${report.reportNumber || 'TBD'}`,
+    `Total Measurements: ${measurements.length}`,
+    `Total Checklist Items: ${checklists.length}`
   ];
   
   specs.forEach(spec => {
@@ -183,35 +188,145 @@ export function generateEnhancedPDF(data: EnhancedReportData): void {
     doc.text('THICKNESS MEASUREMENT RESULTS', margin, yPosition);
     yPosition += 15;
     
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Total Measurements: ${measurements.length}`, margin, yPosition);
+    yPosition += 10;
+    
+    // Group measurements by component
+    const componentGroups = measurements.reduce((groups, measurement) => {
+      const component = measurement.component || 'Unknown';
+      if (!groups[component]) {
+        groups[component] = [];
+      }
+      groups[component].push(measurement);
+      return groups;
+    }, {} as Record<string, any[]>);
+    
+    Object.keys(componentGroups).forEach(componentName => {
+      const componentMeasurements = componentGroups[componentName];
+      
+      checkPageBreak(20);
+      
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.text(`${componentName.toUpperCase()} MEASUREMENTS (${componentMeasurements.length})`, margin, yPosition);
+      yPosition += 10;
+      
+      // Table header
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'bold');
+      doc.text('Location', margin, yPosition);
+      doc.text('Original (in)', margin + 50, yPosition);
+      doc.text('Current (in)', margin + 90, yPosition);
+      doc.text('Loss (in)', margin + 130, yPosition);
+      doc.text('Status', margin + 170, yPosition);
+      yPosition += 8;
+      
+      // Draw header line
+      doc.line(margin, yPosition - 2, margin + 200, yPosition - 2);
+      yPosition += 3;
+      
+      doc.setFont(undefined, 'normal');
+      componentMeasurements.forEach((measurement, index) => {
+        checkPageBreak(8);
+        
+        const originalThickness = parseFloat(measurement.originalThickness || '0') || 0;
+        const currentThickness = parseFloat(measurement.currentThickness || '0') || 0;
+        const thicknessLoss = originalThickness > 0 ? (originalThickness - currentThickness) : 0;
+        
+        // Determine status based on thickness loss
+        let status = 'Acceptable';
+        if (originalThickness > 0 && currentThickness > 0) {
+          const lossPercentage = (thicknessLoss / originalThickness) * 100;
+          if (lossPercentage > 50) {
+            status = 'Critical';
+          } else if (lossPercentage > 25) {
+            status = 'Monitor';
+          }
+        }
+        
+        // Format the data
+        const locationText = (measurement.location || `Point ${index + 1}`).substring(0, 20);
+        const originalText = originalThickness > 0 ? originalThickness.toFixed(3) : 'N/A';
+        const currentText = currentThickness > 0 ? currentThickness.toFixed(3) : 'N/A';
+        const lossText = thicknessLoss > 0 ? thicknessLoss.toFixed(3) : 'N/A';
+        
+        doc.text(locationText, margin, yPosition);
+        doc.text(originalText, margin + 50, yPosition);
+        doc.text(currentText, margin + 90, yPosition);
+        doc.text(lossText, margin + 130, yPosition);
+        doc.text(status, margin + 170, yPosition);
+        yPosition += 6;
+      });
+      
+      yPosition += 10; // Space between components
+    });
+    
+    // Add summary statistics
+    checkPageBreak(30);
+    yPosition += 5;
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'bold');
+    doc.text('MEASUREMENT SUMMARY', margin, yPosition);
+    yPosition += 10;
+    
     doc.setFontSize(10);
     doc.setFont(undefined, 'normal');
     
-    // Table header
-    doc.setFont(undefined, 'bold');
-    doc.text('Component', margin, yPosition);
-    doc.text('Location', margin + 40, yPosition);
-    doc.text('Type', margin + 80, yPosition);
-    doc.text('Original', margin + 110, yPosition);
-    doc.text('Current', margin + 135, yPosition);
-    doc.text('Loss', margin + 160, yPosition);
-    doc.text('Status', margin + 180, yPosition);
-    yPosition += 8;
-    
-    doc.setFont(undefined, 'normal');
-    measurements.forEach((measurement) => {
-      checkPageBreak(8);
-      
-      const loss = parseFloat(measurement.originalThickness) - parseFloat(measurement.currentThickness.toString());
-      
-      doc.text(measurement.component.substring(0, 15), margin, yPosition);
-      doc.text(measurement.location.substring(0, 15), margin + 40, yPosition);
-      doc.text(measurement.measurementType.substring(0, 8), margin + 80, yPosition);
-      doc.text(measurement.originalThickness + '"', margin + 110, yPosition);
-      doc.text(measurement.currentThickness.toString() + '"', margin + 135, yPosition);
-      doc.text(loss.toFixed(3) + '"', margin + 160, yPosition);
-      doc.text(measurement.status, margin + 180, yPosition);
-      yPosition += 6;
+    const validMeasurements = measurements.filter(m => {
+      const original = parseFloat(m.originalThickness || '0');
+      const current = parseFloat(m.currentThickness || '0');
+      return original > 0 && current > 0;
     });
+    
+    if (validMeasurements.length > 0) {
+      const avgOriginal = validMeasurements.reduce((sum, m) => sum + parseFloat(m.originalThickness || '0'), 0) / validMeasurements.length;
+      const avgCurrent = validMeasurements.reduce((sum, m) => sum + parseFloat(m.currentThickness || '0'), 0) / validMeasurements.length;
+      const avgLoss = avgOriginal - avgCurrent;
+      
+      doc.text(`Average Original Thickness: ${avgOriginal.toFixed(3)} inches`, margin, yPosition);
+      yPosition += 6;
+      doc.text(`Average Current Thickness: ${avgCurrent.toFixed(3)} inches`, margin, yPosition);
+      yPosition += 6;
+      doc.text(`Average Thickness Loss: ${avgLoss.toFixed(3)} inches`, margin, yPosition);
+      yPosition += 6;
+      doc.text(`Total Valid Measurements: ${validMeasurements.length}`, margin, yPosition);
+      yPosition += 6;
+      
+      // Critical findings
+      const criticalCount = validMeasurements.filter(m => {
+        const original = parseFloat(m.originalThickness || '0');
+        const current = parseFloat(m.currentThickness || '0');
+        return ((original - current) / original) * 100 > 50;
+      }).length;
+      
+      const monitorCount = validMeasurements.filter(m => {
+        const original = parseFloat(m.originalThickness || '0');
+        const current = parseFloat(m.currentThickness || '0');
+        const lossPercentage = ((original - current) / original) * 100;
+        return lossPercentage > 25 && lossPercentage <= 50;
+      }).length;
+      
+      doc.text(`Critical Locations: ${criticalCount}`, margin, yPosition);
+      yPosition += 6;
+      doc.text(`Monitor Locations: ${monitorCount}`, margin, yPosition);
+      yPosition += 6;
+      doc.text(`Acceptable Locations: ${validMeasurements.length - criticalCount - monitorCount}`, margin, yPosition);
+    } else {
+      doc.text('No valid thickness measurements found.', margin, yPosition);
+    }
+  } else {
+    // Add a note if no measurements
+    doc.addPage();
+    yPosition = 20;
+    doc.setFontSize(16);
+    doc.setFont(undefined, 'bold');
+    doc.text('THICKNESS MEASUREMENTS', margin, yPosition);
+    yPosition += 15;
+    doc.setFontSize(12);
+    doc.setFont(undefined, 'normal');
+    doc.text('No thickness measurements available for this report.', margin, yPosition);
   }
   
   // Appurtenance Inspections
