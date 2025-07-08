@@ -81,7 +81,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
                        file.originalname.toLowerCase().endsWith('.xls') ||
                        file.originalname.toLowerCase().endsWith('.xlsm') ||
                        file.originalname.toLowerCase().endsWith('.pdf');
-      cb(null, isAllowed);
+      
+      console.log('File upload validation:', {
+        filename: file.originalname,
+        mimetype: file.mimetype,
+        isAllowed
+      });
+      
+      if (isAllowed) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only Excel (.xlsx, .xls, .xlsm) and PDF files are allowed.'), false);
+      }
     }
   });
 
