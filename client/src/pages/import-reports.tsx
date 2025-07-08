@@ -263,14 +263,21 @@ export default function ImportReports() {
 
   const handleFileSelect = (file: File) => {
     const validTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel'
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+      'application/vnd.ms-excel', // .xls
+      'application/vnd.ms-excel.sheet.macroEnabled.12', // .xlsm
+      'application/pdf' // .pdf
     ];
     
-    if (!validTypes.includes(file.type)) {
+    // Also check file extensions as a fallback
+    const fileName = file.name.toLowerCase();
+    const validExtensions = ['.xlsx', '.xls', '.xlsm', '.pdf'];
+    const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+    
+    if (!validTypes.includes(file.type) && !hasValidExtension) {
       toast({
         title: "Invalid File Type",
-        description: "Please select an Excel file (.xlsx or .xls).",
+        description: "Please select an Excel file (.xlsx, .xls, .xlsm) or PDF file.",
         variant: "destructive",
       });
       return;
