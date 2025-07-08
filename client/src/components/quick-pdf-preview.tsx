@@ -23,10 +23,15 @@ export function QuickPDFPreview({ report, measurements = [], checklists = [], tr
   const handleGeneratePDF = async () => {
     setIsGenerating(true);
     try {
+      console.log('Quick PDF Preview: Starting generation...');
+      console.log('Report:', report);
+      console.log('Measurements:', measurements?.length || 0);
+      console.log('Checklists:', checklists?.length || 0);
+      
       const reportData = {
         report,
-        measurements,
-        checklists,
+        measurements: measurements || [],
+        checklists: checklists || [],
         appurtenanceInspections: [],
         repairRecommendations: [],
         ventingInspections: [],
@@ -42,9 +47,13 @@ export function QuickPDFPreview({ report, measurements = [], checklists = [], tr
       
       setIsOpen(false);
     } catch (error) {
+      console.error('Quick PDF Preview error:', error);
+      console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
-        title: "Error",
-        description: "Failed to generate PDF report. Please try again.",
+        title: "PDF Generation Failed",
+        description: `Error: ${errorMessage}. Please check the console for details.`,
         variant: "destructive",
       });
     } finally {

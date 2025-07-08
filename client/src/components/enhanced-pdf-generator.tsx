@@ -23,19 +23,25 @@ export interface EnhancedReportData {
 }
 
 export function generateEnhancedPDF(data: EnhancedReportData): void {
-  const doc = new jsPDF();
-  const { 
-    report, 
-    measurements, 
-    checklists, 
-    appurtenanceInspections = [], 
-    repairRecommendations = [], 
-    ventingInspections = [], 
-    attachments = [],
-    shellCalculations,
-    settlementSurvey,
-    cmlData = []
-  } = data;
+  console.log('Starting PDF generation...');
+  console.log('Report data:', data.report);
+  console.log('Measurements count:', data.measurements.length);
+  console.log('Checklists count:', data.checklists.length);
+  
+  try {
+    const doc = new jsPDF();
+    const { 
+      report, 
+      measurements, 
+      checklists, 
+      appurtenanceInspections = [], 
+      repairRecommendations = [], 
+      ventingInspections = [], 
+      attachments = [],
+      shellCalculations,
+      settlementSurvey,
+      cmlData = []
+    } = data;
   
   let yPosition = 20;
   const pageHeight = 280;
@@ -401,4 +407,12 @@ export function generateEnhancedPDF(data: EnhancedReportData): void {
   }
 
   doc.save(`${report.reportNumber}_API653_Complete_Report.pdf`);
+  console.log('PDF generation completed successfully!');
+  
+  } catch (error) {
+    console.error('PDF generation failed:', error);
+    console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    throw error; // Re-throw to let the calling function handle the error
+  }
 }

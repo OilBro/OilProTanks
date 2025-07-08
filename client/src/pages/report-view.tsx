@@ -85,14 +85,19 @@ export function ReportView() {
   const handleGeneratePDF = async () => {
     setIsGeneratingPDF(true);
     try {
+      console.log('Starting PDF generation process...');
+      console.log('Report data:', report);
+      console.log('Measurements:', measurements?.length || 0);
+      console.log('Checklists:', checklists?.length || 0);
+      
       const reportData = {
         report,
-        measurements,
-        checklists,
-        appurtenanceInspections,
-        repairRecommendations,
-        ventingInspections,
-        attachments
+        measurements: measurements || [],
+        checklists: checklists || [],
+        appurtenanceInspections: appurtenanceInspections || [],
+        repairRecommendations: repairRecommendations || [],
+        ventingInspections: ventingInspections || [],
+        attachments: attachments || []
       };
       
       // Generate the PDF
@@ -105,9 +110,14 @@ export function ReportView() {
       });
     } catch (error) {
       console.error('PDF generation error:', error);
+      console.error('Error message:', error instanceof Error ? error.message : 'Unknown error');
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      
+      // Show detailed error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
         title: "PDF Generation Failed",
-        description: "Unable to generate the PDF report. Please try again.",
+        description: `Error: ${errorMessage}. Please check the console for details.`,
         variant: "destructive",
       });
     } finally {
