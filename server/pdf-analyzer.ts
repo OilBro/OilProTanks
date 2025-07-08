@@ -28,7 +28,13 @@ export async function analyzePDFWithOpenRouter(
     
     try {
       const pdfParse = await import('pdf-parse');
-      pdfData = await (pdfParse.default || pdfParse)(buffer);
+      // Fix the pdf-parse import issue
+      const parseFunction = pdfParse.default || pdfParse;
+      pdfData = await parseFunction(buffer, {
+        // Add options to handle problematic PDFs
+        max: 0, // process all pages
+        version: 'v2.0.550'
+      });
       extractedText = pdfData.text;
       
       // Clean extracted text to remove binary/encoded data
@@ -95,7 +101,13 @@ export async function analyzePDFWithOpenRouter(
     
     // Use OpenRouter AI to analyze the extracted text
     console.log('Sending PDF text to OpenRouter AI for analysis...');
-    const aiAnalysis = await callOpenRouterForPDF(extractedText, fileName);
+    
+    // Chunk text if it's too long for API limits
+    const chunkedText = chunkTextForAnalysis(extractedText);
+    console.log('Original text length:', extractedText.length, 'characters');
+    console.log('Chunked text length:', chunkedText.length, 'characters');
+    
+    const aiAnalysis = await callOpenRouterForPDF(chunkedText, fileName);
     
     return {
       ...aiAnalysis,
@@ -342,39 +354,186 @@ export async function processPDFWithAI(analysis: PDFAnalysis): Promise<{
 // Alternative PDF text extraction method
 async function extractPDFTextAlternative(buffer: Buffer): Promise<string> {
   try {
-    // Try pdf2pic for image-based PDFs
-    const pdf2pic = await import('pdf2pic');
-    const convert = pdf2pic.fromBuffer(buffer, {
-      density: 100,
-      saveFilename: "temp",
-      savePath: "/tmp",
-      format: "png",
-      width: 600,
-      height: 600
-    });
+    console.log('Attempting advanced PDF text extraction...');
     
-    // Convert first few pages to get text
-    const pages = await convert.bulk(-1, { responseType: "buffer" });
-    
-    // This is a placeholder - in a real implementation, you'd use OCR here
-    // For now, return a message indicating this is an image-based PDF
-    return "This PDF appears to be image-based and would require OCR processing for text extraction.";
-    
-  } catch (error) {
-    console.error('pdf2pic extraction failed:', error);
-    
-    // Try direct buffer analysis for structured PDF data
+    // Method 1: Extract text from PDF streams
     const bufferStr = buffer.toString('utf8');
+    
+    // Look for text streams in PDF
+    const textObjects = [];
+    
+    // Extract text from BT...ET blocks (Basic Text objects)
     const textMatches = bufferStr.match(/BT\s+.*?ET/gs) || [];
-    const extractedParts = textMatches.map(match => 
-      match.replace(/BT\s+|ET/g, '')
+    for (const match of textMatches) {
+      const cleanText = match
+        .replace(/BT\s+|ET/g, '')
+        .replace(/Tf\s+/g, '')
+        .replace(/Td\s+/g, '')
+        .replace(/Tj\s+/g, '')
+        .replace(/TJ\s+/g, '')
+        .replace(/[^\x20-\x7E\n\r\t]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      if (cleanText.length > 3) {
+        textObjects.push(cleanText);
+      }
+    }
+    
+    // Method 2: Extract strings from PDF dictionary objects
+    const stringMatches = bufferStr.match(/\((.*?)\)/gs) || [];
+    for (const match of stringMatches) {
+      const cleanString = match
+        .replace(/[()]/g, '')
         .replace(/[^\x20-\x7E]/g, ' ')
         .replace(/\s+/g, ' ')
-        .trim()
-    ).filter(part => part.length > 5);
+        .trim();
+      
+      if (cleanString.length > 5 && /[a-zA-Z]/.test(cleanString)) {
+        textObjects.push(cleanString);
+      }
+    }
     
-    return extractedParts.join(' ');
+    // Method 3: Look for specific inspection-related keywords
+    const inspectionKeywords = [
+      'tank', 'inspection', 'thickness', 'corrosion', 'measurement',
+      'API', '653', 'shell', 'bottom', 'roof', 'nozzle', 'inspector',
+      'date', 'report', 'findings', 'recommendations', 'inches', 'mils',
+      'original', 'current', 'remaining', 'life', 'years', 'service'
+    ];
+    
+    const keywordMatches = [];
+    for (const keyword of inspectionKeywords) {
+      const regex = new RegExp(`\\b${keyword}[^\\s]{0,20}\\b`, 'gi');
+      const matches = bufferStr.match(regex);
+      if (matches) {
+        keywordMatches.push(...matches);
+      }
+    }
+    
+    // Method 4: Extract structured data patterns
+    const patterns = [
+      /\d+\.\d+\s*(?:in|inch|inches|mil|mils)/gi,
+      /\d{1,2}\/\d{1,2}\/\d{2,4}/g,
+      /[A-Z]{2,3}-\d+/g,
+      /Tank\s*[:\s]*[A-Z0-9-]+/gi,
+      /Inspector\s*[:\s]*[A-Za-z\s]+/gi
+    ];
+    
+    const patternMatches = [];
+    for (const pattern of patterns) {
+      const matches = bufferStr.match(pattern);
+      if (matches) {
+        patternMatches.push(...matches);
+      }
+    }
+    
+    // Combine all extracted text
+    const allText = [
+      ...textObjects,
+      ...keywordMatches,
+      ...patternMatches
+    ].join(' ');
+    
+    console.log('Alternative extraction found:', allText.length, 'characters');
+    return allText;
+    
+  } catch (error) {
+    console.error('Alternative extraction failed:', error);
+    return 'Unable to extract text from this PDF format.';
   }
+}
+
+// Function to intelligently chunk text for API analysis
+function chunkTextForAnalysis(text: string): string {
+  // Estimate tokens (roughly 4 characters per token)
+  const estimatedTokens = Math.ceil(text.length / 4);
+  const maxTokens = 180000; // Leave buffer for prompt and response
+  
+  if (estimatedTokens <= maxTokens) {
+    return text;
+  }
+  
+  console.log('Text too long for API, intelligently chunking...');
+  
+  // Priority sections to preserve
+  const prioritySections = [];
+  
+  // 1. Extract inspection-critical sections
+  const criticalPatterns = [
+    /tank.*?(?:id|number|designation)[:\s]*[^\n\r]{0,100}/gi,
+    /inspector[:\s]*[^\n\r]{0,100}/gi,
+    /inspection.*?date[:\s]*[^\n\r]{0,50}/gi,
+    /thickness.*?measurement[:\s\S]{0,500}/gi,
+    /shell.*?thickness[:\s\S]{0,300}/gi,
+    /bottom.*?thickness[:\s\S]{0,300}/gi,
+    /roof.*?thickness[:\s\S]{0,300}/gi,
+    /original.*?thickness[:\s]*[^\n\r]{0,100}/gi,
+    /current.*?thickness[:\s]*[^\n\r]{0,100}/gi,
+    /corrosion.*?rate[:\s]*[^\n\r]{0,100}/gi,
+    /remaining.*?life[:\s]*[^\n\r]{0,100}/gi,
+    /findings[:\s\S]{0,1000}/gi,
+    /recommendations[:\s\S]{0,1000}/gi,
+    /report.*?write.*?up[:\s\S]{0,1000}/gi,
+    /diameter[:\s]*[^\n\r]{0,50}/gi,
+    /height[:\s]*[^\n\r]{0,50}/gi,
+    /capacity[:\s]*[^\n\r]{0,50}/gi,
+    /service[:\s]*[^\n\r]{0,50}/gi,
+    /\d+\.\d+\s*(?:in|inch|inches|mil|mils)/gi,
+    /\d{1,2}\/\d{1,2}\/\d{2,4}/g,
+    /API.*?653/gi
+  ];
+  
+  // Extract all critical sections
+  for (const pattern of criticalPatterns) {
+    const matches = text.match(pattern);
+    if (matches) {
+      prioritySections.push(...matches);
+    }
+  }
+  
+  // 2. Get first and last portions of document
+  const documentStart = text.substring(0, 5000);
+  const documentEnd = text.substring(text.length - 2000);
+  
+  // 3. Extract tables and structured data
+  const tablePatterns = [
+    /\|[^\n\r]*\|[^\n\r]*\|/g,
+    /\t[^\n\r]*\t[^\n\r]*/g,
+    /\s{3,}[^\n\r]*\s{3,}[^\n\r]*/g
+  ];
+  
+  const structuredData = [];
+  for (const pattern of tablePatterns) {
+    const matches = text.match(pattern);
+    if (matches) {
+      structuredData.push(...matches.slice(0, 20)); // Limit table rows
+    }
+  }
+  
+  // 4. Combine prioritized content
+  const prioritizedText = [
+    '=== DOCUMENT START ===',
+    documentStart,
+    '=== CRITICAL INSPECTION DATA ===',
+    ...prioritySections,
+    '=== STRUCTURED DATA TABLES ===',
+    ...structuredData,
+    '=== DOCUMENT END ===',
+    documentEnd
+  ].join('\n\n');
+  
+  // 5. Final size check and truncation if needed
+  const finalEstimatedTokens = Math.ceil(prioritizedText.length / 4);
+  if (finalEstimatedTokens > maxTokens) {
+    const maxChars = maxTokens * 4;
+    const truncated = prioritizedText.substring(0, maxChars);
+    console.log('Final truncation applied, keeping first', maxChars, 'characters');
+    return truncated + '\n\n[DOCUMENT TRUNCATED - ANALYSIS FOCUSED ON CRITICAL SECTIONS]';
+  }
+  
+  console.log('Intelligent chunking complete:', prioritizedText.length, 'characters');
+  return prioritizedText;
 }
 
 function extractFileName(text: string): string | null {
