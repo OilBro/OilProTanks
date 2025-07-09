@@ -75,15 +75,19 @@ export const repairRecommendations = pgTable("repair_recommendations", {
   id: serial("id").primaryKey(),
   reportId: integer("report_id"),
   component: text("component"),
+  location: text("location"),
+  priority: text("priority"), // urgent, high, medium, routine
+  description: text("description"),
+  repairType: text("repair_type"),
+  apiReference: text("api_reference"), // API 653 clause reference
+  estimatedCompletion: text("estimated_completion"),
+  createdAt: text("created_at"),
   defectDescription: text("defect_description"),
   recommendation: text("recommendation"),
-  priority: text("priority"), // urgent, high, medium, routine
   dueDate: text("due_date"),
   status: text("status"), // open, in_progress, completed, deferred
-  apiReference: text("api_reference"), // API 653 clause reference
   completedDate: text("completed_date"),
   completionNotes: text("completion_notes"),
-  createdAt: text("created_at"),
 });
 
 // Venting system inspection

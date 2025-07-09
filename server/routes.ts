@@ -645,10 +645,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/reports/:reportId/repairs", async (req, res) => {
     try {
       const reportId = parseInt(req.params.reportId);
+      console.log(`Fetching repair recommendations for report ${reportId}`);
       const repairs = await storage.getRepairRecommendations(reportId);
+      console.log(`Found ${repairs.length} repair recommendations`);
       res.json(repairs);
     } catch (error) {
-      res.status(500).json({ message: "Failed to fetch repair recommendations" });
+      console.error('Error fetching repair recommendations:', error);
+      res.status(500).json({ message: "Failed to fetch repair recommendations", error: error.message });
     }
   });
 

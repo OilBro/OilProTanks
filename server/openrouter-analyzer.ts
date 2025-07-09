@@ -82,9 +82,16 @@ export async function analyzeSpreadsheetWithOpenRouter(
     
     console.log('\nTotal sheets analyzed:', workbook.SheetNames.length);
     
-    const systemPrompt = `You are an expert API 653 tank inspection data extraction specialist. Your task is to analyze tank inspection spreadsheets and extract ALL relevant data accurately. Always return valid JSON with comprehensive data extraction.`;
+    const systemPrompt = `You are an expert API 653 tank inspection data extraction specialist. Your task is to analyze tank inspection spreadsheets and extract ALL relevant data accurately. Focus specifically on finding thickness measurements, which are the most critical data points. Always return valid JSON with comprehensive data extraction.`;
     
-    const userPrompt = `Analyze this MULTI-SHEET tank inspection workbook and extract comprehensive data from ALL sheets:
+    const userPrompt = `Analyze this MULTI-SHEET tank inspection workbook and extract comprehensive data from ALL sheets.
+
+CRITICAL PRIORITY: THICKNESS MEASUREMENTS
+Look for columns containing thickness values (typically 0.100 to 2.000 inches):
+- Column names: thickness, thick, TML, reading, measured, current, actual, wall, shell, bottom, roof
+- Numeric patterns: decimal values between 0.050 and 3.000 inches
+- Location identifiers: N, S, E, W, NE, NW, SE, SW, locations, positions, course, elevation
+- Component types: shell, bottom, roof, nozzle, manway, course_1, course_2, course_3
 
 FILENAME: ${fileName}
 TOTAL SHEETS: ${workbook.SheetNames.length}
@@ -97,6 +104,76 @@ Extract information by searching for ANY of the listed field variations:
 
 1. TANK IDENTIFICATION:
    Search for: tank_number, tank_id, equipment_id, tank_no, tank_num, unit_id, unit_number, vessel_id, vessel_number, tank_tag, equipment_tag, asset_id, asset_number, facility_id, tank_designation, unit_designation, vessel_designation, tank_identifier, equipment_identifier, tank_ref, reference_number, serial_number, tank_serial, equipment_serial, tank_code, unit_code, vessel_code, asset_tag, facility_tag, tank_name, unit_name, vessel_name, equipment_name, tank_label, unit_label, vessel_label
+
+2. THICKNESS MEASUREMENTS (MOST IMPORTANT):
+   Search for columns with these patterns:
+   - Column names: TML, thickness, thick, reading, measured, current, actual, wall_thickness, shell_thickness, bottom_thickness, roof_thickness
+   - Numeric patterns: Look for decimal values between 0.050 and 3.000 (thickness in inches)
+   - Location patterns: N, S, E, W, North, South, East, West, NE, NW, SE, SW, Course_1, Course_2, Course_3, Elevation, Location_1, Location_2, etc.
+   - Component patterns: Shell, Bottom, Roof, Nozzle, Manway, Course, Ring, Plate
+   - Grid patterns: A1, A2, B1, B2, C1, C2 (for bottom plates)
+   - Angle patterns: 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°
+
+3. INSPECTION DETAILS:
+   Search for: inspector_name, examiner, surveyor, technician, assessor, inspector, examined_by, surveyed_by, certified_by, api_inspector, inspection_date, date_of_inspection, examination_date, survey_date, inspection_performed, last_inspection, next_inspection, inspection_due, inspection_type, internal_inspection, external_inspection, comprehensive_inspection, routine_inspection
+
+4. TANK SPECIFICATIONS:
+   Search for: diameter, dia, tank_diameter, vessel_diameter, tank_dia, vessel_dia, height, tank_height, vessel_height, tank_ht, vessel_ht, capacity, volume, tank_capacity, vessel_capacity, tank_volume, vessel_volume, gallons, gal, barrels, bbl, cubic_feet, cf, liters, service, product, contents, stored_product, fluid, liquid, material, substance, crude_oil, diesel, gasoline, fuel_oil, water, chemical
+
+5. CONSTRUCTION DETAILS:
+   Search for: construction_code, design_code, fabrication_code, api_650, api_620, asme, construction_year, built_year, fabricated_year, installed_year, manufacturer, fabricator, constructor, builder, material, steel_grade, carbon_steel, stainless_steel, material_grade, steel_specification, original_thickness, nominal_thickness, design_thickness, minimum_thickness, wall_thickness, corrosion_allowance
+
+6. INSPECTION FINDINGS:
+   Search for: findings, observations, defects, anomalies, issues, problems, concerns, recommendations, repairs, maintenance, corrective_action, follow_up, next_steps, repair_required, monitor, acceptable, satisfactory, unsatisfactory, failed, passed, status, condition, assessment, evaluation
+
+REQUIRED OUTPUT FORMAT:
+{
+  "reportData": {
+    "tankId": "extracted tank identifier",
+    "inspectionDate": "YYYY-MM-DD format",
+    "inspector": "inspector name",
+    "service": "crude_oil|diesel|gasoline|water|other",
+    "diameter": "number in feet",
+    "height": "number in feet",
+    "capacity": "number in gallons",
+    "originalThickness": "number in inches",
+    "material": "material specification",
+    "constructionCode": "API 650, API 620, etc.",
+    "findings": "comprehensive findings text",
+    "recommendations": "repair recommendations text"
+  },
+  "thicknessMeasurements": [
+    {
+      "component": "Shell|Bottom|Roof|Nozzle",
+      "location": "specific location identifier",
+      "currentThickness": "number in inches",
+      "originalThickness": "number in inches",
+      "elevation": "elevation if available",
+      "gridReference": "grid reference if available"
+    }
+  ],
+  "checklistItems": [
+    {
+      "category": "external|internal",
+      "item": "checklist item description",
+      "status": "satisfactory|unsatisfactory|not_applicable"
+    }
+  ],
+  "confidence": "number between 0-100",
+  "mappingSuggestions": {
+    "field_name": "explanation of how field was identified"
+  },
+  "detectedColumns": ["list of all column names found"]
+}
+
+INSTRUCTIONS:
+1. Extract ALL thickness measurements - these are the most critical data points
+2. For each thickness measurement, determine the component type (Shell/Bottom/Roof/Nozzle)
+3. Identify location information (N, S, E, W, Course 1, etc.)
+4. Convert all measurements to inches (if in mm, divide by 25.4)
+5. Use original thickness of 0.375 inches as default if not specified
+6. Mark confidence based on data quality and completeness
+7. Include mapping suggestions explaining how each field was identified
 
 2. CLIENT/OWNER:
    Search for: client_name, customer, company, owner, client, customer_name, company_name, owner_name, facility_owner, tank_owner, operator, operator_name, facility_operator, site_owner, property_owner, lessee, tenant, facility_name, site_name, organization, organization_name, entity, entity_name, corporation, business_name, firm, firm_name, contractor, contractor_name, end_user, user, facility, site, installation, plant, plant_name, refinery, refinery_name, terminal, terminal_name
@@ -219,7 +296,7 @@ CRITICAL INSTRUCTIONS:
         { role: 'user', content: userPrompt }
       ],
       temperature: 0.1,
-      max_tokens: 18000 // Tripled for maximum extraction capability
+      max_tokens: 24000 // Increased for maximum extraction capability
     };
 
     const response = await fetch(OPENROUTER_API_URL, {
