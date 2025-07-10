@@ -605,6 +605,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Singular checklist endpoint for compatibility
+  app.get("/api/reports/:reportId/checklist", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const checklists = await storage.getInspectionChecklists(reportId);
+      res.json(checklists);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch checklist" });
+    }
+  });
+
   app.post("/api/reports/:reportId/checklists", async (req, res) => {
     try {
       const reportId = parseInt(req.params.reportId);
