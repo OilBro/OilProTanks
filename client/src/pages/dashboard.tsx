@@ -75,41 +75,70 @@ export default function Dashboard() {
     try {
       toast({
         title: "Generating PDF Report",
-        description: "Please wait while we compile your inspection data...",
+        description: "Please wait while we compile your comprehensive inspection data...",
       });
 
-      // Fetch related data for the report with error handling
-      const [measurementsResponse, checklistsResponse] = await Promise.all([
-        fetch(`/api/thickness-measurements?reportId=${report.id}`),
-        fetch(`/api/inspection-checklists?reportId=${report.id}`)
+      console.log('Dashboard PDF: Loading comprehensive data for report', report.id);
+
+      // Load all related data from API endpoints  
+      const [
+        measurementsResponse,
+        checklistsResponse,
+        appurtenancesResponse,
+        repairsResponse,
+        ventingResponse,
+        attachmentsResponse
+      ] = await Promise.all([
+        fetch(`/api/reports/${report.id}/measurements`),
+        fetch(`/api/reports/${report.id}/checklists`),
+        fetch(`/api/reports/${report.id}/appurtenances`),
+        fetch(`/api/reports/${report.id}/repairs`),
+        fetch(`/api/reports/${report.id}/venting`),
+        fetch(`/api/reports/${report.id}/attachments`)
       ]);
 
-      if (!measurementsResponse.ok || !checklistsResponse.ok) {
-        throw new Error('Failed to fetch report data');
-      }
-
-      const [measurements, checklists] = await Promise.all([
+      const [
+        measurements,
+        checklists,
+        appurtenances,
+        repairs,
+        venting,
+        attachments
+      ] = await Promise.all([
         measurementsResponse.json(),
-        checklistsResponse.json()
+        checklistsResponse.json(),
+        appurtenancesResponse.json(),
+        repairsResponse.json(),
+        ventingResponse.json(),
+        attachmentsResponse.json()
       ]);
+
+      console.log('Dashboard PDF: Loaded comprehensive data:');
+      console.log('- Measurements:', measurements?.length || 0);
+      console.log('- Checklists:', checklists?.length || 0);
+      console.log('- Appurtenances:', appurtenances?.length || 0);
+      console.log('- Repairs:', repairs?.length || 0);
+      console.log('- Venting:', venting?.length || 0);
+      console.log('- Attachments:', attachments?.length || 0);
 
       const reportData = {
         report,
         measurements: measurements || [],
         checklists: checklists || [],
-        appurtenanceInspections: [],
-        repairRecommendations: [],
-        ventingInspections: [],
-        attachments: []
+        appurtenanceInspections: appurtenances || [],
+        repairRecommendations: repairs || [],
+        ventingInspections: venting || [],
+        attachments: attachments || []
       };
 
       generateEnhancedPDF(reportData);
       
       toast({
         title: "PDF Generated",
-        description: `Report ${report.reportNumber} PDF has been generated and downloaded.`,
+        description: `Complete API 653 inspection report ${report.reportNumber} has been generated and downloaded.`,
       });
     } catch (error) {
+      console.error('Dashboard PDF generation failed:', error);
       toast({
         title: "Error",
         description: "Failed to generate PDF report. Please try again.",

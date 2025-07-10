@@ -25,17 +25,57 @@ export function QuickPDFPreview({ report, measurements = [], checklists = [], tr
     try {
       console.log('Quick PDF Preview: Starting generation...');
       console.log('Report:', report);
-      console.log('Measurements:', measurements?.length || 0);
-      console.log('Checklists:', checklists?.length || 0);
+      console.log('Loading comprehensive report data...');
+      
+      // Load all related data from API endpoints
+      const [
+        measurementsResponse,
+        checklistsResponse,
+        appurtenancesResponse,
+        repairsResponse,
+        ventingResponse,
+        attachmentsResponse
+      ] = await Promise.all([
+        fetch(`/api/reports/${report.id}/measurements`),
+        fetch(`/api/reports/${report.id}/checklists`),
+        fetch(`/api/reports/${report.id}/appurtenances`),
+        fetch(`/api/reports/${report.id}/repairs`),
+        fetch(`/api/reports/${report.id}/venting`),
+        fetch(`/api/reports/${report.id}/attachments`)
+      ]);
+      
+      const [
+        loadedMeasurements,
+        loadedChecklists,
+        loadedAppurtenances,
+        loadedRepairs,
+        loadedVenting,
+        loadedAttachments
+      ] = await Promise.all([
+        measurementsResponse.json(),
+        checklistsResponse.json(),
+        appurtenancesResponse.json(),
+        repairsResponse.json(),
+        ventingResponse.json(),
+        attachmentsResponse.json()
+      ]);
+      
+      console.log('Loaded data summary:');
+      console.log('- Measurements:', loadedMeasurements?.length || 0);
+      console.log('- Checklists:', loadedChecklists?.length || 0);
+      console.log('- Appurtenances:', loadedAppurtenances?.length || 0);
+      console.log('- Repairs:', loadedRepairs?.length || 0);
+      console.log('- Venting:', loadedVenting?.length || 0);
+      console.log('- Attachments:', loadedAttachments?.length || 0);
       
       const reportData = {
         report,
-        measurements: measurements || [],
-        checklists: checklists || [],
-        appurtenanceInspections: [],
-        repairRecommendations: [],
-        ventingInspections: [],
-        attachments: []
+        measurements: loadedMeasurements || [],
+        checklists: loadedChecklists || [],
+        appurtenanceInspections: loadedAppurtenances || [],
+        repairRecommendations: loadedRepairs || [],
+        ventingInspections: loadedVenting || [],
+        attachments: loadedAttachments || []
       };
 
       generateEnhancedPDF(reportData);
