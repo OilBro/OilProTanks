@@ -16,6 +16,29 @@ export const inspectionReports = pgTable("inspection_reports", {
   status: text("status"), // draft, in_progress, completed, action_required
   createdAt: text("created_at"),
   updatedAt: text("updated_at"),
+  // Professional report fields
+  customer: text("customer"),
+  location: text("location"),
+  inspectionScope: text("inspection_scope"),
+  reviewer: text("reviewer"),
+  specificGravity: text("specific_gravity"),
+  yearBuilt: text("year_built"),
+  manufacturer: text("manufacturer"),
+  constructionStandard: text("construction_standard"),
+  shellMaterial: text("shell_material"),
+  foundationType: text("foundation_type"),
+  roofType: text("roof_type"),
+  capacity: text("capacity"),
+  coatingCondition: text("coating_condition"),
+  foundationSettlement: text("foundation_settlement"),
+  foundationCracking: text("foundation_cracking"),
+  foundationSealing: text("foundation_sealing"),
+  maxSettlement: text("max_settlement"),
+  settlementLocation: text("settlement_location"),
+  settlementCompliance: text("settlement_compliance"),
+  surveyMethod: text("survey_method"),
+  inspectorCertification: text("inspector_certification"),
+  inspectorExperience: text("inspector_experience"),
 });
 
 export const thicknessMeasurements = pgTable("thickness_measurements", {

@@ -23,6 +23,33 @@ export interface EnhancedReportData {
 }
 
 export function generateEnhancedPDF(data: EnhancedReportData): void {
+  // Use the new professional PDF generator
+  const professionalData = {
+    report: data.report,
+    measurements: data.measurements,
+    checklists: data.checklists,
+    appurtenanceInspections: data.appurtenanceInspections,
+    repairRecommendations: data.repairRecommendations,
+    ventingInspections: data.ventingInspections,
+    attachments: data.attachments,
+    shellCalculations: data.shellCalculations,
+    settlementSurvey: data.settlementSurvey,
+    cmlData: data.cmlData
+  };
+  
+  // Import and use the professional generator
+  import('./professional-pdf-generator').then(({ generateProfessionalPDF }) => {
+    generateProfessionalPDF(professionalData);
+  }).catch(error => {
+    console.error('Error loading professional PDF generator:', error);
+    // Fallback to legacy generator
+    generateEnhancedPDFLegacy(data);
+  });
+  
+  return;
+}
+
+export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
   console.log('Starting PDF generation...');
   console.log('Report data:', data.report);
   console.log('Measurements count:', data.measurements.length);
