@@ -482,6 +482,14 @@ Business Rules: NO cost estimation for repair recommendations
   - Exact industry terminology and technical calculations
   - Enhanced PDF generator now uses TEAM standard as primary with professional and legacy fallbacks
   - Reports now match exact professional API 653 inspection industry standards
+✓ OILPRO BRANDING UPDATE (January 10, 2025):
+  - Updated PDF generator to use OilPro Tanks branding instead of TEAM
+  - Changed company name to "OilPro Tanks" throughout PDF reports
+  - Updated company address to Houston, TX location
+  - Modified footer text to reference OilPro Tanks
+  - Changed PDF filename format from "TEAM_Standard" to "OilPro"
+  - All professional formatting and technical content remains unchanged
+  - Reports maintain exact API 653 compliance while using OilPro branding
   - Added comprehensive table of contents with proper page numbering
   - Created evaluation summary and repair checklist with formal finding ID system
   - Added detailed tank specifications section with all professional fields

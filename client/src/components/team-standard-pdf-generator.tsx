@@ -23,7 +23,7 @@ export interface TeamStandardReportData {
 }
 
 export function generateTeamStandardPDF(data: TeamStandardReportData): void {
-  console.log('Generating TEAM standard API 653 report...');
+  console.log('Generating OilPro standard API 653 report...');
   
   const doc = new jsPDF();
   const { 
@@ -41,12 +41,12 @@ export function generateTeamStandardPDF(data: TeamStandardReportData): void {
   
   // Professional formatting constants
   const companyHeader = {
-    name: 'TEAM Tank Consultants',
+    name: 'OilPro Tanks',
     title: 'API-653 Inspection Report',
-    address1: '4333 W. 21st St.',
-    address2: 'Tulsa, OK 74107',
-    phone: 'Office – (918) 583-3968',
-    website: 'www.TeamInc.com'
+    address1: '1234 Industrial Blvd',
+    address2: 'Houston, TX 77001',
+    phone: 'Office – (713) 555-0100',
+    website: 'www.oilpro-tanks.com'
   };
 
   // Helper function to add professional header
@@ -62,7 +62,7 @@ export function generateTeamStandardPDF(data: TeamStandardReportData): void {
   const addProfessionalFooter = (pageNum: number) => {
     doc.setFontSize(7);
     doc.setFont(undefined, 'normal');
-    doc.text('This document is intended for the sole use of TEAM Tank Consultants and its customers.', 105, 280, { align: 'center' });
+    doc.text('This document is intended for the sole use of OilPro Tanks and its customers.', 105, 280, { align: 'center' });
     doc.text('Any unauthorized reproduction of this document is prohibited. © 2025', 105, 284, { align: 'center' });
     doc.text(`${pageNum} of ${totalPages}`, 190, 284, { align: 'right' });
   };
@@ -170,9 +170,9 @@ export function generateTeamStandardPDF(data: TeamStandardReportData): void {
   totalPages = doc.getNumberOfPages();
 
   // Save the PDF
-  const filename = `${report.tankId}_API653_TEAM_Standard_${new Date().toISOString().split('T')[0]}.pdf`;
+  const filename = `${report.tankId}_API653_OilPro_${new Date().toISOString().split('T')[0]}.pdf`;
   doc.save(filename);
-  console.log('TEAM standard PDF generated successfully!');
+  console.log('OilPro standard PDF generated successfully!');
 }
 
 function generateProfessionalCoverPage(doc: jsPDF, report: InspectionReport, companyHeader: any) {
