@@ -68,7 +68,7 @@ export function generateEnhancedPDF(data: EnhancedReportData): void {
   
   doc.setFontSize(14);
   doc.setFont(undefined, 'normal');
-  doc.text(`Service: ${report.service.toUpperCase()}`, 105, 100, { align: 'center' });
+  doc.text(`Service: ${(report.service || '').toUpperCase()}`, 105, 100, { align: 'center' });
   doc.text(`Report No: ${report.reportNumber}`, 105, 115, { align: 'center' });
   doc.text(`Inspection Date: ${report.inspectionDate}`, 105, 130, { align: 'center' });
   doc.text(`Inspector: ${report.inspector}`, 105, 145, { align: 'center' });
@@ -210,7 +210,7 @@ export function generateEnhancedPDF(data: EnhancedReportData): void {
       
       doc.setFontSize(14);
       doc.setFont(undefined, 'bold');
-      doc.text(`${componentName.toUpperCase()} MEASUREMENTS (${componentMeasurements.length})`, margin, yPosition);
+      doc.text(`${(componentName || '').toUpperCase()} MEASUREMENTS (${componentMeasurements.length})`, margin, yPosition);
       yPosition += 10;
       
       // Table header
@@ -346,12 +346,12 @@ export function generateEnhancedPDF(data: EnhancedReportData): void {
       checkPageBreak(25);
       
       doc.setFont(undefined, 'bold');
-      doc.text(`${inspection.appurtenanceType.toUpperCase()}: ${inspection.appurtenanceId}`, margin, yPosition);
+      doc.text(`${(inspection.appurtenanceType || '').toUpperCase()}: ${inspection.appurtenanceId}`, margin, yPosition);
       yPosition += 6;
       
       doc.setFont(undefined, 'normal');
       doc.text(`Location: ${inspection.location}`, margin + 5, yPosition);
-      doc.text(`Condition: ${inspection.condition.toUpperCase()}`, margin + 100, yPosition);
+      doc.text(`Condition: ${(inspection.condition || '').toUpperCase()}`, margin + 100, yPosition);
       yPosition += 6;
       
       if (inspection.findings) {
@@ -397,7 +397,7 @@ export function generateEnhancedPDF(data: EnhancedReportData): void {
       checkPageBreak(35);
       
       doc.setFont(undefined, 'bold');
-      doc.text(`${index + 1}. ${rec.component} - ${rec.priority.toUpperCase()} PRIORITY`, margin, yPosition);
+      doc.text(`${index + 1}. ${rec.component} - ${(rec.priority || '').toUpperCase()} PRIORITY`, margin, yPosition);
       yPosition += 6;
       
       doc.setFont(undefined, 'normal');
@@ -492,7 +492,7 @@ export function generateEnhancedPDF(data: EnhancedReportData): void {
       checkPageBreak(15);
       
       doc.setFont(undefined, 'bold');
-      doc.text(`${category.replace('_', ' ').toUpperCase()} (${catAttachments.length}):`, margin, yPosition);
+      doc.text(`${(category || '').replace('_', ' ').toUpperCase()} (${catAttachments.length}):`, margin, yPosition);
       yPosition += 6;
       doc.setFont(undefined, 'normal');
       
