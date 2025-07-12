@@ -37,16 +37,16 @@ export function generateEnhancedPDF(data: EnhancedReportData): void {
     cmlData: data.cmlData
   };
   
-  // Import and use the TEAM standard generator
-  import('./team-standard-pdf-generator').then(({ generateTeamStandardPDF }) => {
-    generateTeamStandardPDF(professionalData);
+  // Import and use the comprehensive visual generator
+  import('./visual-pdf-generator').then(({ generateVisualPDF }) => {
+    generateVisualPDF(professionalData);
   }).catch(error => {
-    console.error('Error loading TEAM standard PDF generator:', error);
-    // Fallback to professional generator
-    import('./professional-pdf-generator').then(({ generateProfessionalPDF }) => {
-      generateProfessionalPDF(professionalData);
+    console.error('Error loading visual PDF generator:', error);
+    // Fallback to TEAM standard generator
+    import('./team-standard-pdf-generator').then(({ generateTeamStandardPDF }) => {
+      generateTeamStandardPDF(professionalData);
     }).catch(fallbackError => {
-      console.error('Error loading professional PDF generator:', fallbackError);
+      console.error('Error loading TEAM standard PDF generator:', fallbackError);
       // Final fallback to legacy generator
       generateEnhancedPDFLegacy(data);
     });

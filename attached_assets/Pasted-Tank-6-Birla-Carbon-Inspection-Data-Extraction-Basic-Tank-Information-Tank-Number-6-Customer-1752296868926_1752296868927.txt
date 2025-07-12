@@ -1,0 +1,243 @@
+Tank 6 Birla Carbon Inspection Data Extraction
+
+Basic Tank Information
+
+•
+Tank Number: 6
+
+•
+Customer: Birla Carbon
+
+•
+Location: Centerville, LA
+
+•
+TTC Job Number: LR0328
+
+•
+Product Stored: Carbon Black Feedstock Oil
+
+•
+Specific Gravity: 1.10 at 120°F
+
+•
+Year Built: 1954
+
+•
+Manufacturer: B.A. Rothchild Boiler Tank Works
+
+•
+Construction Standard: Unknown
+
+•
+Foundation: Concrete Ringwall
+
+•
+Shell Construction Method: Welded
+
+•
+Diameter: 60.00 Ft
+
+•
+Height: 30.00 Ft
+
+•
+Capacity: 14,604 Barrels
+
+•
+Fixed Roof Type: Cone
+
+•
+Floating Roof Type: None
+
+Inspection Details
+
+•
+Scope of Inspection: External
+
+•
+Date of Inspection: 8/11/2021
+
+•
+Inspected By: M.Robertson (API-653 #24024, STI #AC 44162), F.Hancock (STI #AST 990371)
+
+•
+Reviewed By: James Hart (P.E., API-653 #43889)
+
+•
+Revision: 0 (9/9/2021)
+
+•
+Date of Previous External Inspection: Unknown
+
+•
+Date of Previous Internal Inspection: Unknown
+
+Shell Material Per Ring
+
+1.
+Ring 1: Unknown
+
+2.
+Ring 2: Unknown
+
+3.
+Ring 3: Unknown
+
+4.
+Ring 4: Unknown
+
+Key Findings from Evaluation Summary
+
+FH_1 - General (Fill Height)
+
+•
+Finding: Fill height should not exceed 25.27 feet using product specific gravity of 1.1, external inspection interval determined to be 0 years
+
+•
+Corrective Action: Possible to achieve 5-year inspection interval if fill height reduced to 24.43 feet
+
+FO-15 - Foundation
+
+•
+Finding: Tank rests on concrete ringwall within concrete containment. Containment seams, cracks and bottom extension sealed with epoxy-like material. Several areas of epoxy had deteriorated.
+
+•
+Corrective Action: Consideration should be given to repairing the sealant
+
+FO-31 - Foundation
+
+•
+Finding: Concrete containment drain retaining mud, vegetation, debris and water. Sump at end of drain full of water, product and debris.
+
+•
+Corrective Action: Containment drain and sump should be cleaned to ensure proper operation
+
+FO-56 - Foundation
+
+•
+Finding: Cornerweld sealed with epoxy-like material in good condition with areas of staining. Several areas of epoxy had deteriorated.
+
+•
+Corrective Action: Consideration should be given to repairing the sealant
+
+FO-58 - Foundation
+
+•
+Finding: Bottom extension sealed with epoxy-like material in good condition with areas of staining. Several areas of epoxy had deteriorated.
+
+•
+Corrective Action: Consideration should be given to repairing the sealant
+
+External Shell Inspection (ES-6)
+
+•
+Shell Insulation: Not Applicable
+
+•
+Hardware: Not Applicable
+
+•
+Shell Appurtenance Insulation: Not Applicable
+
+•
+External Shell Coating Condition: Good (with areas of peeling, thinning, staining, and uncoated areas)
+
+•
+Coating Failure Types: Peeling, Thinning, Staining, Areas Not Coated
+
+•
+Corrosion Type: Inactive Surface
+
+•
+Details: External shell coating was in good condition with areas of peeling, thinning, staining. There were areas that were not coated.
+
+•
+Recommendation: No repair required. Tank owner may elect to clean and paint any uncoated areas and areas of coating failure, especially those with corrosion.
+
+Shell Items and Appurtenances
+
+Nozzles and Repads
+
+LabelDescriptionLocation (ft)Height (in)Size (in)ShapeWidthHeightThicknessNeck Thk (in)SpacingWeld ToAManway0.0029.5020.00OCT56.0046.000.2560.3256.00CWBPlatform17.30---------CCoupling (R4)26.7519.001.00-----20.50HWDCoupling (R3)35.3022.001.00-----21.00HWECoupling (R2)41.5040.001.00-----26.00HWFNozzle43.405.004.00OCT16.0012.000.2450.2400.00CWGSpiral Stairway Start48.60---------HCoupling52.5041.501.00-----40.00CWINozzle76.6024.0010.00OCT30.0024.000.2900.31010.00CWJLevel Gauge79.10---------KNozzle95.2021.5016.00OCT48.0038.000.2570.5663.00CWLCoupling175.6023.501.00-----22.50CW
+
+Shell Vertical Seams (degrees)
+
+1.
+12.60°
+
+2.
+27.60°
+
+3.
+42.60°
+
+4.
+57.60°
+
+5.
+72.65°
+
+6.
+87.65°
+
+7.
+102.65°
+
+8.
+117.70°
+
+9.
+132.70°
+
+10.
+147.70°
+
+11.
+162.70°
+
+12.
+177.40°
+
+13.
+186.00°
+
+Shell Corrosion Rate Analysis
+
+Shell RingAge (years)Joint EfficiencyAllowable Stress (psi)Min T (in)Nominal T (in)Current T (in)Loss (in)Rate (in/yr)Remaining Life (years)External Interval (years)UT Interval (years)Ring 167.610.7023,5950.29070.28100.25200.02900.000430.000.000.00Ring 267.610.7023,5950.21280.28100.27200.00900.00013444.545.0015.00Ring 367.610.7025,9600.12230.28100.25900.02200.00033420.185.0015.00Ring 467.610.7025,9600.10000.31200.28500.02700.00040463.245.0015.00
+
+Analysis Results:
+
+•
+Minimum remaining life: 0.00 years
+
+•
+External inspection interval (5 yr max): 0.00 years
+
+•
+Ultrasonic testing interval (15 yr max): 0.00 years
+
+•
+Note: It is possible to achieve an inspection interval of 5 years if the fill height is reduced to 24.43 feet
+
+External Survey Data
+
+•
+Number of Radials: 8
+
+•
+Spacing: 23.5625 ft
+
+•
+Product Height: 3.06 ft
+
+•
+Survey Start: 3.00 feet CCW from East Shell Nozzle A
+
+•
+Weather Conditions: Not specified
+
+Survey Point Readings (Inverted Rod Readings in ft)
+
+RadialLocation (ft)Setup 1Setup 2Setup 3Setup 4Setup 5Setup 6Height (in)Elevation (ft)13.004.70-------226.564.70-------350.134.69-------473.694.694.80------597.254.80-------6120.814.79-------7144.384.794.70------8167.944.70-------93.004.70-------
+
