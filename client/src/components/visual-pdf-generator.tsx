@@ -794,7 +794,8 @@ function drawSettlementChart(doc: jsPDF, report: InspectionReport, x: number, y:
     { angle: 180, settlement: 0.08, location: 'Radial 5' },
     { angle: 225, settlement: 0.10, location: 'Radial 6' },
     { angle: 270, settlement: 0.14, location: 'Radial 7' },
-    { angle: 315, settlement: 0.20, location: 'Radial 8' }
+    { angle: 315, settlement: 0.20, location: 'Radial 8' },
+    { angle: 360, settlement: 0.24, location: 'Radial 1 (360°)' }  // Add 360° point = 0° point
   ];
   
   // Draw chart frame with professional styling
@@ -816,21 +817,23 @@ function drawSettlementChart(doc: jsPDF, report: InspectionReport, x: number, y:
   
   let prevX = 0, prevY = 0;
   surveyData.forEach((point, index) => {
-    const plotX = x + (index / (surveyData.length - 1)) * chartWidth;
+    const plotX = x + (point.angle / 360) * chartWidth;  // Use angle directly for proper positioning
     const plotY = y + chartHeight - (point.settlement / 0.3) * chartHeight; // Scale to 0.3" max
     
     if (index > 0) {
       doc.line(prevX, prevY, plotX, plotY);
     }
     
-    // Draw data points
+    // Draw data points (skip label for 360° to avoid overlap with 0°)
     doc.setFillColor(200, 0, 0);
     doc.circle(plotX, plotY, 1.5, 'F');
     
-    // Add value labels
-    doc.setFontSize(6);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`${point.settlement}"`, plotX, plotY - 5, { align: 'center' });
+    // Add value labels (skip 360° label to avoid overlap)
+    if (point.angle !== 360) {
+      doc.setFontSize(6);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`${point.settlement}"`, plotX, plotY - 5, { align: 'center' });
+    }
     
     prevX = plotX;
     prevY = plotY;

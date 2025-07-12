@@ -69,11 +69,26 @@ export function SettlementDataEntry({ data, onDataChange }: SettlementDataEntryP
     });
   };
 
-  const chartData = data.points.map(point => ({
+  // Ensure we have data that wraps around (0° = 360°)
+  let chartData = data.points.map(point => ({
     angle: point.angle,
     elevation: point.elevation,
     point: point.point
   }));
+  
+  // Add 360° point if we have a 0° point
+  const zeroPoint = chartData.find(p => p.angle === 0);
+  const has360Point = chartData.some(p => p.angle === 360);
+  if (zeroPoint && !has360Point) {
+    chartData.push({
+      angle: 360,
+      elevation: zeroPoint.elevation,
+      point: zeroPoint.point
+    });
+  }
+  
+  // Sort by angle for proper line drawing
+  chartData.sort((a, b) => a.angle - b.angle);
 
   const isExcessiveSettlement = data.maxDifferentialSettlement > 12; // API 653 typical limit
 
