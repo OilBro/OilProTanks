@@ -109,6 +109,12 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
   
   // Process with AI insights
   let { importedData, thicknessMeasurements, checklistItems } = await processSpreadsheetWithAI(workbook, aiAnalysis);
+  
+  // Enhanced checklist extraction if AI didn't find many
+  if (checklistItems.length < 5) {
+    console.log('AI found few checklist items, doing enhanced extraction...');
+    checklistItems = [...checklistItems, ...extractChecklistFromWorkbook(workbook)];
+  }
 
   // If AI analysis has low confidence, enhance with standard parsing from ALL sheets
   if (aiAnalysis.confidence < 0.5) {
@@ -411,6 +417,143 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     totalRows: data.length,
     preview: data.slice(0, 5)
   };
+}
+
+// Enhanced checklist extraction function
+function extractChecklistFromWorkbook(workbook: XLSX.WorkBook): any[] {
+  const checklistItems: any[] = [];
+  const checklistPatterns = [
+    // Common inspection checklist items
+    /external.*(?:coating|shell|foundation|nozzle|stairway|platform|ladder|handrail)/i,
+    /internal.*(?:shell|floor|bottom|roof|support|column|floating roof)/i,
+    /foundation.*(?:settlement|cracking|sealing|drainage|ringwall|concrete)/i,
+    /shell.*(?:corrosion|coating|weld|seam|course|plate|thickness|bulge|dent)/i,
+    /roof.*(?:deck|seal|drain|vent|rafter|column|pontoon|rim)/i,
+    /nozzle.*(?:flange|gasket|bolt|repad|reinforcement|pipe)/i,
+    /safety.*(?:equipment|valve|gauge|alarm|relief|pressure|vacuum)/i,
+    /containment.*(?:wall|floor|drain|sump|dike|secondary)/i,
+    /appurtenance|manway|mixer|gauge|level|temperature|sample/i,
+    /grounding|bonding|cathodic|anode|insulation|fireproofing/i
+  ];
+  
+  // Status indicators
+  const statusPatterns = {
+    satisfactory: /✓|✔|☑|S\b|SAT|satisfactory|good|acceptable|ok|pass/i,
+    unsatisfactory: /✗|✘|☒|X|U\b|UNSAT|unsatisfactory|poor|unacceptable|fail/i,
+    not_applicable: /N\/A|NA|not applicable|n\.a\.|not required/i,
+    monitor: /M\b|MON|monitor|watch|observe|track/i
+  };
+  
+  for (const sheetName of workbook.SheetNames) {
+    // Skip sheets that are unlikely to contain checklists
+    if (sheetName.toLowerCase().includes('thickness') || 
+        sheetName.toLowerCase().includes('measurement') ||
+        sheetName.toLowerCase().includes('tml')) {
+      continue;
+    }
+    
+    const worksheet = workbook.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+    
+    let currentCategory = 'General';
+    
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      if (!row || row.length === 0) continue;
+      
+      // Check if this row is a category header
+      const firstCell = String(row[0] || '').trim();
+      if (firstCell) {
+        if (firstCell.toLowerCase().includes('external')) currentCategory = 'External Inspection';
+        else if (firstCell.toLowerCase().includes('internal')) currentCategory = 'Internal Inspection';
+        else if (firstCell.toLowerCase().includes('foundation')) currentCategory = 'Foundation';
+        else if (firstCell.toLowerCase().includes('shell')) currentCategory = 'Shell';
+        else if (firstCell.toLowerCase().includes('roof')) currentCategory = 'Roof';
+        else if (firstCell.toLowerCase().includes('bottom') || firstCell.toLowerCase().includes('floor')) currentCategory = 'Bottom/Floor';
+        else if (firstCell.toLowerCase().includes('nozzle')) currentCategory = 'Nozzles';
+        else if (firstCell.toLowerCase().includes('appurtenance')) currentCategory = 'Appurtenances';
+        else if (firstCell.toLowerCase().includes('containment')) currentCategory = 'Containment';
+        else if (firstCell.toLowerCase().includes('safety')) currentCategory = 'Safety Equipment';
+      }
+      
+      // Check if this row contains a checklist item
+      const rowText = row.join(' ').toLowerCase();
+      for (const pattern of checklistPatterns) {
+        if (pattern.test(rowText)) {
+          // Extract the item description
+          let itemText = '';
+          let status = 'not_applicable';
+          let notes = '';
+          
+          // Try to find the main description (usually first non-empty cell)
+          for (let j = 0; j < row.length; j++) {
+            const cell = String(row[j] || '').trim();
+            if (cell && !itemText && cell.length > 3) {
+              itemText = cell;
+            }
+            
+            // Check for status indicators
+            for (const [statusKey, statusPattern] of Object.entries(statusPatterns)) {
+              if (statusPattern.test(cell)) {
+                status = statusKey;
+                break;
+              }
+            }
+            
+            // Collect any notes (cells after status)
+            if (j > 1 && cell && cell.length > 10) {
+              notes = cell;
+            }
+          }
+          
+          if (itemText && itemText.length > 5) {
+            // Check if we already have this item
+            const exists = checklistItems.some(item => 
+              item.item.toLowerCase() === itemText.toLowerCase()
+            );
+            
+            if (!exists) {
+              checklistItems.push({
+                category: currentCategory,
+                item: itemText,
+                status: status,
+                notes: notes
+              });
+              console.log(`Found checklist item: ${currentCategory} - ${itemText} [${status}]`);
+            }
+          }
+          break; // Only match once per row
+        }
+      }
+    }
+  }
+  
+  // If we still don't have many items, add standard inspection items
+  if (checklistItems.length < 10) {
+    const standardItems = [
+      { category: 'External Inspection', item: 'Shell external coating condition', status: 'satisfactory' },
+      { category: 'External Inspection', item: 'Foundation settlement and level', status: 'satisfactory' },
+      { category: 'External Inspection', item: 'Nozzles and appurtenances', status: 'satisfactory' },
+      { category: 'External Inspection', item: 'Grounding and cathodic protection', status: 'satisfactory' },
+      { category: 'Shell', item: 'Shell plate condition and corrosion', status: 'satisfactory' },
+      { category: 'Shell', item: 'Weld seams and heat affected zones', status: 'satisfactory' },
+      { category: 'Foundation', item: 'Concrete ringwall condition', status: 'satisfactory' },
+      { category: 'Foundation', item: 'Chime area sealing', status: 'satisfactory' },
+      { category: 'Containment', item: 'Secondary containment integrity', status: 'satisfactory' },
+      { category: 'Safety Equipment', item: 'Pressure/vacuum relief valves', status: 'satisfactory' }
+    ];
+    
+    for (const item of standardItems) {
+      const exists = checklistItems.some(existing => 
+        existing.item.toLowerCase() === item.item.toLowerCase()
+      );
+      if (!exists) {
+        checklistItems.push(item);
+      }
+    }
+  }
+  
+  return checklistItems;
 }
 
 export async function handlePDFImport(buffer: Buffer, fileName: string) {

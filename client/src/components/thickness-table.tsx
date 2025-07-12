@@ -14,10 +14,12 @@ interface ThicknessTableProps {
 }
 
 const COMPONENT_OPTIONS = [
-  { value: "Shell Course 1", defaultThickness: 0.500 },
+  { value: "Shell Course 1 (Bottom)", defaultThickness: 0.625 },  // Thickest - bottom course
   { value: "Shell Course 2", defaultThickness: 0.500 },
-  { value: "Shell Course 3", defaultThickness: 0.500 },
-  { value: "Shell Course 4", defaultThickness: 0.500 },
+  { value: "Shell Course 3", defaultThickness: 0.375 },
+  { value: "Shell Course 4", defaultThickness: 0.250 },
+  { value: "Shell Course 5", defaultThickness: 0.250 },
+  { value: "Shell Course 6 (Top)", defaultThickness: 0.187 },     // Thinnest - top course
   { value: "Bottom Plate", defaultThickness: 0.250 },
   { value: "Roof - Center", defaultThickness: 0.125 },
   { value: "Roof - Edge", defaultThickness: 0.125 },

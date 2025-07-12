@@ -14,6 +14,8 @@ import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { insertInspectionReportSchema, type InspectionReport, type InsertInspectionReport } from "@shared/schema";
+import { ThicknessMeasurementsEdit } from "@/components/thickness-measurements-edit";
+import { ChecklistEdit } from "@/components/checklist-edit";
 
 export function EditReport() {
   const { id } = useParams();
@@ -285,6 +287,12 @@ export function EditReport() {
             </div>
           </CardContent>
         </Card>
+        
+        {/* Thickness Measurements Section */}
+        <ThicknessMeasurementsEdit reportId={reportId} />
+        
+        {/* Checklist Section */}
+        <ChecklistEdit reportId={reportId} />
         
         <div className="flex justify-between">
           <Link href={`/report/${reportId}`}>
