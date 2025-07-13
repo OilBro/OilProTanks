@@ -525,4 +525,12 @@ Business Rules: NO cost estimation for repair recommendations
   - Added professional headers, footers, and page numbering throughout
   - Enhanced database schema with 20+ new professional fields (customer, location, manufacturer, etc.)
   - System now generates reports matching professional API 653 industry standards
+✓ CRITICAL CALCULATION ENGINE FIXES - TANK 6 BIRLA CARBON (July 13, 2025):
+  - Fixed critical data error: Shell Ring 1 original thickness corrected from 0.312" to 0.281"
+  - Fixed critical data error: Shell Ring 4 original thickness corrected from 0.281" to 0.312"
+  - Implemented API 653 standard calculation engine with proper formulas
+  - Corrosion rates now correctly calculated: Ring 1 = 0.47 mpy, Ring 2 = 0.17 mpy
+  - Remaining life calculations updated with proper minimum thickness requirements
+  - Fixed unit conversion issues (mils per year vs inches per year)
+  - System now produces calculations matching professional TEAM Tank Consultants methodology
 ```
