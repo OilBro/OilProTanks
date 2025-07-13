@@ -501,6 +501,15 @@ Business Rules: NO cost estimation for repair recommendations
   - Settlement analysis charts with API 653 compliance lines
   - Corrosion rate box plots with statistical analysis by shell ring
   - Professional 3D bar charts for status visualization
+✓ LEGACY EXCEL FORMAT SUPPORT (January 13, 2025):
+  - Added support for vertical key-value Excel exports from old OilPro system
+  - Created comprehensive field mapper for 203+ abbreviated field names
+  - Maps legacy fields like: Crs1 t → course1Thickness, SG → specificGravity
+  - Handles Excel date serial numbers, settlement points (SP1-SP10)
+  - Automatically detects legacy format by "Report No" in first cell
+  - Converts recommendations with intelligent priority assignment
+  - Preserves all inspection findings across foundation, shell, roof, floor
+  - System now handles both standard Excel and legacy vertical formats
   - Added comprehensive table of contents with proper page numbering
   - Created evaluation summary and repair checklist with formal finding ID system
   - Added detailed tank specifications section with all professional fields

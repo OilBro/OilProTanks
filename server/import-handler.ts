@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import { analyzeSpreadsheetWithOpenRouter, processSpreadsheetWithAI } from "./openrouter-analyzer";
 import { analyzePDFWithOpenRouter, processPDFWithAI } from "./pdf-analyzer";
+import { parseLegacyExcelData, convertToSystemFormat } from "./legacy-import-mapper";
 
 export async function handleExcelImport(buffer: Buffer, fileName: string) {
   // Check if this is a PDF file
@@ -29,6 +30,34 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     } catch (secondError) {
       throw new Error("Unable to read Excel file. The file may be corrupted or in an unsupported format.");
     }
+  }
+  
+  // Check if this is a legacy vertical format export
+  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+  const firstSheetData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 }) as any[][];
+  
+  if (firstSheetData.length > 0 && firstSheetData[0][0] === 'Report No') {
+    console.log('Detected legacy vertical format Excel export');
+    
+    // Parse using legacy format handler
+    const legacyData = parseLegacyExcelData(firstSheetData);
+    const { reportData, thicknessMeasurements, repairRecommendations } = convertToSystemFormat(legacyData);
+    
+    return {
+      importedData: reportData,
+      thicknessMeasurements,
+      checklistItems: [], // Legacy format doesn't have checklist items
+      aiAnalysis: {
+        reportData,
+        thicknessMeasurements,
+        checklistItems: [],
+        confidence: 1.0,
+        mappingSuggestions: {},
+        detectedColumns: ['Legacy vertical format detected']
+      },
+      totalRows: firstSheetData.length,
+      preview: firstSheetData.slice(0, 10)
+    };
   }
 
   // Find a sheet with data
