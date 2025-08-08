@@ -1,131 +1,9 @@
 # API 653 Inspector - Tank Inspection Management System
 
 ## Overview
-
-This is a full-stack web application built for managing API 653 tank inspection reports. The system enables inspectors to create, manage, and generate professional inspection reports for storage tanks, with features for thickness measurements, inspection checklists, and PDF report generation.
-
-## System Architecture
-
-### Frontend Architecture
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite for fast development and optimized builds
-- **UI Library**: shadcn/ui components built on Radix UI primitives
-- **Styling**: Tailwind CSS with custom design tokens
-- **State Management**: TanStack React Query for server state management
-- **Routing**: Wouter for lightweight client-side routing
-- **Form Handling**: React Hook Form with Zod validation
-
-### Backend Architecture
-- **Runtime**: Node.js with Express.js server
-- **Language**: TypeScript with ES modules
-- **Database ORM**: Drizzle ORM for type-safe database operations
-- **Database**: PostgreSQL (configured for Neon Database)
-- **Validation**: Zod schemas shared between client and server
-- **Development**: tsx for TypeScript execution in development
-
-### Data Storage Solutions
-- **Primary Database**: PostgreSQL with the following schema:
-  - `inspection_reports`: Main report records with metadata
-  - `thickness_measurements`: Corrosion and thickness data points
-  - `inspection_checklists`: Standardized inspection items
-  - `report_templates`: Reusable report configurations
-- **Database Migrations**: Drizzle Kit for schema management
-- **Connection**: Neon Database serverless PostgreSQL
-
-## Key Components
-
-### Core Features
-1. **Dashboard**: Overview of all inspection reports with status tracking
-2. **Report Creation**: Step-by-step report generation with form validation
-3. **Comprehensive Thickness Management**: 
-   - Shell course measurements
-   - Bottom plate readings with grid references
-   - Internal annular ring measurements
-   - Critical zone assessments
-   - External repad inspections
-   - Roof thickness readings (center, edge, nozzle areas)
-   - Chime area measurements
-   - Nozzle and flange inspections
-4. **Settlement Surveys**: Internal and external elevation measurements
-5. **Dyke & Secondary Containment**: Primary/secondary containment inspections
-6. **Checklist System**: Standardized inspection items for external/internal components
-7. **Excel Import**: Smart field detection for existing inspection reports
-8. **PDF Generation**: Professional report output using jsPDF
-9. **Template System**: Reusable report templates for different tank services
-
-### Calculation Engine
-- **Corrosion Rate Calculation**: Based on original vs current thickness over time
-- **Remaining Life Estimation**: Predictive analysis for maintenance planning
-- **Status Classification**: Automatic categorization (acceptable, monitor, action required)
-
-### UI Components
-- Custom React components built on shadcn/ui foundation
-- Responsive design with mobile support
-- Dark/light theme support through CSS custom properties
-- Accessible components following ARIA guidelines
-
-## Data Flow
-
-1. **Report Creation**: User fills out basic tank information and inspection details
-2. **Thickness Measurements**: Inspector adds measurement data with automatic calculations
-3. **Inspection Checklist**: Standardized items are checked off during inspection
-4. **Report Generation**: All data is compiled into a professional PDF report
-5. **Data Persistence**: All information is stored in PostgreSQL for future reference
-
-## External Dependencies
-
-### Frontend Dependencies
-- **UI Framework**: React, React DOM, Vite
-- **UI Components**: Radix UI primitives, Lucide React icons
-- **Forms**: React Hook Form, Hookform Resolvers
-- **Styling**: Tailwind CSS, class-variance-authority, clsx
-- **Date Handling**: date-fns for date formatting
-- **PDF Generation**: jsPDF for client-side PDF creation
-- **State Management**: TanStack React Query
-
-### Backend Dependencies
-- **Server**: Express.js for HTTP server
-- **Database**: Drizzle ORM, Neon Database serverless driver
-- **Validation**: Zod for runtime type checking
-- **Development**: tsx for TypeScript execution
-
-### Development Tools
-- **TypeScript**: Full type safety across the stack
-- **ESLint/Prettier**: Code formatting and linting
-- **Vite Plugins**: Development experience enhancements
-- **Replit Integration**: Cartographer plugin for Replit environment
-
-## Deployment Strategy
-
-### Development Environment
-- **Local Development**: `npm run dev` runs both client and server
-- **Hot Reload**: Vite HMR for frontend, tsx watch mode for backend
-- **Port Configuration**: Server on port 5000, proxied through Vite
-
-### Production Build
-- **Frontend Build**: Vite builds optimized static assets
-- **Backend Build**: esbuild bundles server code for Node.js
-- **Output**: Compiled assets in `dist/` directory
-- **Deployment Target**: Replit Autoscale with PostgreSQL module
-
-### Database Management
-- **Schema Migrations**: `npm run db:push` applies schema changes
-- **Environment Variables**: `DATABASE_URL` for database connection
-- **Connection Pooling**: Neon Database handles connection management
-
-## Changelog
-
-```
-Changelog:
-- June 23, 2025. Initial setup
-- June 23, 2025. Added PostgreSQL database with persistent storage
-- June 23, 2025. Fixed report generation errors and PDF export functionality
-- June 23, 2025. Application deployed and ready for production use
-```
+This is a full-stack web application designed for managing API 653 tank inspection reports. Its primary purpose is to enable inspectors to efficiently create, manage, and generate professional inspection reports for storage tanks. Key capabilities include comprehensive thickness measurements, detailed inspection checklists, settlement surveys, dyke and secondary containment inspections, and automated PDF report generation. The system aims to streamline the inspection process, ensure compliance with API 653 standards, and provide predictive analysis for maintenance planning, ultimately enhancing safety and efficiency in tank management.
 
 ## User Preferences
-
-```
 Preferred communication style: Simple, everyday language.
 File handling: User has existing Excel-based inspection reports (XLSM format) that may need import functionality.
 Excel field mappings:
@@ -134,403 +12,65 @@ Excel field mappings:
 - Nominal Thickness = Original Thickness
 - Findings section includes: Executive Summary with repair recommendations and next inspection date
 Business Rules: NO cost estimation for repair recommendations
-```
 
-## Recent Changes
+## System Architecture
 
-```
-✓ Database successfully integrated with PostgreSQL
-✓ Report generation errors fixed (PDF export working) 
-✓ Template system working with 3 pre-configured tank types
-✓ Excel import functionality added with comprehensive data extraction
-✓ Enhanced import system recognizes API 653 inspection report formats
-✓ Automatic extraction of tank data, thickness measurements, and checklist items
-✓ Form navigation issue fixed (Enter key no longer jumps to "years in service")
-✓ COMPREHENSIVE API 653 AUDIT RESPONSE IMPLEMENTED:
-  - Added detailed appurtenance inspection tracking (nozzles, manways, vents, etc.)
-  - Implemented repair recommendations with priority tracking and API 653 references
-  - Added venting system inspection for safety-critical components
-  - Created supporting document/photo attachment system
-  - Enhanced PDF generator with professional multi-page reports
-  - Added corrosion rate calculations and remaining life assessments
-  - Integrated comprehensive inspection workflow addressing all audit findings
-✓ PROFESSIONAL API 653 REPORT BUILDER FEATURES ADDED:
-  - CML (Corrosion Monitoring Location) data entry with auto-numbering
-  - Component and Nozzle CML records with import/export capabilities
-  - Shell course remaining life calculations per API 653 requirements
-  - Settlement survey analysis with cosine curve fitting and R² validation
-  - Advanced calculation appendix with tabbed interface
-  - Material specifications from API 650 standards
-  - Joint efficiency calculations and stress analysis
-  - Professional multi-page PDF reports with certification pages
-✓ COMPREHENSIVE AUDIT COMPLIANCE FEATURES IMPLEMENTED:
-  - Settlement survey data entry with differential settlement analysis
-  - NDE test locations with detailed results tracking (UT, MT, PT, VT, RT, ET)
-  - Discontinuity documentation with type, size, and depth recording
-  - Secondary containment inspection with EPA compliance checking
-  - Visual documentation attachment system with categorization
-  - Enhanced inspection checklists covering all tank components
-  - Corrosion rate calculations with API 653 methodology transparency
-✓ COMPONENT-SPECIFIC THICKNESS CALCULATIONS IMPLEMENTED:
-  - Individual original thickness values for each component type
-  - Shell, nozzle, bottom, roof components have separate default thicknesses
-  - Accurate corrosion rate calculations per component specifications
-  - Component selection auto-populates appropriate thickness values
-✓ ONE-CLICK REPORT GENERATION PREVIEW FEATURE:
-  - Quick PDF preview modal with comprehensive report summary
-  - Instant PDF generation directly from dashboard
-  - Color-coded action buttons with tooltips
-  - Toast notifications for user feedback
-  - Enhanced workflow efficiency for inspectors
-✓ Application now exceeds commercial API 653 inspection software capabilities
-✓ COMPREHENSIVE AUDIT COMPLIANCE IMPLEMENTATION:
-  - Added settlement survey analysis with differential settlement calculations
-  - Enhanced NDE test locations with detailed discontinuity documentation  
-  - Implemented comprehensive visual documentation system for photos/sketches
-  - Added security headers addressing all audit findings (XSS, CSRF, clickjacking)
-  - Enhanced secondary containment inspection with EPA compliance tracking
-  - Integrated professional multi-component inspection workflow
-  - System now addresses all major audit gaps for full API 653 compliance
-✓ CRITICAL FORM NAVIGATION ISSUE RESOLVED:
-  - Fixed persistent "Generate Report" button jumping to years field
-  - Implemented comprehensive form event handling with focus management
-  - Added controlled input state handling for settlement survey component
-  - Enhanced button click handlers with proper event prevention
-  - Form now works smoothly without unexpected field navigation
-✓ DEEP AUDIT FIXES IMPLEMENTED (June 30, 2025):
-  - Fixed date formatting issues showing "Invalid Date" - now handles null/invalid dates gracefully
-  - Fixed service type display in quick PDF preview - corrected field names from serviceType to service
-  - Fixed checklist display in quick PDF preview - corrected field references
-  - All routing errors remain fixed (Dashboard links point to / not /dashboard)
-  - PDF generation through Quick Preview modal works perfectly
-  - System ready for production deployment with 85% functionality success rate
-✓ JANUARY 2025 AUDIT FIXES IMPLEMENTED:
-  - Fixed direct PDF generation button failure - added missing API endpoints
-  - Added data queries for appurtenanceInspections, repairRecommendations, ventingInspections, and attachments
-  - Created API endpoints for all required PDF data: /api/reports/:id/appurtenances, /repairs, /venting, /attachments
-  - Direct "Generate PDF" button now works identical to Quick Preview PDF generation
-  - System now achieves 100% functionality success rate with all critical issues resolved
-✓ AI-POWERED EXCEL IMPORT INTEGRATION (July 2, 2025):
-  - Integrated OpenRouter AI for intelligent spreadsheet analysis
-  - Automatic field detection and mapping with confidence scoring
-  - Support for .xlsx, .xls, and .xlsm formats
-  - Smart fallback to standard parsing when AI confidence is low
-  - Shows AI analysis results including detected columns and mapping suggestions
-  - Successfully handles complex API 653 inspection spreadsheets
-  - System ready for deployment with all features working
-✓ ENHANCED AI EXTRACTION PROMPT (July 3, 2025):
-  - Updated OpenRouter prompt to extract 25+ data fields comprehensively
-  - Added detection for equipment ID, capacity, construction codes, materials
-  - Enhanced thickness measurement extraction from all sheet types
-  - Improved pattern matching for "tml-1", "_1", numeric columns
-  - Added support for inspector certification, test methods, corrosion allowance
-  - Fixed import-to-report creation workflow with proper field mapping
-✓ THICKNESS MEASUREMENT VALIDATION FIX (July 3, 2025):
-  - Fixed 400 Bad Request error when creating thickness measurements from Excel import
-  - Added comprehensive logging for debugging measurement creation failures
-  - Ensured all required fields (component, location, createdAt) are present before sending
-  - Added proper default values for missing fields in imported measurements
-  - Improved error messages to show exactly what field validation failed
-  - System now successfully creates thickness measurements from imported Excel data
-✓ CRITICAL EXCEL IMPORT FIX (July 5, 2025):
-  - Fixed critical issue where Excel imports created dashboard entries but no actual reports
-  - Root cause: Import endpoint was only extracting and returning data, not creating reports
-  - Added report creation logic directly in the import endpoint
-  - Fixed 'findings' field handling that was preventing report creation
-  - Standardized service types to prevent validation errors (crude_oil → crude)
-  - Clean up tank IDs to prevent Excel filenames being used as tank identifiers
-  - Import now creates report, thickness measurements, and checklist items in database
-  - Client automatically navigates to newly created report on successful import
-  - System now achieves 100% functionality for Excel imports
-✓ EXCEL IMPORT IMPROVEMENTS (July 3, 2025):
-  - Updated AI analyzer to prioritize AST COMP TML sheet for actual thickness readings
-  - System now ignores blank readings from base/summary pages 
-  - Added support for incomplete inspection reports with missing tank size, height, etc.
-  - Report creation now provides sensible defaults for missing required fields
-  - Missing fields are left blank for user to fill in later
-  - Import process is more forgiving of incomplete inspector data
-✓ STANDARDIZED EXCEL TEMPLATE FEATURE (July 3, 2025):
-  - Created downloadable API 653 inspection template with 6 sheets:
-    - Basic Information: Tank specs, inspection details, materials
-    - Shell Thickness: Course measurements with 8 directions
-    - Bottom Thickness: Grid references and annular ring measurements
-    - Roof & Nozzles: Roof thickness and nozzle inspection data
-    - Inspection Checklist: External/internal components with S/U/NA options
-    - Instructions: Detailed guide for template usage
-  - Template includes N/A markers for sections not applicable
-  - Download button added to Import page for easy access
-  - System respects N/A markers during import - skips those sections
-  - Filename includes current date for version tracking
-✓ FIXED REACT RENDERING ERROR (July 3, 2025):
-  - Fixed "Minified React error #31" caused by AI returning object for service field
-  - Added handling for tank fabrication types: welded (API 650) and bolted (API RP 12C)
-  - Service field now properly converts objects to string values during import
-  - Added welded and bolted tank options to service dropdown
-  - System now handles complex AI responses without crashing
-✓ FIXED DATA TYPE VALIDATION ERROR (July 3, 2025):
-  - Resolved validation error where numeric values were incorrectly converted to strings
-  - Database schema expects decimal types for height, originalThickness, currentThickness, etc.
-  - Updated Excel import to use parseFloat() for all numeric fields
-  - All measurement values (thickness, corrosion rate, remaining life) now sent as numbers
-  - Import process now successfully creates reports with proper data type handling
-✓ COMPREHENSIVE FIELD EXTRACTION UPGRADE (July 4, 2025):
-  - Implemented comprehensive field name variations for robust Excel import
-  - AI now searches for 200+ industry-standard field name variations
-  - Handles reports from different companies, people, and inspection software
-  - Field variations include: tank_id, equipment_id, vessel_id, unit_number, asset_tag, etc.
-  - Enhanced extraction for: owner/client names, locations, dimensions, capacity variations
-  - Improved thickness reading detection with all common column name patterns
-  - Added support for all inspection terminology: examiner, surveyor, technician, assessor
-  - Increased OpenRouter max tokens to 18000 (tripled) for comprehensive extraction
-  - Updated to use Claude Sonnet 4 model (anthropic/claude-sonnet-4-20250514)
-  - System can now handle ANY API 653 inspection Excel format without missing critical data
-✓ ENHANCED EDIT FUNCTIONALITY AND DELETE CAPABILITY (July 4, 2025):
-  - Added delete report functionality with confirmation dialog to dashboard
-  - Delete button removes report and all associated data (measurements, checklists, attachments)
-  - Created comprehensive edit report form with all sections from new report
-  - Edit form now includes: Basic Info, Measurements, Checklist, Advanced sections, Attachments
-  - Advanced section includes: Appurtenance, Repairs, Venting, Settlement, NDE, Containment
-  - Edit functionality now matches the full capabilities of new report creation
-  - Users can edit ALL aspects of a report, not just basic fields
-✓ DATA TYPE VALIDATION FIXES (July 4, 2025):
-  - Fixed original thickness validation error - now properly handles numeric/string conversion
-  - Fixed current thickness validation - decimal fields from database handled correctly
-  - Drizzle ORM returns decimal fields as strings for precision - added proper type conversion
-  - All thickness measurement fields now convert between string/number types as needed
-  - Report creation and thickness measurement creation now work without validation errors
-  - Fixed discontinuitySize field type from string to number for NDE test results
-  - Fixed dimensions field type from string to number for containment components
-✓ COMPREHENSIVE UNIT HANDLING IMPROVEMENTS (July 4, 2025):
-  - Added proper unit type definitions (DimensionValue, VolumeValue, ThicknessValue, PressureValue)
-  - Implemented UnitConverter utility with conversions for all measurement types
-  - Updated all numeric form fields from strings to proper number types
-  - Added unit selector dropdowns to diameter, height, originalThickness inputs
-  - Form submission now converts all values to standard units (ft, gal, in, psi)
-  - Fixed type mismatches between new-report and secondary-containment components
-  - Enhanced user experience - users can input values in their preferred units
-  - All measurements stored in consistent standard units in database
-✓ CRITICAL FIXES APPLIED (July 6, 2025):
-  - Fixed report retrieval issue - backend was returning array instead of single object
-  - Updated GET /api/reports/:id to properly return report with related data
-  - Fixed manual report creation - proper field name mapping to match database schema
-  - Changed tankDiameter/Height to diameter/height, serviceType to service
-  - Reports are now fully accessible from dashboard (0% → 100% success rate)
-  - Database schema recreated with decimal types for all numeric fields
-  - All thickness fields use decimal(10,3), diameter/height use decimal(10,2)
-  - No default values - all fields allow null/blank as requested
-✓ CRITICAL API ENDPOINT MISSING - FIXED (July 6, 2025):
-  - Root cause: Missing GET /api/reports route causing dashboard to fail
-  - Added missing GET /api/reports endpoint to return all reports as JSON
-  - Server restart successfully applied the fix
-  - All functionality now working at 100% success rate
-  - System ready for deployment with full API 653 compliance
-✓ CRITICAL REPORT ACCESS ISSUE RESOLVED (July 7, 2025):
-  - Root cause: System only supported report access by ID, not by report number
-  - Added new API endpoint /api/reports/by-number/:reportNumber for URL compatibility
-  - Updated ReportView component to handle both ID and report number parameters
-  - Fixed storage function naming conflicts causing database errors
-  - Reports now accessible via both /report/17 and /report/IMP-1751863325467 formats
-  - All imported reports with report numbers now fully accessible
-  - System achieves 100% report accessibility across all access methods
-✓ OPENROUTER AI INTEGRATION FIXED (July 7, 2025):
-  - Fixed OpenRouter model ID from invalid "anthropic/claude-sonnet-4-20250514" to valid "anthropic/claude-3.5-sonnet:beta"
-  - OpenRouter API now works correctly with user's API key
-  - Added comprehensive error logging to show when AI analysis fails vs succeeds
-  - Added user feedback on import page showing AI analysis status and confidence scores
-  - Users can now see whether OpenRouter AI was used successfully or fell back to standard parsing
-  - Excel imports now leverage full AI-powered data extraction capabilities
-✓ OPENROUTER AI DATA EXTRACTION WORKING (July 7, 2025):
-  - OpenRouter AI now successfully analyzes all Excel sheets instead of falling back to basic parsing
-  - Report #20 created with 70 proper thickness measurements extracted from actual Excel data
-  - AI extracts shell components, locations, and thickness values (0.408, 0.700, 1.000 inches)
-  - Report numbers now extracted from Excel files instead of generic "IMP-" prefixes
-  - Tank IDs now use actual filenames instead of "TBA READINGS FOR IMPORT"
-  - System achieves 100% OpenRouter AI integration success - no more confidence: 0 fallbacks
-  - Excel imports now provide comprehensive data extraction with proper field mapping
-✓ COMPREHENSIVE CHECKLIST TEMPLATE SYSTEM IMPLEMENTED (July 7, 2025):
-  - Added database table for storing custom checklist templates with categories
-  - Created upload system for Excel and PDF checklist files with AI extraction
-  - Built comprehensive UI for managing templates with upload/create/standard options
-  - Added standard API 653 checklist templates (external/internal inspection)
-  - Integrated navigation with new "Checklists" tab in main menu
-  - AI extraction intelligently parses uploaded files to extract checklist items
-  - Automatic categorization by component type (external, internal, foundation, roof, etc.)
-  - Manual template creation with custom categories and line-by-line item entry
-  - System ready for production with full checklist management capabilities
-✓ COMPREHENSIVE PDF PARSING SYSTEM OVERHAUL (July 8, 2025):
-  - Fixed critical PDF import validation - now accepts PDF files in Excel import section
-  - Installed GraphicsMagick and ImageMagick system dependencies for advanced PDF processing
-  - Resolved pdf-parse library configuration issues causing complete parsing failures
-  - Implemented 4-layer text extraction system for maximum data recovery:
-    • Standard PDF text extraction with proper configuration options
-    • PDF stream analysis extracting text from BT...ET blocks
-    • Dictionary object string extraction from PDF internal structures
-    • Pattern-based extraction targeting inspection-specific data patterns
-  - Enhanced keyword detection for API 653 terminology and inspection data
-  - Added structured pattern matching for tank IDs, measurements, dates, inspector names
-  - System now extracts meaningful data from previously failing PDF formats
-  - Dramatically improved AI confidence scores through better text cleaning and extraction
-✓ CRITICAL PDF GENERATION SYSTEM FIXES (July 8, 2025):
-  - Fixed complete PDF generation failure with "PDF Generation Failed" error
-  - Added comprehensive error handling and debugging to jsPDF generation process
-  - Enhanced error messages to show exact failure points instead of generic errors
-  - Fixed try-catch blocks in enhanced-pdf-generator.tsx that were causing silent failures
-  - Updated both QuickPDFPreview and ReportView components with detailed error logging
-  - Verified OpenRouter AI integration is working correctly with proper API key configuration
-  - Confirmed system operational status: 27 reports accessible, all API endpoints responding
-  - PDF generation now provides detailed console logging for debugging any remaining issues
-✓ COMPREHENSIVE PDF CONTENT GENERATION FIXES (July 8, 2025):
-  - Fixed PDF generation showing minimal content (2 pages) despite rich data available
-  - Resolved thickness measurements data parsing issues in PDF generator
-  - Added proper component grouping and detailed measurement tables
-  - Implemented automatic thickness loss calculations and status classification
-  - Enhanced summary statistics with averages, critical locations, and inspection counts
-  - PDF now generates comprehensive multi-page reports with all measurement data
-  - Reports with 70+ measurements now display complete data instead of minimal placeholders
-✓ DATABASE SCHEMA UPDATES COMPLETED (July 9, 2025):
-  - Fixed database push command hanging on column confirmation prompts
-  - Added defect_description column to repair_recommendations table
-  - Confirmed checklist_templates table exists and is properly configured
-  - All database schema changes successfully applied using direct SQL commands
-  - System ready for deployment with updated database structure
-✓ CRITICAL DATA EXTRACTION IMPROVEMENTS COMPLETED (July 9, 2025):
-  - Fixed repair recommendations endpoint 500 errors by adding missing database columns
-  - Enhanced OpenRouter AI analyzer with improved thickness measurement detection
-  - Increased token limit from 18,000 to 24,000 for comprehensive extraction
-  - Added prioritized thickness measurement extraction with 200+ field variations
-  - AI confidence improved from 35% to 90%+ with 13 thickness measurements extracted
-  - Better component identification: Shell, Shell Crs 1 with proper locations
-  - Accurate thickness values: 0.298, 0.261 inches with proper original thickness defaults
-  - All API endpoints now working correctly with enhanced error handling and logging
-  - System achieving excellent data extraction from complex Excel inspection reports
-✓ COMPREHENSIVE SYSTEM FIXES FOR 100% FUNCTIONALITY (July 9, 2025):
-  - Fixed report status inconsistencies: all reports now have valid status values
-  - Updated report statuses: 3 completed reports with proper measurement data
-  - Fixed checklist endpoint compatibility: added singular /checklist route alongside /checklists
-  - Resolved templates endpoint 500 error: added missing database columns and default templates
-  - Enhanced database schema: added service, description, default_components, default_checklist columns
-  - Fixed data integrity: completed reports now have proper measurement data (13-70 measurements)
-  - All API endpoints confirmed working: reports, measurements, checklists, repairs, venting, attachments
-  - Excel import functionality verified: OpenRouter AI analysis working with comprehensive sheet processing
-  - System now achieves 100% functionality across all core features
-  - Stats calculation working correctly: 41 total reports, 3 completed, 3 in progress
-  - Template system operational: 3 default templates (crude, diesel, gasoline) available
-✓ CRITICAL PDF GENERATION FIX - COMPREHENSIVE DATA LOADING (July 10, 2025):
-  - MAJOR ISSUE RESOLVED: PDFs were only showing basic metadata instead of comprehensive inspection data
-  - Root cause: PDF generation functions were receiving empty data arrays for all inspection details
-  - Fixed QuickPDFPreview component to load all related data before PDF generation
-  - Fixed ReportView component to load comprehensive data via API endpoints
-  - Fixed Dashboard component to load complete inspection data for PDF generation
-  - All PDF generation now loads: measurements, checklists, appurtenances, repairs, venting, attachments
-  - PDFs now include: detailed thickness measurement tables, component groupings, status calculations
-  - Professional API 653 reports now contain: repair recommendations, inspection checklists, supporting documentation
-  - System transformed from "basic summary PDFs" to "comprehensive professional inspection reports"
-  - This fix addresses the fundamental product failure that made PDFs unsuitable for professional use
-  - Reports with measurement data (like Report 35 with 13 measurements) now generate complete technical documentation
-✓ PDF GENERATION SYSTEM FULLY OPERATIONAL (July 10, 2025):
-  - Resolved "PDF Generation Failed" error with "Cannot read properties of null (reading 'toUpperCase')" message
-  - System now successfully generates comprehensive professional API 653 inspection reports
-  - All three PDF generation entry points working: QuickPDFPreview, ReportView, Dashboard
-  - Application verified operational with 43 reports, comprehensive data loading confirmed
-  - PDF generation system transformed from completely broken to fully functional
-  - Professional inspection reports now deliverable to clients and regulatory authorities
-✓ CRITICAL NULL REFERENCE ERROR FIXES (July 10, 2025):
-  - Fixed all 6 instances of .toUpperCase() calls in enhanced-pdf-generator.tsx causing null reference errors
-  - Added proper null checking for: report.service, componentName, inspection.appurtenanceType, inspection.condition, rec.priority, category fields
-  - All .toUpperCase() calls now use pattern (field || '').toUpperCase() to prevent null/undefined errors
-  - PDF generation now handles missing or null data gracefully without system crashes
-  - Root cause of "Cannot read properties of null (reading 'toUpperCase')" error completely resolved
-✓ PROFESSIONAL API 653 PDF GENERATOR IMPLEMENTATION (July 10, 2025):
-  - Created comprehensive professional-pdf-generator.tsx matching TEAM Tank Consultants industry standard
-  - Added professional cover page with company branding, customer info, and tank specifications
-  - Implemented revision history page with proper documentation tracking
-  - Added comprehensive table of contents with proper page numbering
-  - Created evaluation summary and repair checklist with formal finding ID system
-  - Added detailed tank specifications section with all professional fields
-  - Implemented foundation and bottom extension section with condition assessments
-  - Added external shell section with comprehensive analysis
-  - Created professional thickness measurements tables with component grouping
-  - Implemented shell corrosion rate analysis with statistical calculations
-  - Added appurtenance inspections with detailed findings and recommendations
-  - Created repair recommendations section with priority sorting and API 653 references
-  - Added comprehensive inspection checklists organized by category
-  - Implemented external survey section with settlement analysis
-  - Created inspector qualifications section with certification tracking
-  - Added professional headers, footers, and page numbering throughout
-  - Enhanced database schema with 20+ new professional fields (customer, location, manufacturer, etc.)
-  - System now generates reports matching professional API 653 industry standards
-✓ TEAM TANK CONSULTANTS STANDARD PDF IMPLEMENTATION (July 10, 2025):
-  - Created team-standard-pdf-generator.tsx exactly matching TEAM Tank Consultants professional format
-  - Professional two-column cover page layout with company header, customer info, tank specs, inspector details
-  - Specific finding ID system: FH_1 (Fill Height), FO-15 (Foundation), ES-1 (External Shell), REP-# (Repairs)
-  - Comprehensive 22-section professional report including all TEAM standard sections:
-    • Revision History with formal tracking table
-    • Table of Contents with dot leaders and page numbers
-    • Evaluation Summary and Repair Checklist with finding IDs
-    • Tank photos section with placeholders
-    • Foundation and Bottom Extension detailed assessment
-    • External Shell comprehensive analysis
-    • Nozzle Layout with diagram and table
-    • Shell Items and Seams with course details
-    • Fill Height Analysis per API 653 Section 4.3.3
-    • Shell Corrosion Rate Analysis with statistics
-    • Hydrostatic Testing by One-Foot Method
-    • External Survey with settlement analysis
-    • Equipment Calibration Log with dates
-    • Inspector Qualifications with signatures
-  - Professional formatting: Headers, footers, page numbering, consistent spacing
-  - Exact industry terminology and technical calculations
-  - Enhanced PDF generator now uses TEAM standard as primary with professional and legacy fallbacks
-  - Reports now match exact professional API 653 inspection industry standards
-✓ OILPRO BRANDING UPDATE (January 10, 2025):
-  - Updated PDF generator to use OilPro Tanks branding instead of TEAM
-  - Changed company name to "OilPro Tanks" throughout PDF reports
-  - Updated company address to Houston, TX location
-  - Modified footer text to reference OilPro Tanks
-  - Changed PDF filename format from "TEAM_Standard" to "OilPro"
-  - All professional formatting and technical content remains unchanged
-  - Reports maintain exact API 653 compliance while using OilPro branding
-✓ CRITICAL FIXES AND ENHANCEMENTS (January 10, 2025):
-  - Fixed shell ring numbering: SR-1 (bottom course) now correctly shown as thickest (0.625") 
-  - Shell Course 1 is bottom with maximum stress, Shell Course 6 is top with minimum thickness
-  - Added component labels to thickness measurements in edit mode
-  - Created comprehensive thickness and checklist editing components
-  - Enhanced checklist import with pattern matching for inspection items
-  - Checklists now automatically grow as new items are recognized during import
-  - Added visual PDF generator with professional charts and diagrams
-  - Settlement analysis charts with API 653 compliance lines
-  - Corrosion rate box plots with statistical analysis by shell ring
-  - Professional 3D bar charts for status visualization
-✓ LEGACY EXCEL FORMAT SUPPORT (January 13, 2025):
-  - Added support for vertical key-value Excel exports from old OilPro system
-  - Created comprehensive field mapper for 203+ abbreviated field names
-  - Maps legacy fields like: Crs1 t → course1Thickness, SG → specificGravity
-  - Handles Excel date serial numbers, settlement points (SP1-SP10)
-  - Automatically detects legacy format by "Report No" in first cell
-  - Converts recommendations with intelligent priority assignment
-  - Preserves all inspection findings across foundation, shell, roof, floor
-  - System now handles both standard Excel and legacy vertical formats
-  - Added comprehensive table of contents with proper page numbering
-  - Created evaluation summary and repair checklist with formal finding ID system
-  - Added detailed tank specifications section with all professional fields
-  - Implemented foundation and bottom extension section with condition assessments
-  - Added external shell section with comprehensive analysis
-  - Created professional thickness measurements tables with component grouping
-  - Implemented shell corrosion rate analysis with statistical calculations
-  - Added appurtenance inspections with detailed findings and recommendations
-  - Created repair recommendations section with priority sorting and API 653 references
-  - Added comprehensive inspection checklists organized by category
-  - Implemented external survey section with settlement analysis
-  - Created inspector qualifications section with certification tracking
-  - Added professional headers, footers, and page numbering throughout
-  - Enhanced database schema with 20+ new professional fields (customer, location, manufacturer, etc.)
-  - System now generates reports matching professional API 653 industry standards
-✓ CRITICAL CALCULATION ENGINE FIXES - TANK 6 BIRLA CARBON (July 13, 2025):
-  - Fixed critical data error: Shell Ring 1 original thickness corrected from 0.312" to 0.281"
-  - Fixed critical data error: Shell Ring 4 original thickness corrected from 0.281" to 0.312"
-  - Implemented API 653 standard calculation engine with proper formulas
-  - Corrosion rates now correctly calculated: Ring 1 = 0.47 mpy, Ring 2 = 0.17 mpy
-  - Remaining life calculations updated with proper minimum thickness requirements
-  - Fixed unit conversion issues (mils per year vs inches per year)
-  - System now produces calculations matching professional TEAM Tank Consultants methodology
-```
+### Frontend Architecture
+- **Framework**: React 18 with TypeScript
+- **Build Tool**: Vite
+- **UI Library**: shadcn/ui components built on Radix UI primitives
+- **Styling**: Tailwind CSS with custom design tokens
+- **State Management**: TanStack React Query
+- **Routing**: Wouter
+- **Form Handling**: React Hook Form with Zod validation
+- **UI/UX Decisions**: Custom React components, responsive design, dark/light theme support, accessible components following ARIA guidelines.
+
+### Backend Architecture
+- **Runtime**: Node.js with Express.js
+- **Language**: TypeScript with ES modules
+- **Database ORM**: Drizzle ORM
+- **Database**: PostgreSQL (configured for Neon Database)
+- **Validation**: Zod schemas shared between client and server
+- **Development**: tsx for TypeScript execution
+
+### Data Storage Solutions
+- **Primary Database**: PostgreSQL with schema including `inspection_reports`, `thickness_measurements`, `inspection_checklists`, `report_templates`, and `checklist_templates`.
+- **Database Migrations**: Drizzle Kit
+- **Connection**: Neon Database serverless PostgreSQL
+
+### Core Features
+- **Dashboard**: Overview of all inspection reports.
+- **Report Creation**: Step-by-step generation with form validation.
+- **Comprehensive Thickness Management**: Includes various measurement types (shell, bottom, roof, nozzles, etc.), CML data entry, and remaining life calculations.
+- **Settlement Surveys**: Internal and external elevation measurements with cosine curve fitting.
+- **Dyke & Secondary Containment**: Primary/secondary containment inspections with EPA compliance checking.
+- **Checklist System**: Standardized and custom inspection items.
+- **Excel/PDF Import**: Smart field detection and AI-powered data extraction (OpenRouter AI) for existing inspection reports, supporting various formats and field name variations.
+- **PDF Generation**: Professional, multi-page report output using jsPDF, supporting OilPro Tanks branding and industry standards (e.g., TEAM Tank Consultants format), including comprehensive data loading (measurements, checklists, appurtenances, repairs, venting, attachments).
+- **Template System**: Reusable report and checklist templates.
+- **Calculation Engine**: Corrosion rate calculation, remaining life estimation, and status classification (acceptable, monitor, action required). Includes component-specific thickness calculations and API 653 standard calculation engine.
+- **Editing and Deletion**: Comprehensive edit functionality for all report aspects and delete capability for reports and associated data.
+
+## External Dependencies
+
+### Frontend Dependencies
+- **UI Framework**: React, React DOM, Vite
+- **UI Components**: Radix UI primitives, Lucide React icons
+- **Forms**: React Hook Form, Hookform Resolvers
+- **Styling**: Tailwind CSS, class-variance-authority, clsx
+- **Date Handling**: date-fns
+- **PDF Generation**: jsPDF
+- **State Management**: TanStack React Query
+
+### Backend Dependencies
+- **Server**: Express.js
+- **Database**: Drizzle ORM, Neon Database serverless driver
+- **Validation**: Zod
+- **Development**: tsx
+- **AI Integration**: OpenRouter AI (using `anthropic/claude-3.5-sonnet:beta` model) for intelligent spreadsheet/PDF analysis.
+
+### Development Tools
+- **TypeScript**: For full type safety.
+- **ESLint/Prettier**: For code formatting and linting.
+- **Vite Plugins**: For development experience enhancements.
+- **System Dependencies for PDF Processing**: GraphicsMagick and ImageMagick.
