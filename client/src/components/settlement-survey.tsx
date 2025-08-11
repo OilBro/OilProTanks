@@ -145,7 +145,7 @@ export function SettlementSurvey({ data, onDataChange }: SettlementSurveyProps) 
               id="referenceElevation"
               type="number"
               step="0.001"
-              value={data.referenceElevation}
+              value={data.referenceElevation ?? 0}
               onChange={(e) => onDataChange({
                 ...data,
                 referenceElevation: parseFloat(e.target.value) || 0
@@ -157,7 +157,7 @@ export function SettlementSurvey({ data, onDataChange }: SettlementSurveyProps) 
             <Input
               id="measurementDate"
               type="date"
-              value={data.measurementDate}
+              value={data.measurementDate ?? ''}
               onChange={(e) => onDataChange({
                 ...data,
                 measurementDate: e.target.value
@@ -169,7 +169,7 @@ export function SettlementSurvey({ data, onDataChange }: SettlementSurveyProps) 
             <Input
               id="instrument"
               placeholder="e.g., Leica DNA03"
-              value={data.instrument}
+              value={data.instrument ?? ''}
               onChange={(e) => onDataChange({
                 ...data,
                 instrument: e.target.value
@@ -187,7 +187,7 @@ export function SettlementSurvey({ data, onDataChange }: SettlementSurveyProps) 
               <Input
                 id="location"
                 placeholder="0°, N, E, etc."
-                value={newPoint.location}
+                value={newPoint.location ?? ''}
                 onChange={(e) => setNewPoint(prev => ({ ...prev, location: e.target.value }))}
               />
             </div>
@@ -197,7 +197,7 @@ export function SettlementSurvey({ data, onDataChange }: SettlementSurveyProps) 
                 id="elevation"
                 type="number"
                 step="0.001"
-                value={newPoint.elevation}
+                value={newPoint.elevation ?? 0}
                 onChange={(e) => setNewPoint(prev => ({ ...prev, elevation: parseFloat(e.target.value) || 0 }))}
               />
             </div>
@@ -207,7 +207,7 @@ export function SettlementSurvey({ data, onDataChange }: SettlementSurveyProps) 
                 id="originalElevation"
                 type="number"
                 step="0.001"
-                value={newPoint.originalElevation}
+                value={newPoint.originalElevation ?? 0}
                 onChange={(e) => setNewPoint(prev => ({ ...prev, originalElevation: parseFloat(e.target.value) || 0 }))}
               />
             </div>
@@ -217,7 +217,7 @@ export function SettlementSurvey({ data, onDataChange }: SettlementSurveyProps) 
                 id="distance"
                 type="number"
                 step="0.1"
-                value={newPoint.distance}
+                value={newPoint.distance ?? ''}
                 onChange={(e) => setNewPoint(prev => ({ ...prev, distance: parseFloat(e.target.value) || undefined }))}
               />
             </div>
@@ -227,7 +227,7 @@ export function SettlementSurvey({ data, onDataChange }: SettlementSurveyProps) 
             <Input
               id="pointNotes"
               placeholder="Additional observations"
-              value={newPoint.notes}
+              value={newPoint.notes ?? ''}
               onChange={(e) => setNewPoint(prev => ({ ...prev, notes: e.target.value }))}
             />
           </div>

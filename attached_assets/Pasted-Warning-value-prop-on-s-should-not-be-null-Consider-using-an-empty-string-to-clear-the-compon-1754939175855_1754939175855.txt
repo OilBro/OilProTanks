@@ -1,0 +1,23 @@
+Warning: `value` prop on `%s` should not be null. Consider using an empty string to clear the component or `undefined` for uncontrolled components.%s input 
+    at input
+    at _c (https://701d4d75-1283-41c4-bf9b-c60d53b2dd1e-00-2db2qdtilkhp5.picard.replit.dev/src/components/ui/input.tsx:20:11)
+    at div
+    at div
+    at div
+    at _c9 (https://701d4d75-1283-41c4-bf9b-c60d53b2dd1e-00-2db2qdtilkhp5.picard.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at _c (https://701d4d75-1283-41c4-bf9b-c60d53b2dd1e-00-2db2qdtilkhp5.picard.replit.dev/src/components/ui/card.tsx:20:11)
+    at SettlementSurvey (https://701d4d75-1283-41c4-bf9b-c60d53b2dd1e-00-2db2qdtilkhp5.picard.replit.dev/src/components/settlement-survey.tsx:25:36)
+    at form
+    at div
+    at NewReport (https://701d4d75-1283-41c4-bf9b-c60d53b2dd1e-00-2db2qdtilkhp5.picard.replit.dev/src/pages/new-report.tsx:156:27)
+    at Route (https://701d4d75-1283-41c4-bf9b-c60d53b2dd1e-00-2db2qdtilkhp5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=9c98586d:323:16)
+    at Switch (https://701d4d75-1283-41c4-bf9b-c60d53b2dd1e-00-2db2qdtilkhp5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=9c98586d:379:17)
+    at Router
+    at main
+    at div
+    at Provider (https://701d4d75-1283-41c4-bf9b-c60d53b2dd1e-00-2db2qdtilkhp5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-W6PG6DRF.js?v=9c98586d:38:15)
+    at TooltipProvider (https://701d4d75-1283-41c4-bf9b-c60d53b2dd1e-00-2db2qdtilkhp5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=9c98586d:59:5)
+    at QueryClientProvider (https://701d4d75-1283-41c4-bf9b-c60d53b2dd1e-00-2db2qdtilkhp5.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=9c98586d:2805:3)
+    at ErrorBoundary (https://701d4d75-1283-41c4-bf9b-c60d53b2dd1e-00-2db2qdtilkhp5.picard.replit.dev/src/components/error-boundary.tsx:10:5)
+    at App
