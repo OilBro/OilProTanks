@@ -418,6 +418,32 @@ export function ReportView() {
                 <Download className="h-4 w-4 mr-2" />
                 Download PDF
               </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  if (!report?.id) return;
+                  window.location.href = `/api/reports/${report.id}/export.csv`;
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Flat CSV
+              </Button>
+
+              <Button
+                variant="default"
+                size="sm"
+                className="w-full"
+                onClick={() => {
+                  if (!report?.id) return;
+                  window.location.href = `/api/reports/${report.id}/packet.zip`;
+                }}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Whole Packet (ZIP)
+              </Button>
             </CardContent>
           </Card>
         </div>

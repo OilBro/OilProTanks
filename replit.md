@@ -47,6 +47,9 @@ Business Rules: NO cost estimation for repair recommendations
 - **Checklist System**: Standardized and custom inspection items.
 - **Excel/PDF Import**: Smart field detection and AI-powered data extraction (OpenRouter AI) for existing inspection reports, supporting various formats and field name variations.
 - **PDF Generation**: Professional, multi-page report output using jsPDF, supporting OilPro Tanks branding and industry standards (e.g., TEAM Tank Consultants format), including comprehensive data loading (measurements, checklists, appurtenances, repairs, venting, attachments).
+- **Export Functionality**: 
+  - Flat CSV export compatible with the importer (single row per report with all essential fields)
+  - Whole packet ZIP export including: flat CSV, forms template XLSX, example CSVs for high-density measurements, attachments, and README
 - **Template System**: Reusable report and checklist templates.
 - **Calculation Engine**: Corrosion rate calculation, remaining life estimation, and status classification (acceptable, monitor, action required). Includes component-specific thickness calculations and API 653 standard calculation engine.
 - **Editing and Deletion**: Comprehensive edit functionality for all report aspects and delete capability for reports and associated data.

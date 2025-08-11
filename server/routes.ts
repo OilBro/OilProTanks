@@ -16,6 +16,7 @@ import { handleExcelImport } from "./import-handler";
 import { handleChecklistUpload, standardChecklists } from "./checklist-handler";
 import { checklistTemplates, insertChecklistTemplateSchema } from "@shared/schema";
 import { generateInspectionTemplate } from "./template-generator";
+import { exportFlatCSV, exportWholePacketZip } from "./exporter";
 
 // Unit converter utilities
 const UnitConverter = {
@@ -816,6 +817,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to create standard template", 
         error: error instanceof Error ? error.message : 'Unknown error' 
       });
+    }
+  });
+
+  // ---- Export Endpoints ----
+  app.get("/api/reports/:id/export.csv", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { filename, buffer } = await exportFlatCSV(id);
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename=\"${filename}\"`);
+      res.send(buffer);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to export flat CSV" });
+    }
+  });
+
+  app.get("/api/reports/:id/packet.zip", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { filename, stream } = await exportWholePacketZip(id);
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename=\"${filename}\"`);
+      stream.pipe(res);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to export packet" });
     }
   });
 

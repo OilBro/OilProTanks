@@ -1,0 +1,154 @@
+import * as XLSX from "xlsx";
+import archiver from "archiver";
+import { PassThrough } from "stream";
+import { storage } from "./storage";
+import { generateInspectionTemplate } from "./template-generator";
+import type { InspectionReport, ThicknessMeasurement, InspectionChecklist, AppurtenanceInspection, RepairRecommendation, VentingSystemInspection, ReportAttachment } from "@shared/schema";
+
+// ------------------------------
+// Flat CSV (one row per report)
+// ------------------------------
+const FLAT_HEADERS = [
+  "report_number","owner","customer","location","tank_no","service_product","inspector","inspection_date",
+  "diameter_ft","height_ft","max_liquid_level_ft","specific_gravity","original_plate_thickness_in",
+  "years_since_last_inspection","construction_code","manufacturer","year_built","status",
+  "entry_permit_required","hot_work_permit_required","photos_allowed","lead_paint","lead_free_docs_available",
+  "cleaned_gas_free_safe_for_entry","msds_on_recent_product","engineer_contact_ok","field_report_required",
+  "nameplate_info","original_manufacturer","year_of_construction","current_products","previous_products",
+  "previous_inspections","last_bottom_readings_year","last_shell_readings_year","previous_reports_available",
+  "unusual_events_desc","repairs_or_alterations_desc","drawings_available",
+  "relocated_or_cutdown","relocation_notes","major_modifications_desc","elevation_readings_available","hot_tapped",
+  "shell_material_spec","anchored","stiffening_ring","built_to_standard","rerate_or_change_in_service","rerate_note",
+  // 10 shell courses — keep flat; use detailed CSVs for more
+  "course1_measured_t_in","course2_measured_t_in","course3_measured_t_in","course4_measured_t_in","course5_measured_t_in",
+  "course6_measured_t_in","course7_measured_t_in","course8_measured_t_in","course9_measured_t_in","course10_measured_t_in",
+  "course1_ring_height_in","course2_ring_height_in","course3_ring_height_in","course4_ring_height_in","course5_ring_height_in",
+  "course6_ring_height_in","course7_ring_height_in","course8_ring_height_in","course9_ring_height_in","course10_ring_height_in",
+  "course1_material","course2_material","course3_material","course4_material","course5_material",
+  "course6_material","course7_material","course8_material","course9_material","course10_material",
+  "course1_joint_efficiency","course2_joint_efficiency","course3_joint_efficiency","course4_joint_efficiency","course5_joint_efficiency",
+  "course6_joint_efficiency","course7_joint_efficiency","course8_joint_efficiency","course9_joint_efficiency","course10_joint_efficiency",
+  "course1_rivet_rows","course2_rivet_rows","course3_rivet_rows","course4_rivet_rows","course5_rivet_rows",
+  "course6_rivet_rows","course7_rivet_rows","course8_rivet_rows","course9_rivet_rows","course10_rivet_rows",
+  "rivets_sealed","rivet_seal_method",
+  "base_kept_dry","foundation_type","unusual_settlement","site_has_foundation_problems","excessive_vegetation",
+  "cathodic_protection","leak_detection","internal_lining","external_insulation",
+  "original_bottom_thickness_in","has_annular_ring","annular_ring_size_in","annular_ring_thk_in",
+  "bottom_plate_size","bottom_coating_type","bottom_design_type",
+  "tank_type","fixed_roof_type","floating_roof_type","floating_roof_material",
+  "internal_overview_notes","external_overview_notes",
+  "primary_seal_avg_gap_in","secondary_seal_avg_gap_in",
+  "mfe_calibration_sensitivity","mfe_scanning_sensitivity",
+  "mfe_indication_count","mfe_indications_visual_confirmed","mfe_indications_ut_confirmed",
+  "ut_unit_mfg","ut_model","ut_serial","transducer_model","transducer_serial","transducer_freq_mhz",
+  "settlement_r2_bestfit","settlement_method","settlement_max_settlement_in","settlement_compliance",
+  "governing_component","next_internal_insp_years","next_external_insp_years","next_mrt_insp_years",
+  "executive_summary","recommendations_summary"
+] as const;
+
+function toCsvLine(values: Array<string | number | null | undefined>): string {
+  // Simple RFC4180-safe CSV with quotes when needed
+  return values.map(v => {
+    const s = (v ?? "").toString();
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  }).join(",") + "\n";
+}
+
+function pick(obj: Record<string, any>, key: string) {
+  return obj && obj[key] !== undefined && obj[key] !== null ? obj[key] : "";
+}
+
+export async function exportFlatCSV(reportId: number): Promise<{ filename: string; buffer: Buffer }> {
+  const report = await storage.getInspectionReport(reportId);
+  if (!report) throw new Error("Report not found");
+
+  // Build a naive lookup for shell courses if present on the report.meta JSON
+  const shell = (report as any).shellInfo || {}; // expect shape: { courses: [{ measuredT, ringHeight, material, jointEfficiency, rivetRows }, ...] }
+  const getCourse = (idx: number, field: string) => (shell.courses && shell.courses[idx-1] && shell.courses[idx-1][field]) ?? "";
+
+  const row: any[] = [];
+  for (const h of FLAT_HEADERS) {
+    if (h.startsWith("course") && /_(measured_t_in|ring_height_in|material|joint_efficiency|rivet_rows)$/.test(h)) {
+      const m = h.match(/^course(\d+)_(\w+)$/);
+      const idx = m ? parseInt(m[1], 10) : 0;
+      const field = m ? m[2] : "";
+      row.push(getCourse(idx, field));
+    } else {
+      // try direct on report, then fallback to nested common keys
+      row.push(
+        (report as any)[h] ??
+        (report as any).metadata?.[h] ??
+        ""
+      );
+    }
+  }
+
+  const header = toCsvLine([...FLAT_HEADERS]);
+  const body   = toCsvLine(row);
+  const csv    = header + body;
+  return { filename: `report_${report.reportNumber || report.id}_flat.csv`, buffer: Buffer.from(csv, "utf8") };
+}
+
+// ------------------------------
+// Whole packet ZIP
+// ------------------------------
+export async function exportWholePacketZip(reportId: number): Promise<{ filename: string; stream: PassThrough }> {
+  const report = await storage.getInspectionReport(reportId);
+  if (!report) throw new Error("Report not found");
+
+  // Collect related data
+  const [measurements, checklists, apps, repairs, vents, attachments] = await Promise.all([
+    storage.getThicknessMeasurements(reportId),
+    storage.getInspectionChecklists(reportId),
+    storage.getAppurtenanceInspections ? storage.getAppurtenanceInspections(reportId) : Promise.resolve([] as AppurtenanceInspection[]),
+    storage.getRepairRecommendations ? storage.getRepairRecommendations(reportId) : Promise.resolve([] as RepairRecommendation[]),
+    storage.getVentingSystemInspections ? storage.getVentingSystemInspections(reportId) : Promise.resolve([] as VentingSystemInspection[]),
+    storage.getReportAttachments ? storage.getReportAttachments(reportId) : Promise.resolve([] as ReportAttachment[])
+  ]);
+
+  const zipName = `report_${report.reportNumber || report.id}_packet.zip`;
+  const out = new PassThrough();
+  const archive = archiver("zip", { zlib: { level: 9 } });
+  archive.on("error", (err: Error) => out.emit("error", err));
+  archive.pipe(out);
+
+  // 1) Flat CSV
+  const flat = await exportFlatCSV(reportId);
+  archive.append(flat.buffer, { name: "api653_flat_schema.csv" });
+
+  // 2) Generated multi-sheet XLSX template (from your server/template-generator.ts)
+  const wbArrayBuffer = generateInspectionTemplate();
+  const wbBuffer = Buffer.from(wbArrayBuffer as ArrayBufferLike);
+  archive.append(wbBuffer, { name: "forms_template.xlsx" });
+
+  // 3) Related detail CSVs derived from current rows (thin exports so user can see format)
+  const shellRows = measurements
+    .filter(m => (m.measurementType || "").toLowerCase().includes("shell"))
+    .map(m => [report.reportNumber, m.component || "", m.elevation || "", m.gridReference || "", (m as any).thicknessMin || ""]);
+  const shellHeader = "report_number,component,height_or_elev,grid_or_pos,t_min_in\n";
+  archive.append(Buffer.from(shellHeader + shellRows.map(r => r.join(",")).join("\n")), { name: "csv_templates/shell_thickness_readings.csv" });
+
+  // 4) Include any attachments (photos, PDFs) that are already uploaded
+  for (const a of attachments) {
+    if (a.filename && (a as any).content) {
+      const base = a.filename.replace(/^\//, "");
+      archive.append(Buffer.from((a as any).content, "base64"), { name: `attachments/${base}` });
+    }
+  }
+
+  // 5) README
+  const readme = [
+    "# Report export packet",
+    "",
+    "- `api653_flat_schema.csv` — single-row flat export compatible with importer.",
+    "- `forms_template.xlsx` — multi-sheet workbook mirroring your inspection forms.",
+    "- `csv_templates/` — example CSVs for high-density measurements.",
+    "- `attachments/` — any files uploaded with this report.",
+    "",
+    "Keep `report_number` consistent across files."
+  ].join("\n");
+  archive.append(readme, { name: "README.txt" });
+
+  await archive.finalize();
+  return { filename: zipName, stream: out };
+}
