@@ -45,8 +45,7 @@ export default function ChecklistTemplates() {
 
   // Fetch existing templates
   const { data: templates = [], isLoading } = useQuery({
-    queryKey: ['/api/checklist-templates'],
-    queryFn: () => apiRequest('/api/checklist-templates')
+    queryKey: ['/api/checklist-templates']
   });
 
   // Upload checklist template
