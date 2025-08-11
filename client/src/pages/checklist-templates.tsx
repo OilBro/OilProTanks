@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Upload, Plus, FileText, Database, Check } from "lucide-react";
+import { Upload, Plus, FileText, Database, Check, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface ChecklistTemplate {
@@ -183,6 +183,41 @@ export default function ChecklistTemplates() {
     }
   };
 
+  const downloadTemplate = (template: ChecklistTemplate) => {
+    const items = parseTemplateItems(template.items);
+    const data = {
+      name: template.name,
+      description: template.description,
+      category: template.category,
+      items: items,
+      createdBy: template.createdBy,
+      createdAt: template.createdAt
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${template.name.replace(/\s+/g, '_')}_template.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Template Downloaded",
+      description: `${template.name} has been downloaded as JSON`,
+    });
+  };
+
+  const downloadExcelTemplate = () => {
+    window.location.href = '/api/templates/download/excel';
+    toast({
+      title: "Excel Template Downloaded",
+      description: "The inspection template has been downloaded as Excel",
+    });
+  };
+
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -312,6 +347,28 @@ export default function ChecklistTemplates() {
         </Card>
       </div>
 
+      {/* Download Excel Template */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Download className="w-5 h-5" />
+            Download Excel Template
+          </CardTitle>
+          <CardDescription>
+            Download the Excel inspection template with all forms (Shell, Bottom, Roof, Nozzles, etc.)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button 
+            onClick={downloadExcelTemplate}
+            className="w-full"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Download Excel Inspection Template
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Standard Templates */}
       <Card>
         <CardHeader>
@@ -378,6 +435,14 @@ export default function ChecklistTemplates() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => downloadTemplate(template)}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </Button>
                       {template.isActive && (
                         <Check className="w-4 h-4 text-green-500" />
                       )}

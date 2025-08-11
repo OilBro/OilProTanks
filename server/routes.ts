@@ -847,6 +847,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Download Excel template
+  app.get("/api/templates/download/excel", (req, res) => {
+    try {
+      const workbook = generateInspectionTemplate();
+      const buffer = Buffer.from(workbook as ArrayBufferLike);
+      
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", 'attachment; filename="API653_Inspection_Template.xlsx"');
+      res.send(buffer);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to generate Excel template" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
