@@ -44,7 +44,7 @@ export default function ChecklistTemplates() {
   const queryClient = useQueryClient();
 
   // Fetch existing templates
-  const { data: templates = [], isLoading } = useQuery({
+  const { data: templates = [], isLoading } = useQuery<ChecklistTemplate[]>({
     queryKey: ['/api/checklist-templates']
   });
 
@@ -88,10 +88,17 @@ export default function ChecklistTemplates() {
   // Create manual template
   const createMutation = useMutation({
     mutationFn: async (templateData: any) => {
-      return apiRequest('/api/checklist-templates', {
+      const response = await fetch('/api/checklist-templates', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(templateData)
       });
+      if (!response.ok) {
+        throw new Error('Failed to create template');
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -113,10 +120,17 @@ export default function ChecklistTemplates() {
   // Create standard template
   const createStandardMutation = useMutation({
     mutationFn: async (templateType: string) => {
-      return apiRequest('/api/checklist-templates/standard', {
+      const response = await fetch(`/api/checklist-templates/standard/${templateType}`, {
         method: 'POST',
-        body: JSON.stringify({ templateType })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: '{}'
       });
+      if (!response.ok) {
+        throw new Error('Failed to create standard template');
+      }
+      return response.json();
     },
     onSuccess: () => {
       toast({
@@ -184,6 +198,7 @@ export default function ChecklistTemplates() {
   };
 
   const downloadTemplate = (template: ChecklistTemplate) => {
+    console.log('Downloading template:', template);
     const items = parseTemplateItems(template.items);
     const data = {
       name: template.name,
@@ -210,12 +225,35 @@ export default function ChecklistTemplates() {
     });
   };
 
-  const downloadExcelTemplate = () => {
-    window.location.href = '/api/templates/download/excel';
-    toast({
-      title: "Excel Template Downloaded",
-      description: "The inspection template has been downloaded as Excel",
-    });
+  const downloadExcelTemplate = async () => {
+    console.log('Downloading Excel template...');
+    try {
+      const response = await fetch('/api/templates/download/excel');
+      if (!response.ok) {
+        throw new Error('Failed to download Excel template');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'API653_Inspection_Template.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Excel Template Downloaded",
+        description: "The inspection template has been downloaded as Excel",
+      });
+    } catch (error) {
+      console.error('Error downloading Excel template:', error);
+      toast({
+        title: "Download Failed",
+        description: "Failed to download Excel template",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

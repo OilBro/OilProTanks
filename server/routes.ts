@@ -851,13 +851,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/templates/download/excel", (req, res) => {
     try {
       const workbook = generateInspectionTemplate();
-      const buffer = Buffer.from(workbook as ArrayBufferLike);
+      const buffer = Buffer.from(workbook);
       
       res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
       res.setHeader("Content-Disposition", 'attachment; filename="API653_Inspection_Template.xlsx"');
       res.send(buffer);
     } catch (err) {
-      console.error(err);
+      console.error("Error generating Excel template:", err);
       res.status(500).json({ message: "Failed to generate Excel template" });
     }
   });
