@@ -8,6 +8,7 @@ import { ArrowLeft, Download, Edit, FileText, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { generateEnhancedPDF } from "@/components/enhanced-pdf-generator";
 import { useToast } from "@/hooks/use-toast";
+import { SettlementSurvey } from "@/components/settlement-survey";
 import type { 
   InspectionReport, 
   ThicknessMeasurement, 
@@ -368,6 +369,11 @@ export function ReportView() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Settlement Survey Analysis */}
+          {report && (
+            <SettlementSurvey reportId={report.id} />
           )}
         </div>
 

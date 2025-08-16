@@ -8,6 +8,9 @@ import {
   reportAttachments,
   repairRecommendations,
   ventingSystemInspections,
+  advancedSettlementSurveys,
+  advancedSettlementMeasurements,
+  edgeSettlements,
   type User, 
   type InsertUser,
   type InspectionReport,
@@ -25,7 +28,13 @@ import {
   type RepairRecommendation,
   type InsertRepairRecommendation,
   type VentingSystemInspection,
-  type InsertVentingSystemInspection
+  type InsertVentingSystemInspection,
+  type AdvancedSettlementSurvey,
+  type InsertAdvancedSettlementSurvey,
+  type AdvancedSettlementMeasurement,
+  type InsertAdvancedSettlementMeasurement,
+  type EdgeSettlement,
+  type InsertEdgeSettlement
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -74,6 +83,21 @@ export interface IStorage {
   // Venting System Inspections
   getVentingSystemInspections(reportId: number): Promise<VentingSystemInspection[]>;
   createVentingSystemInspection(inspection: InsertVentingSystemInspection): Promise<VentingSystemInspection>;
+  
+  // Advanced Settlement Surveys
+  getAdvancedSettlementSurveys(reportId: number): Promise<AdvancedSettlementSurvey[]>;
+  getAdvancedSettlementSurvey(id: number): Promise<AdvancedSettlementSurvey | undefined>;
+  createAdvancedSettlementSurvey(survey: InsertAdvancedSettlementSurvey): Promise<AdvancedSettlementSurvey>;
+  updateAdvancedSettlementSurvey(id: number, survey: Partial<InsertAdvancedSettlementSurvey>): Promise<AdvancedSettlementSurvey>;
+  
+  // Advanced Settlement Measurements
+  getAdvancedSettlementMeasurements(surveyId: number): Promise<AdvancedSettlementMeasurement[]>;
+  createAdvancedSettlementMeasurement(measurement: InsertAdvancedSettlementMeasurement): Promise<AdvancedSettlementMeasurement>;
+  createBulkAdvancedSettlementMeasurements(measurements: InsertAdvancedSettlementMeasurement[]): Promise<AdvancedSettlementMeasurement[]>;
+  
+  // Edge Settlements
+  getEdgeSettlements(surveyId: number): Promise<EdgeSettlement[]>;
+  createEdgeSettlement(settlement: InsertEdgeSettlement): Promise<EdgeSettlement>;
 }
 
 export class MemStorage implements IStorage {
@@ -86,6 +110,9 @@ export class MemStorage implements IStorage {
   private reportAttachments: Map<number, ReportAttachment>;
   private repairRecommendations: Map<number, RepairRecommendation>;
   private ventingSystemInspections: Map<number, VentingSystemInspection>;
+  private advancedSettlementSurveys: Map<number, AdvancedSettlementSurvey>;
+  private advancedSettlementMeasurements: Map<number, AdvancedSettlementMeasurement>;
+  private edgeSettlements: Map<number, EdgeSettlement>;
   private currentUserId: number;
   private currentReportId: number;
   private currentMeasurementId: number;
@@ -95,6 +122,9 @@ export class MemStorage implements IStorage {
   private currentAttachmentId: number;
   private currentRecommendationId: number;
   private currentVentingId: number;
+  private currentSettlementSurveyId: number;
+  private currentSettlementMeasurementId: number;
+  private currentEdgeSettlementId: number;
 
   constructor() {
     this.users = new Map();
@@ -106,6 +136,9 @@ export class MemStorage implements IStorage {
     this.reportAttachments = new Map();
     this.repairRecommendations = new Map();
     this.ventingSystemInspections = new Map();
+    this.advancedSettlementSurveys = new Map();
+    this.advancedSettlementMeasurements = new Map();
+    this.edgeSettlements = new Map();
     this.currentUserId = 1;
     this.currentReportId = 1;
     this.currentMeasurementId = 1;
@@ -115,6 +148,9 @@ export class MemStorage implements IStorage {
     this.currentAttachmentId = 1;
     this.currentRecommendationId = 1;
     this.currentVentingId = 1;
+    this.currentSettlementSurveyId = 1;
+    this.currentSettlementMeasurementId = 1;
+    this.currentEdgeSettlementId = 1;
     
     this.initializeTemplates();
   }
@@ -429,6 +465,78 @@ export class MemStorage implements IStorage {
     this.ventingSystemInspections.set(id, newInspection);
     return newInspection;
   }
+
+  // Advanced Settlement Survey implementations
+  async getAdvancedSettlementSurveys(reportId: number): Promise<AdvancedSettlementSurvey[]> {
+    return Array.from(this.advancedSettlementSurveys.values())
+      .filter(survey => survey.reportId === reportId);
+  }
+
+  async getAdvancedSettlementSurvey(id: number): Promise<AdvancedSettlementSurvey | undefined> {
+    return this.advancedSettlementSurveys.get(id);
+  }
+
+  async createAdvancedSettlementSurvey(survey: InsertAdvancedSettlementSurvey): Promise<AdvancedSettlementSurvey> {
+    const id = this.currentSettlementSurveyId++;
+    const newSurvey: AdvancedSettlementSurvey = { 
+      ...survey, 
+      id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    this.advancedSettlementSurveys.set(id, newSurvey);
+    return newSurvey;
+  }
+
+  async updateAdvancedSettlementSurvey(id: number, survey: Partial<InsertAdvancedSettlementSurvey>): Promise<AdvancedSettlementSurvey> {
+    const existing = this.advancedSettlementSurveys.get(id);
+    if (!existing) throw new Error('Survey not found');
+    
+    const updated: AdvancedSettlementSurvey = {
+      ...existing,
+      ...survey,
+      id,
+      updatedAt: new Date().toISOString()
+    };
+    this.advancedSettlementSurveys.set(id, updated);
+    return updated;
+  }
+
+  async getAdvancedSettlementMeasurements(surveyId: number): Promise<AdvancedSettlementMeasurement[]> {
+    return Array.from(this.advancedSettlementMeasurements.values())
+      .filter(measurement => measurement.surveyId === surveyId);
+  }
+
+  async createAdvancedSettlementMeasurement(measurement: InsertAdvancedSettlementMeasurement): Promise<AdvancedSettlementMeasurement> {
+    const id = this.currentSettlementMeasurementId++;
+    const newMeasurement: AdvancedSettlementMeasurement = { 
+      ...measurement, 
+      id,
+      createdAt: new Date().toISOString()
+    };
+    this.advancedSettlementMeasurements.set(id, newMeasurement);
+    return newMeasurement;
+  }
+
+  async createBulkAdvancedSettlementMeasurements(measurements: InsertAdvancedSettlementMeasurement[]): Promise<AdvancedSettlementMeasurement[]> {
+    return Promise.all(measurements.map(m => this.createAdvancedSettlementMeasurement(m)));
+  }
+
+  async getEdgeSettlements(surveyId: number): Promise<EdgeSettlement[]> {
+    return Array.from(this.edgeSettlements.values())
+      .filter(settlement => settlement.surveyId === surveyId);
+  }
+
+  async createEdgeSettlement(settlement: InsertEdgeSettlement): Promise<EdgeSettlement> {
+    const id = this.currentEdgeSettlementId++;
+    const newSettlement: EdgeSettlement = { 
+      ...settlement, 
+      id,
+      createdAt: new Date().toISOString()
+    };
+    this.edgeSettlements.set(id, newSettlement);
+    return newSettlement;
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -620,6 +728,85 @@ export class DatabaseStorage implements IStorage {
       .values(inspection)
       .returning();
     return newInspection;
+  }
+
+  // Advanced Settlement Surveys
+  async getAdvancedSettlementSurveys(reportId: number): Promise<AdvancedSettlementSurvey[]> {
+    return await db.select().from(advancedSettlementSurveys).where(eq(advancedSettlementSurveys.reportId, reportId));
+  }
+
+  async getAdvancedSettlementSurvey(id: number): Promise<AdvancedSettlementSurvey | undefined> {
+    const [survey] = await db.select().from(advancedSettlementSurveys).where(eq(advancedSettlementSurveys.id, id));
+    return survey || undefined;
+  }
+
+  async createAdvancedSettlementSurvey(survey: InsertAdvancedSettlementSurvey): Promise<AdvancedSettlementSurvey> {
+    const now = new Date().toISOString();
+    const [newSurvey] = await db
+      .insert(advancedSettlementSurveys)
+      .values({
+        ...survey,
+        createdAt: now,
+        updatedAt: now
+      })
+      .returning();
+    return newSurvey;
+  }
+
+  async updateAdvancedSettlementSurvey(id: number, survey: Partial<InsertAdvancedSettlementSurvey>): Promise<AdvancedSettlementSurvey> {
+    const [updated] = await db
+      .update(advancedSettlementSurveys)
+      .set({
+        ...survey,
+        updatedAt: new Date().toISOString()
+      })
+      .where(eq(advancedSettlementSurveys.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Advanced Settlement Measurements
+  async getAdvancedSettlementMeasurements(surveyId: number): Promise<AdvancedSettlementMeasurement[]> {
+    return await db.select().from(advancedSettlementMeasurements).where(eq(advancedSettlementMeasurements.surveyId, surveyId));
+  }
+
+  async createAdvancedSettlementMeasurement(measurement: InsertAdvancedSettlementMeasurement): Promise<AdvancedSettlementMeasurement> {
+    const [newMeasurement] = await db
+      .insert(advancedSettlementMeasurements)
+      .values({
+        ...measurement,
+        createdAt: new Date().toISOString()
+      })
+      .returning();
+    return newMeasurement;
+  }
+
+  async createBulkAdvancedSettlementMeasurements(measurements: InsertAdvancedSettlementMeasurement[]): Promise<AdvancedSettlementMeasurement[]> {
+    const measurementsWithTimestamp = measurements.map(m => ({
+      ...m,
+      createdAt: new Date().toISOString()
+    }));
+    const newMeasurements = await db
+      .insert(advancedSettlementMeasurements)
+      .values(measurementsWithTimestamp)
+      .returning();
+    return newMeasurements;
+  }
+
+  // Edge Settlements
+  async getEdgeSettlements(surveyId: number): Promise<EdgeSettlement[]> {
+    return await db.select().from(edgeSettlements).where(eq(edgeSettlements.surveyId, surveyId));
+  }
+
+  async createEdgeSettlement(settlement: InsertEdgeSettlement): Promise<EdgeSettlement> {
+    const [newSettlement] = await db
+      .insert(edgeSettlements)
+      .values({
+        ...settlement,
+        createdAt: new Date().toISOString()
+      })
+      .returning();
+    return newSettlement;
   }
 }
 

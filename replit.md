@@ -42,16 +42,25 @@ Business Rules: NO cost estimation for repair recommendations
 - **Dashboard**: Overview of all inspection reports.
 - **Report Creation**: Step-by-step generation with form validation.
 - **Comprehensive Thickness Management**: Includes various measurement types (shell, bottom, roof, nozzles, etc.), CML data entry, and remaining life calculations.
-- **Settlement Surveys**: Internal and external elevation measurements with cosine curve fitting.
+- **Advanced Settlement Analysis**: 
+  - Cosine fit analysis per API 653 Annex B standards
+  - R² calculation with minimum 0.90 requirement for valid fits
+  - External ringwall survey processing with tie shot corrections
+  - Settlement acceptance determination per Annex B.2.2.4 and B.3.2.1
+  - Automatic calculation of allowable settlement based on tank parameters
+  - Edge settlement analysis and tracking
+  - Interactive data entry for elevation measurements
+  - Historical survey tracking and comparison
 - **Dyke & Secondary Containment**: Primary/secondary containment inspections with EPA compliance checking.
-- **Checklist System**: Standardized and custom inspection items.
+- **Checklist System**: Standardized and custom inspection items with Excel template downloads.
 - **Excel/PDF Import**: Smart field detection and AI-powered data extraction (OpenRouter AI) for existing inspection reports, supporting various formats and field name variations.
-- **PDF Generation**: Professional, multi-page report output using jsPDF, supporting OilPro Tanks branding and industry standards (e.g., TEAM Tank Consultants format), including comprehensive data loading (measurements, checklists, appurtenances, repairs, venting, attachments).
+- **PDF Generation**: Professional, multi-page report output using jsPDF, supporting OilPro Tanks branding and industry standards (e.g., TEAM Tank Consultants format), including comprehensive data loading (measurements, checklists, appurtenances, repairs, venting, attachments, settlement analysis).
 - **Export Functionality**: 
   - Flat CSV export compatible with the importer (single row per report with all essential fields)
   - Whole packet ZIP export including: flat CSV, forms template XLSX, example CSVs for high-density measurements, attachments, and README
+  - Individual checklist template Excel downloads
 - **Template System**: Reusable report and checklist templates.
-- **Calculation Engine**: Corrosion rate calculation, remaining life estimation, and status classification (acceptable, monitor, action required). Includes component-specific thickness calculations and API 653 standard calculation engine.
+- **Calculation Engine**: Corrosion rate calculation, remaining life estimation, and status classification (acceptable, monitor, action required). Includes component-specific thickness calculations, API 653 standard calculation engine, and settlement cosine fit algorithm.
 - **Editing and Deletion**: Comprehensive edit functionality for all report aspects and delete capability for reports and associated data.
 
 ## External Dependencies

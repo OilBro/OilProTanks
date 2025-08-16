@@ -271,6 +271,61 @@ export const insertChecklistTemplateSchema = createInsertSchema(checklistTemplat
 export type ChecklistTemplate = typeof checklistTemplates.$inferSelect;
 export type InsertChecklistTemplate = z.infer<typeof insertChecklistTemplateSchema>;
 
+// Advanced Settlement Survey tables for API 653 Annex B calculations
+export const advancedSettlementSurveys = pgTable("advanced_settlement_surveys", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id"),
+  surveyType: text("survey_type"), // internal, external_ringwall
+  surveyDate: text("survey_date"),
+  numberOfPoints: integer("number_of_points"),
+  // Tank parameters for calculations
+  tankDiameter: decimal("tank_diameter", { precision: 10, scale: 2 }), // feet
+  tankHeight: decimal("tank_height", { precision: 10, scale: 2 }), // feet
+  shellYieldStrength: decimal("shell_yield_strength", { precision: 10, scale: 0 }), // psi
+  elasticModulus: decimal("elastic_modulus", { precision: 12, scale: 0 }), // psi
+  // Cosine fit results
+  cosineAmplitude: decimal("cosine_amplitude", { precision: 10, scale: 4 }), // A value
+  cosinePhase: decimal("cosine_phase", { precision: 10, scale: 4 }), // B value (radians)
+  rSquared: decimal("r_squared", { precision: 10, scale: 4 }), // R² value
+  maxOutOfPlane: decimal("max_out_of_plane", { precision: 10, scale: 4 }), // inches
+  allowableSettlement: decimal("allowable_settlement", { precision: 10, scale: 4 }), // inches
+  settlementAcceptance: text("settlement_acceptance"), // ACCEPTABLE, MONITOR, ACTION_REQUIRED
+  // Annex B references
+  calculationMethod: text("calculation_method"), // cosine_fit, rigid_body_tilt, etc.
+  annexReference: text("annex_reference"), // B.2.2.4, B.3.2.1, etc.
+  createdAt: text("created_at"),
+  updatedAt: text("updated_at"),
+});
+
+// Individual settlement measurement points for advanced surveys
+export const advancedSettlementMeasurements = pgTable("advanced_settlement_measurements", {
+  id: serial("id").primaryKey(),
+  surveyId: integer("survey_id"),
+  pointNumber: integer("point_number"),
+  angle: decimal("angle", { precision: 10, scale: 2 }), // degrees from reference
+  measuredElevation: decimal("measured_elevation", { precision: 10, scale: 4 }), // inches
+  normalizedElevation: decimal("normalized_elevation", { precision: 10, scale: 4 }), // Ui (inches)
+  cosineFitElevation: decimal("cosine_fit_elevation", { precision: 10, scale: 4 }), // predicted
+  outOfPlane: decimal("out_of_plane", { precision: 10, scale: 4 }), // Si (inches)
+  tieShot: boolean("tie_shot"), // is this a tie shot point
+  tieOffset: decimal("tie_offset", { precision: 10, scale: 4 }), // offset for multi-setup surveys
+  createdAt: text("created_at"),
+});
+
+// Edge settlement measurements for chime/breakover analysis
+export const edgeSettlements = pgTable("edge_settlements", {
+  id: serial("id").primaryKey(),
+  surveyId: integer("survey_id"),
+  measurementType: text("measurement_type"), // edge_settlement, breakover
+  edgeWidth: decimal("edge_width", { precision: 10, scale: 2 }), // B value (inches)
+  radiusToEdge: decimal("radius_to_edge", { precision: 10, scale: 2 }), // R value (inches)
+  measuredSettlement: decimal("measured_settlement", { precision: 10, scale: 4 }), // Bew (inches)
+  allowableSettlement: decimal("allowable_settlement", { precision: 10, scale: 4 }), // Be (inches)
+  settlementRatio: decimal("settlement_ratio", { precision: 10, scale: 4 }), // Bew/Be
+  acceptanceCriteria: text("acceptance_criteria"), // per B.3.4
+  createdAt: text("created_at"),
+});
+
 // Users table for basic auth
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -285,3 +340,28 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+// Insert schemas for advanced settlement tables
+export const insertAdvancedSettlementSurveySchema = createInsertSchema(advancedSettlementSurveys).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAdvancedSettlementMeasurementSchema = createInsertSchema(advancedSettlementMeasurements).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertEdgeSettlementSchema = createInsertSchema(edgeSettlements).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types for advanced settlement
+export type AdvancedSettlementSurvey = typeof advancedSettlementSurveys.$inferSelect;
+export type InsertAdvancedSettlementSurvey = z.infer<typeof insertAdvancedSettlementSurveySchema>;
+export type AdvancedSettlementMeasurement = typeof advancedSettlementMeasurements.$inferSelect;
+export type InsertAdvancedSettlementMeasurement = z.infer<typeof insertAdvancedSettlementMeasurementSchema>;
+export type EdgeSettlement = typeof edgeSettlements.$inferSelect;
+export type InsertEdgeSettlement = z.infer<typeof insertEdgeSettlementSchema>;

@@ -891,6 +891,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Advanced Settlement Survey Routes
+  app.get("/api/reports/:reportId/settlement-surveys", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const surveys = await storage.getAdvancedSettlementSurveys(reportId);
+      res.json(surveys);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch settlement surveys" });
+    }
+  });
+
+  app.get("/api/settlement-surveys/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const survey = await storage.getAdvancedSettlementSurvey(id);
+      if (!survey) {
+        return res.status(404).json({ message: "Survey not found" });
+      }
+      res.json(survey);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch settlement survey" });
+    }
+  });
+
+  app.post("/api/reports/:reportId/settlement-surveys", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const surveyData = { ...req.body, reportId };
+      const newSurvey = await storage.createAdvancedSettlementSurvey(surveyData);
+      res.json(newSurvey);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to create settlement survey" });
+    }
+  });
+
+  app.patch("/api/settlement-surveys/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updated = await storage.updateAdvancedSettlementSurvey(id, req.body);
+      res.json(updated);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to update settlement survey" });
+    }
+  });
+
+  // Settlement Measurements Routes
+  app.get("/api/settlement-surveys/:surveyId/measurements", async (req, res) => {
+    try {
+      const surveyId = parseInt(req.params.surveyId);
+      const measurements = await storage.getAdvancedSettlementMeasurements(surveyId);
+      res.json(measurements);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch measurements" });
+    }
+  });
+
+  app.post("/api/settlement-surveys/:surveyId/measurements", async (req, res) => {
+    try {
+      const surveyId = parseInt(req.params.surveyId);
+      const measurementData = { ...req.body, surveyId };
+      const newMeasurement = await storage.createAdvancedSettlementMeasurement(measurementData);
+      res.json(newMeasurement);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to create measurement" });
+    }
+  });
+
+  app.post("/api/settlement-surveys/:surveyId/measurements/bulk", async (req, res) => {
+    try {
+      const surveyId = parseInt(req.params.surveyId);
+      const measurements = req.body.measurements.map((m: any) => ({ ...m, surveyId }));
+      const newMeasurements = await storage.createBulkAdvancedSettlementMeasurements(measurements);
+      res.json(newMeasurements);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to create measurements" });
+    }
+  });
+
+  // Settlement Analysis Calculation Route
+  app.post("/api/settlement-surveys/:surveyId/calculate", async (req, res) => {
+    try {
+      const surveyId = parseInt(req.params.surveyId);
+      const { tankParams, tiePoints } = req.body;
+      
+      // Get measurements from database
+      const measurements = await storage.getAdvancedSettlementMeasurements(surveyId);
+      
+      if (measurements.length === 0) {
+        return res.status(400).json({ message: "No measurements found for this survey" });
+      }
+      
+      // Import calculator functions
+      const { calculateCosineFit, processExternalRingwallSurvey } = await import("./settlement-calculator");
+      
+      // Convert measurements to points format
+      let points = measurements.map(m => ({
+        angle: Number(m.angle),
+        elevation: Number(m.measuredElevation)
+      }));
+      
+      // Process external ringwall survey if tie points provided
+      if (tiePoints && tiePoints.length > 0) {
+        points = processExternalRingwallSurvey(points, tiePoints);
+      }
+      
+      // Calculate cosine fit
+      const results = calculateCosineFit(points, tankParams);
+      
+      // Update survey with calculation results
+      await storage.updateAdvancedSettlementSurvey(surveyId, {
+        cosineAmplitude: results.amplitude.toString(),
+        cosinePhase: results.phase.toString(),
+        rSquared: results.rSquared.toString(),
+        maxOutOfPlane: results.maxOutOfPlane.toString(),
+        allowableSettlement: results.allowableSettlement.toString(),
+        settlementAcceptance: results.settlementAcceptance,
+        annexReference: results.annexReference,
+        tankDiameter: tankParams.diameter.toString(),
+        tankHeight: tankParams.height.toString(),
+        shellYieldStrength: (tankParams.yieldStrength || 20000).toString(),
+        elasticModulus: (tankParams.elasticModulus || 29000000).toString()
+      });
+      
+      // Update measurements with calculated values
+      for (let i = 0; i < measurements.length; i++) {
+        // Store calculated values in database if needed
+        // This could be expanded to update the measurements with normalized values
+      }
+      
+      res.json(results);
+    } catch (err) {
+      console.error("Settlement calculation error:", err);
+      res.status(500).json({ message: "Failed to calculate settlement analysis" });
+    }
+  });
+
+  // Edge Settlement Routes
+  app.get("/api/settlement-surveys/:surveyId/edge-settlements", async (req, res) => {
+    try {
+      const surveyId = parseInt(req.params.surveyId);
+      const settlements = await storage.getEdgeSettlements(surveyId);
+      res.json(settlements);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to fetch edge settlements" });
+    }
+  });
+
+  app.post("/api/settlement-surveys/:surveyId/edge-settlements", async (req, res) => {
+    try {
+      const surveyId = parseInt(req.params.surveyId);
+      const settlementData = { ...req.body, surveyId };
+      const newSettlement = await storage.createEdgeSettlement(settlementData);
+      res.json(newSettlement);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to create edge settlement" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
