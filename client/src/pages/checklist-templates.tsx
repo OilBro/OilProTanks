@@ -197,32 +197,35 @@ export default function ChecklistTemplates() {
     }
   };
 
-  const downloadTemplate = (template: ChecklistTemplate) => {
-    console.log('Downloading template:', template);
-    const items = parseTemplateItems(template.items);
-    const data = {
-      name: template.name,
-      description: template.description,
-      category: template.category,
-      items: items,
-      createdBy: template.createdBy,
-      createdAt: template.createdAt
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${template.name.replace(/\s+/g, '_')}_template.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast({
-      title: "Template Downloaded",
-      description: `${template.name} has been downloaded as JSON`,
-    });
+  const downloadTemplate = async (template: ChecklistTemplate) => {
+    console.log('Downloading template as Excel:', template);
+    try {
+      const response = await fetch(`/api/checklist-templates/${template.id}/download/excel`);
+      if (!response.ok) {
+        throw new Error('Failed to download template');
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${template.name.replace(/\s+/g, '_')}_template.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Template Downloaded",
+        description: `${template.name} has been downloaded as Excel`,
+      });
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      toast({
+        title: "Download Failed",
+        description: "Failed to download template",
+        variant: "destructive",
+      });
+    }
   };
 
   const downloadExcelTemplate = async () => {

@@ -244,3 +244,91 @@ export function isMarkedAsNA(value: any): boolean {
   const strValue = String(value).trim().toUpperCase();
   return strValue === 'N/A' || strValue === 'NA';
 }
+
+// Generate Excel file for a single checklist template
+export function generateChecklistTemplateExcel(template: any) {
+  const wb = XLSX.utils.book_new();
+  
+  // Parse the template items
+  let items = [];
+  try {
+    items = JSON.parse(template.items);
+  } catch {
+    items = [];
+  }
+  
+  // Create checklist sheet
+  const checklistData = [
+    [`${template.name} - Inspection Checklist`],
+    [`Category: ${template.category}`],
+    [`Description: ${template.description || 'N/A'}`],
+    [`Created By: ${template.createdBy}`],
+    [`Created: ${new Date(template.createdAt).toLocaleDateString()}`],
+    [],
+    ['Item', 'Status', 'Notes'],
+    ['---', '---', '---']
+  ];
+  
+  // Add each checklist item
+  items.forEach((item: any) => {
+    checklistData.push([
+      item.item || item.description || item,
+      'Not Inspected',
+      ''
+    ]);
+  });
+  
+  // Add additional empty rows for manual entries
+  for (let i = 0; i < 10; i++) {
+    checklistData.push(['', '', '']);
+  }
+  
+  const ws = XLSX.utils.aoa_to_sheet(checklistData);
+  
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 50 }, // Item column
+    { wch: 20 }, // Status column
+    { wch: 40 }  // Notes column
+  ];
+  
+  // Add the sheet to workbook
+  XLSX.utils.book_append_sheet(wb, ws, 'Checklist');
+  
+  // Add instructions sheet
+  const instructionsData = [
+    ['INSTRUCTIONS'],
+    [],
+    ['1. Use this checklist during your inspection'],
+    ['2. For each item, mark the Status as:'],
+    ['   - Acceptable: Item meets standards'],
+    ['   - Monitor: Item requires monitoring'],
+    ['   - Action Required: Item needs immediate attention'],
+    ['   - Not Applicable: Item doesn\'t apply'],
+    ['   - Not Inspected: Item was not checked'],
+    [],
+    ['3. Add any relevant notes in the Notes column'],
+    ['4. Additional items can be added in the empty rows'],
+    [],
+    ['5. This template can be re-imported back into the system']
+  ];
+  
+  const ws2 = XLSX.utils.aoa_to_sheet(instructionsData);
+  ws2['!cols'] = [{ wch: 60 }];
+  XLSX.utils.book_append_sheet(wb, ws2, 'Instructions');
+  
+  // Generate binary string
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+  
+  // Convert to buffer
+  function s2ab(s: string) {
+    const buf = new ArrayBuffer(s.length);
+    const view = new Uint8Array(buf);
+    for (let i = 0; i < s.length; i++) {
+      view[i] = s.charCodeAt(i) & 0xFF;
+    }
+    return buf;
+  }
+  
+  return s2ab(wbout);
+}

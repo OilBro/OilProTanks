@@ -15,7 +15,7 @@ import { eq } from "drizzle-orm";
 import { handleExcelImport } from "./import-handler";
 import { handleChecklistUpload, standardChecklists } from "./checklist-handler";
 import { checklistTemplates, insertChecklistTemplateSchema } from "@shared/schema";
-import { generateInspectionTemplate } from "./template-generator";
+import { generateInspectionTemplate, generateChecklistTemplateExcel } from "./template-generator";
 import { exportFlatCSV, exportWholePacketZip } from "./exporter";
 
 // Unit converter utilities
@@ -859,6 +859,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error generating Excel template:", err);
       res.status(500).json({ message: "Failed to generate Excel template" });
+    }
+  });
+
+  // Download individual checklist template as Excel
+  app.get("/api/checklist-templates/:id/download/excel", async (req, res) => {
+    try {
+      const templateId = parseInt(req.params.id);
+      const template = await storage.getChecklistTemplate(templateId);
+      
+      if (!template) {
+        return res.status(404).json({ message: "Template not found" });
+      }
+
+      // Generate Excel file for this template
+      const workbook = generateChecklistTemplateExcel(template);
+      const buffer = Buffer.from(workbook);
+      
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="${template.name.replace(/\s+/g, '_')}_template.xlsx"`);
+      res.send(buffer);
+    } catch (err) {
+      console.error("Error generating template Excel:", err);
+      res.status(500).json({ message: "Failed to generate template Excel" });
     }
   });
 
