@@ -17,6 +17,7 @@ import { handleChecklistUpload, standardChecklists } from "./checklist-handler";
 import { checklistTemplates, insertChecklistTemplateSchema } from "@shared/schema";
 import { generateInspectionTemplate, generateChecklistTemplateExcel } from "./template-generator";
 import { exportFlatCSV, exportWholePacketZip } from "./exporter";
+import { db } from "./db";
 
 // Unit converter utilities
 const UnitConverter = {
@@ -866,7 +867,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/checklist-templates/:id/download/excel", async (req, res) => {
     try {
       const templateId = parseInt(req.params.id);
-      const template = await storage.getChecklistTemplate(templateId);
+      
+      // Get template from database
+      const [template] = await db
+        .select()
+        .from(checklistTemplates)
+        .where(eq(checklistTemplates.id, templateId));
       
       if (!template) {
         return res.status(404).json({ message: "Template not found" });
