@@ -145,15 +145,32 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
       const newSurvey = {
         surveyType: 'external_ringwall',
         surveyDate: new Date().toISOString().split('T')[0],
-        numberOfPoints: 8
+        numberOfPoints: 8,
+        tankDiameter: '',
+        tankHeight: '',
+        shellYieldStrength: '20000',
+        elasticModulus: '29000000'
       };
       
-      await createSurveyMutation.mutateAsync(newSurvey);
+      console.log('Creating new survey with data:', newSurvey);
+      const result = await createSurveyMutation.mutateAsync(newSurvey);
+      console.log('Survey created successfully:', result);
+      
+      // Initialize measurements immediately after creation
+      if (result && result.id) {
+        setSelectedSurveyId(result.id);
+        initializeMeasurements(8);
+        toast({ 
+          title: 'Success', 
+          description: 'Settlement survey created successfully'
+        });
+      }
     } catch (error) {
-      console.error('Error creating survey:', error);
+      console.error('Error creating survey - Full details:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({ 
         title: 'Error', 
-        description: 'Failed to create survey',
+        description: `Failed to create survey: ${errorMessage}`,
         variant: 'destructive'
       });
     }

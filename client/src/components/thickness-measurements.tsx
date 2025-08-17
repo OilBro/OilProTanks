@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Plus, Save } from 'lucide-react';
+import { Trash2, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { calculateMeasurement, validateThickness } from '@/lib/calculations';
@@ -132,7 +132,7 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
     if (!validateThickness(currentThickness) || !validateThickness(originalThickness)) {
       toast({
         title: "Error",
-        description: "Invalid thickness values",
+        description: "Invalid thickness values. Please enter values between 0 and 10 inches.",
         variant: "destructive"
       });
       return;
@@ -144,17 +144,24 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
       yearsSinceLastInspection
     );
 
+    console.log('Calculated values:', {
+      corrosionRate: calculation.corrosionRate,
+      remainingLife: calculation.remainingLife,
+      status: calculation.status
+    });
+
     const measurementData = {
       component: newMeasurement.component,
       measurementType: newMeasurement.measurementType || "shell",
       location: newMeasurement.location,
-      originalThickness: originalThickness.toString(),
+      originalThickness: originalThickness.toFixed(3),
       currentThickness: currentThickness.toFixed(3),
       corrosionRate: calculation.corrosionRate.toFixed(4),
       remainingLife: calculation.remainingLife.toFixed(1),
       status: calculation.status
     };
 
+    console.log('Saving measurement data:', measurementData);
     addMeasurementMutation.mutate(measurementData);
   };
 
@@ -203,8 +210,12 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{measurement.location}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{measurement.originalThickness}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">{measurement.currentThickness}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{measurement.corrosionRate} in/yr</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">{measurement.remainingLife} years</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {measurement.corrosionRate ? `${parseFloat(measurement.corrosionRate).toFixed(4)} in/yr` : '---'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {measurement.remainingLife ? `${parseFloat(measurement.remainingLife).toFixed(1)} years` : '---'}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(measurement.status || 'acceptable')}
                   </td>
@@ -213,7 +224,7 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
                       type="button"
                       variant="ghost"
                       size="sm"
-                      onClick={() => removeMeasurement(measurement.id)}
+                      onClick={() => removeMeasurement(measurement.id!)}
                       className="text-red-600 hover:text-red-700"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -276,9 +287,36 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
                     className="w-20"
                   />
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500" colSpan={3}>
-                  Auto-calculated
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  {(() => {
+                    const orig = parseFloat(newMeasurement.originalThickness || '0');
+                    const curr = parseFloat(newMeasurement.currentThickness || '0');
+                    const years = report?.yearsSinceLastInspection || 5;
+                    if (orig > 0 && curr > 0 && years > 0) {
+                      const metalLoss = orig - curr;
+                      const rate = metalLoss / years;
+                      return `${rate.toFixed(4)} in/yr`;
+                    }
+                    return '---';
+                  })()}
                 </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  {(() => {
+                    const orig = parseFloat(newMeasurement.originalThickness || '0');
+                    const curr = parseFloat(newMeasurement.currentThickness || '0');
+                    const years = report?.yearsSinceLastInspection || 5;
+                    if (orig > 0 && curr > 0 && years > 0) {
+                      const metalLoss = orig - curr;
+                      const rate = metalLoss / years;
+                      const minThickness = orig * 0.5;
+                      const remaining = curr - minThickness;
+                      const life = rate > 0 ? remaining / rate : 999;
+                      return `${Math.min(life, 999).toFixed(1)} years`;
+                    }
+                    return '---';
+                  })()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm"></td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <Button
                     type="button"
