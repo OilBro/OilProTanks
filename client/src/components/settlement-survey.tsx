@@ -146,10 +146,10 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
         surveyType: 'external_ringwall',
         surveyDate: new Date().toISOString().split('T')[0],
         numberOfPoints: 8,
-        tankDiameter: '',
-        tankHeight: '',
-        shellYieldStrength: '20000',
-        elasticModulus: '29000000'
+        tankDiameter: null,
+        tankHeight: null,
+        shellYieldStrength: 20000,
+        elasticModulus: 29000000
       };
       
       console.log('Creating new survey with data:', newSurvey);

@@ -439,14 +439,57 @@ export function ThicknessTable({
                   className="w-20"
                 />
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                Auto-calculated
+              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                {(() => {
+                  const orig = parseFloat(newMeasurement.originalThickness || '0');
+                  const curr = parseFloat(newMeasurement.currentThickness || '0');
+                  const years = yearsSinceLastInspection || 5;
+                  if (orig > 0 && curr > 0 && years > 0) {
+                    const metalLoss = orig - curr;
+                    const rate = metalLoss / years;
+                    return `${rate.toFixed(4)} in/yr`;
+                  }
+                  return '---';
+                })()}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                Auto-calculated
+              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                {(() => {
+                  const orig = parseFloat(newMeasurement.originalThickness || '0');
+                  const curr = parseFloat(newMeasurement.currentThickness || '0');
+                  const years = yearsSinceLastInspection || 5;
+                  if (orig > 0 && curr > 0 && years > 0) {
+                    const metalLoss = orig - curr;
+                    const rate = metalLoss / years;
+                    const minThickness = orig * 0.5;
+                    const remaining = curr - minThickness;
+                    const life = rate > 0 ? remaining / rate : 999;
+                    return `${Math.min(life, 999).toFixed(1)} years`;
+                  }
+                  return '---';
+                })()}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                Auto-determined
+              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                {(() => {
+                  const orig = parseFloat(newMeasurement.originalThickness || '0');
+                  const curr = parseFloat(newMeasurement.currentThickness || '0');
+                  const years = yearsSinceLastInspection || 5;
+                  if (orig > 0 && curr > 0 && years > 0) {
+                    const metalLoss = orig - curr;
+                    const rate = metalLoss / years;
+                    const minThickness = orig * 0.5;
+                    const remaining = curr - minThickness;
+                    const life = rate > 0 ? remaining / rate : 999;
+                    
+                    if (curr <= minThickness || life <= 5) {
+                      return <Badge className="bg-red-100 text-red-800">Action Required</Badge>;
+                    } else if (life <= 10) {
+                      return <Badge className="bg-yellow-100 text-yellow-800">Monitor</Badge>;
+                    } else {
+                      return <Badge className="bg-green-100 text-green-800">Acceptable</Badge>;
+                    }
+                  }
+                  return <Badge variant="secondary">---</Badge>;
+                })()}
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <Button
