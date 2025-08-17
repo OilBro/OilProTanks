@@ -1,0 +1,149 @@
+OilPro Tanks - What's Not Working
+
+Issues Found:
+
+1.
+Thickness calculations not working - Shows "Auto-calculated" instead of performing math
+
+2.
+Thickness measurements not saving - Add button doesn't store data in database
+
+3.
+Settlement analysis completely broken - "New Survey" button does nothing
+
+4.
+Settlement analysis tabs not working - Data Entry/Analysis Results/Survey History tabs don't switch
+
+5.
+PDF download not working - Download PDF button in preview is unresponsive
+
+6.
+Settlement charts not generating - No cosine curve charts or R² calculations
+
+7.
+Some CSV/PDF imports fail - Error messages on certain file imports
+
+
+
+
+Potential Fixes (My Technical Insights):
+
+1. Thickness Calculations Fix
+
+Problem: JavaScript calculation functions not executing
+Likely Fix:
+
+•
+Check if calculation event listeners are attached to the "Add" button
+
+•
+Verify the calculation formulas: corrosionRate = (original - current) / years * 1000
+
+•
+Ensure the calculation results are being displayed in the UI elements
+
+•
+Check browser console for JavaScript errors
+
+2. Data Persistence Fix
+
+Problem: Database INSERT operations failing
+Likely Fix:
+
+•
+Verify database connection in backend
+
+•
+Check if the API endpoint for saving measurements is working
+
+•
+Ensure proper data validation before database insertion
+
+•
+Check for SQL syntax errors in INSERT statements
+
+3. Settlement Analysis Fix
+
+Problem: Modal/form not appearing for new surveys
+Likely Fix:
+
+•
+Check if the "New Survey" button has proper event listener attached
+
+•
+Verify if modal HTML elements exist in the DOM
+
+•
+Check for JavaScript errors preventing modal display
+
+•
+Ensure CSS isn't hiding the modal (z-index, display properties)
+
+4. Tab Navigation Fix
+
+Problem: Tab switching JavaScript not working
+Likely Fix:
+
+•
+Verify tab click event handlers are properly bound
+
+•
+Check if tab content divs exist and have correct IDs
+
+•
+Ensure tab state management is updating active/inactive classes
+
+•
+Look for JavaScript errors in tab switching functions
+
+5. PDF Export Fix
+
+Problem: PDF generation or download mechanism broken
+Likely Fix:
+
+•
+Check if PDF library (like jsPDF or similar) is properly loaded
+
+•
+Verify the download trigger mechanism
+
+•
+Ensure PDF generation function is receiving report data correctly
+
+•
+Check for CORS issues if PDF generation is server-side
+
+6. Settlement Charts Fix
+
+Problem: Chart generation library not working
+Likely Fix:
+
+•
+Verify chart library (Chart.js, D3.js, etc.) is loaded
+
+•
+Implement cosine curve fitting algorithm for settlement data
+
+•
+Ensure chart container elements exist in DOM
+
+•
+Add R² calculation function for statistical analysis
+
+7. File Import Fix
+
+Problem: File parsing or validation errors
+Likely Fix:
+
+•
+Add better error handling for unsupported file formats
+
+•
+Implement file size validation before processing
+
+•
+Check file parsing libraries for Excel/PDF processing
+
+•
+Add user feedback for specific import errors
+
