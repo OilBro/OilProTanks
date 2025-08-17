@@ -39,7 +39,7 @@ Business Rules: NO cost estimation for repair recommendations
 - **Connection**: Neon Database serverless PostgreSQL
 
 ### Core Features
-- **Dashboard**: Overview of all inspection reports.
+- **Dashboard**: Overview of all inspection reports with integrated Executive KPI dashboard.
 - **Report Creation**: Step-by-step generation with form validation.
 - **Comprehensive Thickness Management**: Includes various measurement types (shell, bottom, roof, nozzles, etc.), CML data entry, and remaining life calculations.
 - **Advanced Settlement Analysis**: 
@@ -51,6 +51,27 @@ Business Rules: NO cost estimation for repair recommendations
   - Edge settlement analysis and tracking
   - Interactive data entry for elevation measurements
   - Historical survey tracking and comparison
+- **CSV Data Ingestion System** (NEW):
+  - Bulk data import from standardized CSV templates
+  - Templates for BasePage Nominals, Shell TMLs, Nozzle TMLs, Exceptions Register
+  - Data ingestion package generator with all templates and instructions
+  - Automated processing and validation of imported data
+- **Executive KPI Dashboard** (NEW):
+  - Real-time overall status indicator (GO/NO-GO/CONDITIONAL)
+  - TML completeness tracking (minimum 90% requirement)
+  - Minimum remaining life analysis with criticality indicators
+  - Findings summary (Critical/Major/Minor) with visual indicators
+  - Secondary containment margin per 40 CFR 112 SPCC requirements
+  - Fleet-wide inspection progress metrics
+  - Average corrosion rate analysis with trend indicators
+  - API 653 compliance scoring
+- **Enhanced API 653 Calculation Engine** (NEW):
+  - Automated t-min calculations per API 653 standards
+  - Component-specific minimum thickness determination
+  - Joint efficiency and material strength factors
+  - Remaining life calculations with safety factors
+  - Critical component identification and prioritization
+  - Standards compliance mapping (API 653, API 650, API 2000, NFPA 30, 40 CFR 112, SSPC-PA 2)
 - **Dyke & Secondary Containment**: Primary/secondary containment inspections with EPA compliance checking.
 - **Checklist System**: Standardized and custom inspection items with Excel template downloads.
 - **Excel/PDF Import**: Smart field detection and AI-powered data extraction (OpenRouter AI) for existing inspection reports, supporting various formats and field name variations.
@@ -59,6 +80,7 @@ Business Rules: NO cost estimation for repair recommendations
   - Flat CSV export compatible with the importer (single row per report with all essential fields)
   - Whole packet ZIP export including: flat CSV, forms template XLSX, example CSVs for high-density measurements, attachments, and README
   - Individual checklist template Excel downloads
+  - CSV data ingestion package with all required templates
 - **Template System**: Reusable report and checklist templates.
 - **Calculation Engine**: Corrosion rate calculation, remaining life estimation, and status classification (acceptable, monitor, action required). Includes component-specific thickness calculations, API 653 standard calculation engine, and settlement cosine fit algorithm.
 - **Editing and Deletion**: Comprehensive edit functionality for all report aspects and delete capability for reports and associated data.

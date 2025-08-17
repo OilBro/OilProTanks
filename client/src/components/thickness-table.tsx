@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Upload, Download, FileSpreadsheet } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { calculateMeasurement, validateThickness } from "@/lib/calculations";
 import type { ThicknessMeasurement } from "@shared/schema";
 
@@ -68,6 +69,9 @@ export function ThicknessTable({
   onMeasurementsChange, 
   yearsSinceLastInspection 
 }: ThicknessTableProps) {
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [reportId, setReportId] = useState<number>(measurements[0]?.reportId || 0);
   const [newMeasurement, setNewMeasurement] = useState<Partial<ThicknessMeasurement>>({
     component: "",
     measurementType: "shell",
@@ -147,6 +151,73 @@ export function ThicknessTable({
   const removeMeasurement = (id: number) => {
     onMeasurementsChange(measurements.filter(m => m.id !== id));
   };
+  
+  const handleDownloadDataIngestionPackage = async () => {
+    try {
+      const response = await fetch('/api/data-ingestion/package');
+      if (!response.ok) throw new Error('Failed to download package');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'API653_Data_Ingestion_Package.zip';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "Package Downloaded",
+        description: "Data ingestion templates downloaded successfully. Extract and fill out the CSV templates.",
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "Failed to download data ingestion package",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const handleCSVImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'shell'); // Default to shell measurements
+    
+    try {
+      const response = await fetch(`/api/reports/${reportId || 1}/import-csv`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) throw new Error('Failed to import CSV');
+      
+      const result = await response.json();
+      
+      toast({
+        title: "Import Successful",
+        description: `${result.recordsProcessed} measurements imported successfully`,
+      });
+      
+      // Reload measurements - would need to trigger parent refresh
+      window.location.reload();
+    } catch (error) {
+      toast({
+        title: "Import Failed",
+        description: "Failed to import CSV data. Please check the file format.",
+        variant: "destructive"
+      });
+    }
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const updateMeasurement = (id: number, field: keyof ThicknessMeasurement, value: any) => {
     const updatedMeasurements = measurements.map(measurement => {
@@ -195,10 +266,40 @@ export function ThicknessTable({
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Thickness Measurements</h3>
-        <Button type="button" onClick={addMeasurement} className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Location
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            type="button"
+            onClick={handleDownloadDataIngestionPackage}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            CSV Templates
+          </Button>
+          
+          <Button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <Upload className="h-4 w-4" />
+            Import CSV
+          </Button>
+          
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleCSVImport}
+            className="hidden"
+          />
+          
+          <Button type="button" onClick={addMeasurement} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Location
+          </Button>
+        </div>
       </div>
       
       <div className="overflow-x-auto">

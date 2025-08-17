@@ -9,6 +9,7 @@ import { generateEnhancedPDF } from "@/components/enhanced-pdf-generator";
 import { QuickPDFPreview } from "@/components/quick-pdf-preview";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
+import { KPIDashboard } from "@/components/kpi-dashboard";
 import { useState } from "react";
 import { queryClient } from "@/lib/queryClient";
 import {
@@ -248,6 +249,11 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Executive KPI Dashboard */}
+      <div className="mb-8">
+        <KPIDashboard showFullDashboard={true} />
       </div>
 
       {/* Reports Table */}
