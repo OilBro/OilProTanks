@@ -1128,6 +1128,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Assistant Routes
+  app.get("/api/ai/guidance-templates", async (req, res) => {
+    try {
+      const { section, category } = req.query;
+      const templates = await storage.getAiGuidanceTemplates({ 
+        section: section as string, 
+        category: category as string 
+      });
+      res.json(templates);
+    } catch (err) {
+      console.error('Error fetching guidance templates:', err);
+      res.status(500).json({ message: "Failed to fetch guidance templates" });
+    }
+  });
+
+  app.post("/api/ai/chat", async (req, res) => {
+    try {
+      const { message, reportId, sessionId, context, conversationHistory } = req.body;
+      
+      // Here we'll implement the AI chat logic
+      // For now, return a contextual response based on the message
+      const response = await storage.processAiChat({
+        message,
+        reportId,
+        sessionId,
+        context,
+        conversationHistory
+      });
+      
+      res.json(response);
+    } catch (err) {
+      console.error('Error processing AI chat:', err);
+      res.status(500).json({ message: "Failed to process chat message" });
+    }
+  });
+
+  app.get("/api/ai/conversations/:reportId/:sessionId", async (req, res) => {
+    try {
+      const { reportId, sessionId } = req.params;
+      const conversation = await storage.getAiConversation(
+        parseInt(reportId), 
+        sessionId
+      );
+      res.json(conversation);
+    } catch (err) {
+      console.error('Error fetching conversation:', err);
+      res.status(500).json({ message: "Failed to fetch conversation" });
+    }
+  });
+
+  app.post("/api/ai/conversations", async (req, res) => {
+    try {
+      const conversation = await storage.saveAiConversation(req.body);
+      res.json(conversation);
+    } catch (err) {
+      console.error('Error saving conversation:', err);
+      res.status(500).json({ message: "Failed to save conversation" });
+    }
+  });
+
   // Settlement Measurements Routes
   app.get("/api/settlement-surveys/:surveyId/measurements", async (req, res) => {
     try {

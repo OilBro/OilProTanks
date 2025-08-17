@@ -68,6 +68,41 @@ export const thicknessMeasurements = pgTable("thickness_measurements", {
 });
 
 // Appurtenance inspection records for detailed component tracking
+// AI Assistant conversation history
+export const aiConversations = pgTable("ai_conversations", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id"),
+  userId: text("user_id"),
+  sessionId: text("session_id"),
+  context: text("context"), // current inspection step/section
+  messages: jsonb("messages").$type<Array<{
+    role: 'user' | 'assistant' | 'system';
+    content: string;
+    timestamp: string;
+    metadata?: {
+      section?: string;
+      component?: string;
+      measurement?: any;
+      api653Reference?: string;
+    };
+  }>>(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const aiGuidanceTemplates = pgTable("ai_guidance_templates", {
+  id: serial("id").primaryKey(),
+  category: text("category"), // thickness, settlement, checklist, safety, api653
+  section: text("section"),
+  triggerKeywords: jsonb("trigger_keywords").$type<string[]>(),
+  guidanceText: text("guidance_text"),
+  api653References: jsonb("api653_references").$type<string[]>(),
+  relatedCalculations: jsonb("related_calculations").$type<string[]>(),
+  warningThresholds: jsonb("warning_thresholds").$type<any>(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
 export const appurtenanceInspections = pgTable("appurtenance_inspections", {
   id: serial("id").primaryKey(),
   reportId: integer("report_id"),
@@ -248,6 +283,23 @@ export type InsertRepairRecommendation = z.infer<typeof insertRepairRecommendati
 export type RepairRecommendation = typeof repairRecommendations.$inferSelect;
 export type InsertVentingSystemInspection = z.infer<typeof insertVentingSystemInspectionSchema>;
 export type VentingSystemInspection = typeof ventingSystemInspections.$inferSelect;
+
+// AI Assistant types
+export const insertAiConversationSchema = createInsertSchema(aiConversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertAiGuidanceTemplateSchema = createInsertSchema(aiGuidanceTemplates).omit({
+  id: true,
+  createdAt: true
+});
+
+export type AiConversation = typeof aiConversations.$inferSelect;
+export type InsertAiConversation = z.infer<typeof insertAiConversationSchema>;
+export type AiGuidanceTemplate = typeof aiGuidanceTemplates.$inferSelect;
+export type InsertAiGuidanceTemplate = z.infer<typeof insertAiGuidanceTemplateSchema>;
 
 // Inspection checklist templates
 export const checklistTemplates = pgTable("checklist_templates", {

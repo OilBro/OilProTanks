@@ -16,6 +16,7 @@ import { queryClient } from "@/lib/queryClient";
 import { insertInspectionReportSchema, type InspectionReport, type InsertInspectionReport } from "@shared/schema";
 import { ThicknessMeasurementsEdit } from "@/components/thickness-measurements";
 import { ChecklistEdit } from "@/components/checklist-edit";
+import { AiAssistant } from "@/components/ai-assistant";
 
 export function EditReport() {
   const { id } = useParams();
@@ -309,6 +310,20 @@ export function EditReport() {
           </Button>
         </div>
       </form>
+      
+      {/* AI Assistant */}
+      <AiAssistant 
+        reportId={reportId}
+        context={{
+          section: 'edit-report',
+          tankDetails: report ? {
+            tankId: report.tankId,
+            diameter: report.diameter,
+            height: report.height,
+            service: report.service
+          } : undefined
+        }}
+      />
     </div>
   );
 }

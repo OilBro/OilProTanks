@@ -11,6 +11,8 @@ import {
   advancedSettlementSurveys,
   advancedSettlementMeasurements,
   edgeSettlements,
+  aiConversations,
+  aiGuidanceTemplates,
   type User, 
   type InsertUser,
   type InspectionReport,
@@ -34,7 +36,11 @@ import {
   type AdvancedSettlementMeasurement,
   type InsertAdvancedSettlementMeasurement,
   type EdgeSettlement,
-  type InsertEdgeSettlement
+  type InsertEdgeSettlement,
+  type AiConversation,
+  type InsertAiConversation,
+  type AiGuidanceTemplate,
+  type InsertAiGuidanceTemplate
 } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
@@ -98,6 +104,18 @@ export interface IStorage {
   // Edge Settlements
   getEdgeSettlements(surveyId: number): Promise<EdgeSettlement[]>;
   createEdgeSettlement(settlement: InsertEdgeSettlement): Promise<EdgeSettlement>;
+  
+  // AI Assistant
+  getAiGuidanceTemplates(filters: { section?: string; category?: string }): Promise<AiGuidanceTemplate[]>;
+  getAiConversation(reportId: number, sessionId: string): Promise<AiConversation | undefined>;
+  saveAiConversation(conversation: InsertAiConversation): Promise<AiConversation>;
+  processAiChat(params: {
+    message: string;
+    reportId?: number;
+    sessionId: string;
+    context?: any;
+    conversationHistory?: any[];
+  }): Promise<{ content: string; metadata?: any }>;
 }
 
 export class MemStorage implements IStorage {
@@ -113,6 +131,8 @@ export class MemStorage implements IStorage {
   private advancedSettlementSurveys: Map<number, AdvancedSettlementSurvey>;
   private advancedSettlementMeasurements: Map<number, AdvancedSettlementMeasurement>;
   private edgeSettlements: Map<number, EdgeSettlement>;
+  private aiConversations: Map<number, AiConversation>;
+  private aiGuidanceTemplates: Map<number, AiGuidanceTemplate>;
   private currentUserId: number;
   private currentReportId: number;
   private currentMeasurementId: number;
@@ -125,6 +145,8 @@ export class MemStorage implements IStorage {
   private currentSettlementSurveyId: number;
   private currentSettlementMeasurementId: number;
   private currentEdgeSettlementId: number;
+  private currentAiConversationId: number;
+  private currentAiTemplateId: number;
 
   constructor() {
     this.users = new Map();
@@ -139,6 +161,8 @@ export class MemStorage implements IStorage {
     this.advancedSettlementSurveys = new Map();
     this.advancedSettlementMeasurements = new Map();
     this.edgeSettlements = new Map();
+    this.aiConversations = new Map();
+    this.aiGuidanceTemplates = new Map();
     this.currentUserId = 1;
     this.currentReportId = 1;
     this.currentMeasurementId = 1;
@@ -151,8 +175,11 @@ export class MemStorage implements IStorage {
     this.currentSettlementSurveyId = 1;
     this.currentSettlementMeasurementId = 1;
     this.currentEdgeSettlementId = 1;
+    this.currentAiConversationId = 1;
+    this.currentAiTemplateId = 1;
     
     this.initializeTemplates();
+    this.initializeAiGuidance();
   }
 
   private initializeTemplates() {
@@ -807,6 +834,238 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return newSettlement;
+  }
+
+  // AI Assistant Methods
+  async getAiGuidanceTemplates(filters: { section?: string; category?: string }): Promise<AiGuidanceTemplate[]> {
+    let query = db.select().from(aiGuidanceTemplates);
+    
+    // Apply filters if provided
+    if (filters.section) {
+      query = query.where(eq(aiGuidanceTemplates.section, filters.section)) as any;
+    }
+    if (filters.category) {
+      query = query.where(eq(aiGuidanceTemplates.category, filters.category)) as any;
+    }
+    
+    return await query;
+  }
+
+  async getAiConversation(reportId: number, sessionId: string): Promise<AiConversation | undefined> {
+    const [conversation] = await db
+      .select()
+      .from(aiConversations)
+      .where(eq(aiConversations.reportId, reportId))
+      .where(eq(aiConversations.sessionId, sessionId));
+    return conversation || undefined;
+  }
+
+  async saveAiConversation(conversation: InsertAiConversation): Promise<AiConversation> {
+    const [saved] = await db
+      .insert(aiConversations)
+      .values(conversation)
+      .returning();
+    return saved;
+  }
+
+  async processAiChat(params: {
+    message: string;
+    reportId?: number;
+    sessionId: string;
+    context?: any;
+    conversationHistory?: any[];
+  }): Promise<{ content: string; metadata?: any }> {
+    // This is a simplified implementation. In production, you would integrate with an AI service
+    // like OpenAI API or Claude API using the API keys from environment variables
+    
+    const message = params.message.toLowerCase();
+    let response = { content: '', metadata: {} as any };
+    
+    // API 653 guidance responses based on keywords
+    if (message.includes('thickness') || message.includes('minimum')) {
+      response.content = `According to API 653 Section 4.3, the minimum acceptable thickness depends on several factors:
+
+1. **Shell Minimum Thickness (tmin)**: Calculated using the formula from API 653 Section 4.3.2
+   - tmin = 2.6(H-1)DG/SE for tanks up to 200 ft diameter
+   - Where: H = height to inspection point, D = diameter, G = specific gravity, S = allowable stress, E = joint efficiency
+
+2. **Bottom Plate Minimum**: 
+   - 0.100" for bottom plates without means for leak detection
+   - 0.050" for bottom plates with leak detection and containment
+
+3. **Critical Zone**: The area within 12 inches of the shell-to-bottom weld requires special attention
+
+Always verify calculations with current tank parameters and consult API 653 Table 4.1 for specific requirements.`;
+      response.metadata = { 
+        api653Reference: 'Section 4.3.2', 
+        warningLevel: 'info',
+        calculationType: 'Minimum Thickness'
+      };
+    } else if (message.includes('corrosion') || message.includes('rate')) {
+      response.content = `Corrosion rate calculations per API 653:
+
+**Short-term corrosion rate (ST)**: 
+- ST = (tprevious - tcurrent) / time interval
+- Used when only two inspections available
+
+**Long-term corrosion rate (LT)**:
+- LT = (tinitial - tcurrent) / total time
+- Preferred when multiple inspections available
+
+**Critical rates**:
+- > 0.005 in/yr: Aggressive, requires monitoring
+- > 0.010 in/yr: Severe, action required
+- > 0.025 in/yr: Critical, immediate action
+
+**Remaining Life**: RL = (tcurrent - tmin) / corrosion rate
+
+The greater of ST or LT should be used for remaining life calculations per API 653 Section 4.4.`;
+      response.metadata = { 
+        api653Reference: 'Section 4.4', 
+        warningLevel: 'warning',
+        calculationType: 'Corrosion Rate'
+      };
+    } else if (message.includes('settlement')) {
+      response.content = `API 653 Annex B Settlement Criteria:
+
+**Cosine Fit Analysis** (per B.2.2.4):
+1. Measure elevations at minimum 8 points around circumference
+2. Apply cosine curve fitting: U = A*cos(θ - B) + C
+3. Calculate R² - must be ≥ 0.90 for valid fit
+4. Determine out-of-plane settlement: Si = Ui - cosine fit
+
+**Acceptance Criteria**:
+- Uniform settlement: Generally acceptable if < 6 inches
+- Out-of-plane: Use Annex B.3.2.1 formulas
+- Edge settlement: Bew < 0.37% of tank radius
+
+**Action Required if**:
+- R² < 0.90 (poor fit, remeasure)
+- Si > allowable per B.3.2.1
+- Visible shell distortion or floor buckling
+
+Always document tie shots for multi-setup surveys.`;
+      response.metadata = { 
+        api653Reference: 'Annex B.2.2.4', 
+        warningLevel: 'info',
+        calculationType: 'Settlement Analysis'
+      };
+    } else if (message.includes('inspection') || message.includes('method')) {
+      response.content = `Recommended inspection methods per API 653:
+
+**Visual Inspection** (Always required):
+- External: Shell, roof, foundation, appurtenances
+- Internal: When tank is out of service
+
+**Thickness Measurements**:
+- UT (Ultrasonic Testing): Primary method for shells and roofs
+- MFL (Magnetic Flux Leakage): Bottom plate scanning
+- RT (Radiography): For specific areas of concern
+
+**Inspection Intervals** (Section 6.3):
+- External: Every 5 years maximum or RCA/4N
+- UT Thickness: RCA/2N years (N=15 or 20 per Table 6.1)
+- Internal: Based on corrosion rate, max 20 years
+
+**Critical Areas**:
+- Shell-to-bottom weld zone
+- Wind girder attachments
+- Nozzle connections
+- Roof support columns
+
+Document all findings per API 653 Section 12.`;
+      response.metadata = { 
+        api653Reference: 'Section 6.3', 
+        warningLevel: 'info'
+      };
+    } else if (message.includes('safety')) {
+      response.content = `Safety considerations for tank inspection:
+
+**Pre-Inspection Requirements**:
+- Confined space entry permit (if internal)
+- Gas testing: O2, H2S, LEL
+- Lock-out/tag-out procedures
+- Fall protection for work >6 feet
+
+**PPE Requirements**:
+- Hard hat, safety glasses, steel-toe boots (minimum)
+- H2S monitor for sour service tanks
+- FR clothing for hydrocarbon service
+- Respiratory protection if required by gas test
+
+**Hazards to Consider**:
+- Pyrophoric iron sulfide (auto-ignition risk)
+- Benzene exposure in crude/gasoline tanks
+- Slip/trip hazards on floating roofs
+- Weather conditions (lightning, wind)
+
+**Emergency Procedures**:
+- Rescue plan for confined space
+- Fire watch for hot work
+- Communication system established
+
+Always follow site-specific safety procedures and JSA requirements.`;
+      response.metadata = { 
+        warningLevel: 'critical'
+      };
+    } else {
+      response.content = `I can help you with API 653 tank inspection guidance. Here are some areas I can assist with:
+
+• **Thickness Calculations**: Minimum thickness requirements, corrosion rates, remaining life
+• **Settlement Analysis**: Cosine fit procedures, acceptance criteria, measurement techniques
+• **Inspection Methods**: UT, MFL, visual inspection requirements and intervals
+• **Safety Procedures**: Confined space, gas testing, PPE requirements
+• **API 653 Standards**: Code interpretations, calculation methods, acceptance criteria
+
+What specific aspect of your inspection would you like help with?`;
+    }
+    
+    return response;
+  }
+
+  private initializeAiGuidance() {
+    // Initialize AI guidance templates
+    const templates: Omit<AiGuidanceTemplate, 'id' | 'createdAt'>[] = [
+      {
+        category: 'thickness',
+        section: 'shell',
+        triggerKeywords: ['shell', 'thickness', 'minimum', 'tmin'],
+        guidanceText: 'Shell minimum thickness per API 653 Section 4.3.2',
+        api653References: ['4.3.2', '4.3.3', 'Table 4.1'],
+        relatedCalculations: ['tmin', 'corrosion_rate', 'remaining_life'],
+        warningThresholds: { criticalThickness: 0.100, warningThickness: 0.150 },
+        isActive: true
+      },
+      {
+        category: 'settlement',
+        section: 'foundation',
+        triggerKeywords: ['settlement', 'cosine', 'foundation', 'tilt'],
+        guidanceText: 'Settlement analysis per API 653 Annex B',
+        api653References: ['B.2.2.4', 'B.3.2.1', 'B.3.4'],
+        relatedCalculations: ['cosine_fit', 'out_of_plane', 'edge_settlement'],
+        warningThresholds: { maxSettlement: 6, rSquaredMin: 0.90 },
+        isActive: true
+      },
+      {
+        category: 'safety',
+        section: 'general',
+        triggerKeywords: ['safety', 'confined', 'space', 'gas', 'test'],
+        guidanceText: 'Safety procedures for tank inspection',
+        api653References: ['1.4', '12.2'],
+        relatedCalculations: [],
+        warningThresholds: {},
+        isActive: true
+      }
+    ];
+    
+    // Store templates in memory for MemStorage
+    templates.forEach((template, index) => {
+      this.aiGuidanceTemplates.set(index + 1, {
+        ...template,
+        id: index + 1,
+        createdAt: new Date()
+      } as AiGuidanceTemplate);
+    });
   }
 }
 
