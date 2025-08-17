@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,6 +69,16 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
     queryKey: [`/api/settlement-surveys/${selectedSurveyId}/measurements`],
     enabled: !!selectedSurveyId
   });
+
+  // Load measurements when survey is selected or data changes
+  useEffect(() => {
+    if (surveyMeasurements && surveyMeasurements.length > 0) {
+      setMeasurements(surveyMeasurements);
+    } else if (selectedSurveyId && measurements.length === 0) {
+      // Initialize measurements if none exist
+      initializeMeasurements(8);
+    }
+  }, [selectedSurveyId, surveyMeasurements]);
 
   // Create new survey mutation
   const createSurveyMutation = useMutation({
@@ -201,7 +211,17 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
             <div className="flex items-end gap-4">
               <div className="flex-1">
                 <Label>Settlement Survey</Label>
-                <Select value={selectedSurveyId?.toString()} onValueChange={(v) => setSelectedSurveyId(parseInt(v))}>
+                <Select 
+                  value={selectedSurveyId?.toString()} 
+                  onValueChange={(v) => {
+                    const surveyId = parseInt(v);
+                    setSelectedSurveyId(surveyId);
+                    // Initialize measurements when selecting a survey
+                    if (!surveyMeasurements || surveyMeasurements.length === 0) {
+                      initializeMeasurements(8);
+                    }
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select or create a survey" />
                   </SelectTrigger>
