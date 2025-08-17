@@ -26,25 +26,31 @@ export function generateEnhancedPDF(data: EnhancedReportData): void {
   // Use the new professional PDF generator
   const professionalData = {
     report: data.report,
-    measurements: data.measurements,
-    checklists: data.checklists,
-    appurtenanceInspections: data.appurtenanceInspections,
-    repairRecommendations: data.repairRecommendations,
-    ventingInspections: data.ventingInspections,
-    attachments: data.attachments,
-    shellCalculations: data.shellCalculations,
-    settlementSurvey: data.settlementSurvey,
-    cmlData: data.cmlData
+    measurements: data.measurements || [],
+    checklists: data.checklists || [],
+    appurtenanceInspections: data.appurtenanceInspections || [],
+    repairRecommendations: data.repairRecommendations || [],
+    ventingInspections: data.ventingInspections || [],
+    attachments: data.attachments || [],
+    shellCalculations: data.shellCalculations || null,
+    settlementSurvey: data.settlementSurvey || null,
+    cmlData: data.cmlData || []
   };
+  
+  console.log('Starting PDF generation process...');
+  console.log('Report data:', professionalData.report);
   
   // Import and use the comprehensive visual generator
   import('./visual-pdf-generator').then(({ generateVisualPDF }) => {
+    console.log('Generating comprehensive visual API 653 report...');
     generateVisualPDF(professionalData);
   }).catch(error => {
     console.error('Error loading visual PDF generator:', error);
     // Fallback to TEAM standard generator
     import('./team-standard-pdf-generator').then(({ generateTeamStandardPDF }) => {
+      console.log('Generating OilPro standard API 653 report...');
       generateTeamStandardPDF(professionalData);
+      console.log('OilPro standard PDF generated successfully!');
     }).catch(fallbackError => {
       console.error('Error loading TEAM standard PDF generator:', fallbackError);
       // Final fallback to legacy generator

@@ -84,9 +84,12 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
   const createSurveyMutation = useMutation({
     mutationFn: (data: any) => 
       apiRequest(`/api/reports/${reportId}/settlement-surveys`, { method: 'POST', body: JSON.stringify(data) }),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: [`/api/reports/${reportId}/settlement-surveys`] });
       toast({ title: 'Success', description: 'Settlement survey created successfully' });
+      // Set the newly created survey as selected and initialize measurements
+      setSelectedSurveyId(result.id);
+      initializeMeasurements(8);
     }
   });
 
@@ -138,15 +141,22 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
 
   // Create new survey
   const handleCreateSurvey = async () => {
-    const newSurvey = {
-      surveyType: 'external_ringwall',
-      surveyDate: new Date().toISOString().split('T')[0],
-      numberOfPoints: 8
-    };
-    
-    const result = await createSurveyMutation.mutateAsync(newSurvey);
-    setSelectedSurveyId(result.id);
-    initializeMeasurements(8);
+    try {
+      const newSurvey = {
+        surveyType: 'external_ringwall',
+        surveyDate: new Date().toISOString().split('T')[0],
+        numberOfPoints: 8
+      };
+      
+      await createSurveyMutation.mutateAsync(newSurvey);
+    } catch (error) {
+      console.error('Error creating survey:', error);
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to create survey',
+        variant: 'destructive'
+      });
+    }
   };
 
   // Update measurement value

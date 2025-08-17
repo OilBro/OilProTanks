@@ -14,7 +14,7 @@ import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { insertInspectionReportSchema, type InspectionReport, type InsertInspectionReport } from "@shared/schema";
-import { ThicknessMeasurementsEdit } from "@/components/thickness-measurements-edit";
+import { ThicknessMeasurementsEdit } from "@/components/thickness-measurements";
 import { ChecklistEdit } from "@/components/checklist-edit";
 
 export function EditReport() {
