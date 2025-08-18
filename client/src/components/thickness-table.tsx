@@ -222,7 +222,13 @@ export function ThicknessTable({
   const updateMeasurement = (id: number, field: keyof ThicknessMeasurement, value: any) => {
     const updatedMeasurements = measurements.map(measurement => {
       if (measurement.id === id) {
-        const updated = { ...measurement, [field]: value };
+        // Ensure numeric fields are stored as strings
+        let processedValue = value;
+        if (field === 'currentThickness' || field === 'originalThickness') {
+          processedValue = value ? value.toString() : null;
+        }
+        
+        const updated = { ...measurement, [field]: processedValue };
         
         // Recalculate if thickness changed and we have both original and current thickness
         if ((field === 'currentThickness' || field === 'originalThickness') && 
@@ -236,6 +242,8 @@ export function ThicknessTable({
           );
           return {
             ...updated,
+            currentThickness: currentThickness.toFixed(3),
+            originalThickness: originalThickness.toString(),
             corrosionRate: calculation.corrosionRate.toFixed(4),
             remainingLife: calculation.remainingLife.toFixed(1),
             status: calculation.status
@@ -347,7 +355,7 @@ export function ThicknessTable({
                     type="number"
                     step="0.001"
                     value={measurement.originalThickness || ''}
-                    onChange={(e) => updateMeasurement(measurement.id, 'originalThickness', parseFloat(e.target.value) || null)}
+                    onChange={(e) => updateMeasurement(measurement.id, 'originalThickness', e.target.value)}
                     placeholder="0.500"
                     className="w-20"
                   />
