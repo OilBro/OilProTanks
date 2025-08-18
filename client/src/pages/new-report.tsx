@@ -373,10 +373,11 @@ export default function NewReport() {
           component: measurement.component,
           location: measurement.location,
           measurementType: measurement.measurementType || 'shell',
-          currentThickness: measurement.currentThickness ? (typeof measurement.currentThickness === 'string' ? parseFloat(measurement.currentThickness) : measurement.currentThickness) : 0,
-          originalThickness: measurement.originalThickness || null,
-          corrosionRate: typeof measurement.corrosionRate === 'string' ? parseFloat(measurement.corrosionRate) : measurement.corrosionRate,
-          remainingLife: typeof measurement.remainingLife === 'string' ? parseFloat(measurement.remainingLife) : measurement.remainingLife,
+          // Ensure all numeric fields are sent as strings for decimal database fields
+          currentThickness: measurement.currentThickness ? String(measurement.currentThickness) : null,
+          originalThickness: measurement.originalThickness ? String(measurement.originalThickness) : null,
+          corrosionRate: measurement.corrosionRate ? String(measurement.corrosionRate) : null,
+          remainingLife: measurement.remainingLife ? String(measurement.remainingLife) : null,
           status: measurement.status,
           elevation: measurement.elevation || null,
           createdAt: new Date().toISOString()
