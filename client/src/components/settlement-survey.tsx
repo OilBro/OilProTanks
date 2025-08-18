@@ -59,7 +59,20 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
   });
 
   // Check if reportId is valid
-  const isValidReportId = reportId && reportId > 0;
+  const isValidReportId = reportId && !isNaN(reportId) && reportId > 0;
+  
+  // Early return if reportId is invalid
+  if (!isValidReportId) {
+    return (
+      <Alert>
+        <AlertTriangle className="h-4 w-4" />
+        <AlertTitle>Settlement Analysis Not Available</AlertTitle>
+        <AlertDescription>
+          Settlement surveys can only be created for saved reports. Please save the report first, then edit it to access settlement analysis.
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   // Fetch existing surveys
   const { data: surveys = [], isLoading: surveysLoading } = useQuery({
