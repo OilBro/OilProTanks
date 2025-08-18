@@ -474,11 +474,11 @@ export function ThicknessTable({
                   className="w-20"
                 />
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm">
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-mono">
                 {(() => {
-                  const orig = parseFloat(newMeasurement.originalThickness || '0');
-                  const curr = parseFloat(newMeasurement.currentThickness || '0');
-                  const years = yearsSinceLastInspection || 5;
+                  const orig = parseFloat(newMeasurement.originalThickness?.toString() || '0');
+                  const curr = parseFloat(newMeasurement.currentThickness?.toString() || '0');
+                  const years = yearsSinceLastInspection || 10;
                   if (orig > 0 && curr > 0 && years > 0) {
                     const metalLoss = orig - curr;
                     const rate = metalLoss / years;
@@ -487,11 +487,11 @@ export function ThicknessTable({
                   return '---';
                 })()}
               </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm">
+              <td className="px-6 py-4 whitespace-nowrap text-sm font-mono">
                 {(() => {
-                  const orig = parseFloat(newMeasurement.originalThickness || '0');
-                  const curr = parseFloat(newMeasurement.currentThickness || '0');
-                  const years = yearsSinceLastInspection || 5;
+                  const orig = parseFloat(newMeasurement.originalThickness?.toString() || '0');
+                  const curr = parseFloat(newMeasurement.currentThickness?.toString() || '0');
+                  const years = yearsSinceLastInspection || 10;
                   if (orig > 0 && curr > 0 && years > 0) {
                     const metalLoss = orig - curr;
                     const rate = metalLoss / years;
