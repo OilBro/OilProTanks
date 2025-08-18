@@ -765,11 +765,8 @@ export default function NewReport() {
           onRecommendationsChange={setRepairRecommendations}
         />
 
-        {/* Settlement Survey Section */}
-        <SettlementSurvey
-          data={settlementSurveyData as any}
-          onDataChange={(data: any) => setSettlementSurveyData(data)}
-        />
+        {/* Settlement Survey Section - Only show after report is created */}
+        {/* Note: Settlement surveys can only be created after the report is saved */}
 
         {/* NDE Test Locations Section */}
         <NDETestLocations

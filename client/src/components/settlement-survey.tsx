@@ -58,10 +58,13 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
     elasticModulus: '29000000'
   });
 
+  // Check if reportId is valid
+  const isValidReportId = reportId && reportId > 0;
+
   // Fetch existing surveys
   const { data: surveys = [], isLoading: surveysLoading } = useQuery({
     queryKey: [`/api/reports/${reportId}/settlement-surveys`],
-    enabled: !!reportId
+    enabled: isValidReportId
   });
 
   // Fetch measurements for selected survey
@@ -141,6 +144,15 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
 
   // Create new survey
   const handleCreateSurvey = async () => {
+    if (!isValidReportId) {
+      toast({ 
+        title: 'Error', 
+        description: 'Cannot create survey: Report must be saved first',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     try {
       const newSurvey = {
         surveyType: 'external_ringwall',

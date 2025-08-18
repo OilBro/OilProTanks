@@ -363,10 +363,45 @@ export function ThicknessTable({
                   />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <span className="font-mono">{measurement.corrosionRate} in/yr</span>
+                  <span className="font-mono">
+                    {(() => {
+                      if (measurement.corrosionRate !== null && measurement.corrosionRate !== undefined) {
+                        return `${measurement.corrosionRate} in/yr`;
+                      }
+                      // Calculate on the fly if not stored
+                      const orig = parseFloat(measurement.originalThickness?.toString() || '0');
+                      const curr = parseFloat(measurement.currentThickness?.toString() || '0');
+                      const years = yearsSinceLastInspection || 5;
+                      if (orig > 0 && curr > 0 && years > 0) {
+                        const metalLoss = orig - curr;
+                        const rate = metalLoss / years;
+                        return `${rate.toFixed(4)} in/yr`;
+                      }
+                      return '---';
+                    })()}
+                  </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <span className="font-mono">{measurement.remainingLife} years</span>
+                  <span className="font-mono">
+                    {(() => {
+                      if (measurement.remainingLife !== null && measurement.remainingLife !== undefined) {
+                        return `${measurement.remainingLife} years`;
+                      }
+                      // Calculate on the fly if not stored
+                      const orig = parseFloat(measurement.originalThickness?.toString() || '0');
+                      const curr = parseFloat(measurement.currentThickness?.toString() || '0');
+                      const years = yearsSinceLastInspection || 5;
+                      if (orig > 0 && curr > 0 && years > 0) {
+                        const metalLoss = orig - curr;
+                        const rate = metalLoss / years;
+                        const minThickness = orig * 0.5;
+                        const remaining = curr - minThickness;
+                        const life = rate > 0 ? remaining / rate : 999;
+                        return `${Math.min(life, 999).toFixed(1)} years`;
+                      }
+                      return '---';
+                    })()}
+                  </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {getStatusBadge(measurement.status || 'acceptable')}
