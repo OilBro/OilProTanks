@@ -2,7 +2,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Clock, CheckCircle, AlertTriangle, Eye, Edit, Download, TrendingUp, Search, Trash2 } from "lucide-react";
+import { FileText, Clock, CheckCircle, AlertTriangle, Eye, Edit, Download, TrendingUp, Search, Trash2, FileDown, MoreVertical } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
 import { generateEnhancedPDF } from "@/components/enhanced-pdf-generator";
@@ -22,6 +22,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { exportDetailedCSV, exportSummaryCSV } from "@/lib/csv-export";
 import type { InspectionReport, ThicknessMeasurement, InspectionChecklist } from "@shared/schema";
 
 interface DashboardStats {
@@ -148,6 +157,94 @@ export default function Dashboard() {
     }
   };
 
+  const handleCSVExport = async (report: InspectionReport) => {
+    try {
+      toast({
+        title: "Generating CSV Export",
+        description: "Compiling inspection data for CSV export...",
+      });
+
+      // Load all related data from API endpoints  
+      const [
+        measurementsResponse,
+        checklistsResponse,
+        appurtenancesResponse,
+        repairsResponse,
+        ventingResponse,
+        attachmentsResponse,
+        settlementResponse
+      ] = await Promise.all([
+        fetch(`/api/reports/${report.id}/measurements`),
+        fetch(`/api/reports/${report.id}/checklists`),
+        fetch(`/api/reports/${report.id}/appurtenances`),
+        fetch(`/api/reports/${report.id}/repairs`),
+        fetch(`/api/reports/${report.id}/venting`),
+        fetch(`/api/reports/${report.id}/attachments`),
+        fetch(`/api/reports/${report.id}/settlement-surveys`)
+      ]);
+
+      const [
+        measurements,
+        checklists,
+        appurtenances,
+        repairs,
+        venting,
+        attachments,
+        settlementSurveys
+      ] = await Promise.all([
+        measurementsResponse.ok ? await measurementsResponse.json() : [],
+        checklistsResponse.ok ? await checklistsResponse.json() : [],
+        appurtenancesResponse.ok ? await appurtenancesResponse.json() : [],
+        repairsResponse.ok ? await repairsResponse.json() : [],
+        ventingResponse.ok ? await ventingResponse.json() : [],
+        attachmentsResponse.ok ? await attachmentsResponse.json() : [],
+        settlementResponse.ok ? await settlementResponse.json() : []
+      ]);
+
+      const exportData = {
+        report,
+        measurements: measurements || [],
+        checklists: checklists || [],
+        appurtenanceInspections: appurtenances || [],
+        repairRecommendations: repairs || [],
+        ventingInspections: venting || [],
+        attachments: attachments || [],
+        settlementSurveys: settlementSurveys || []
+      };
+
+      exportDetailedCSV(exportData);
+      
+      toast({
+        title: "CSV Exported",
+        description: `Inspection report ${report.reportNumber} has been exported to CSV format.`,
+      });
+    } catch (error) {
+      console.error('CSV export failed:', error);
+      toast({
+        title: "Error",
+        description: "Failed to export CSV. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExportAllCSV = () => {
+    try {
+      exportSummaryCSV(reports);
+      toast({
+        title: "All Reports Exported",
+        description: `${reports.length} inspection reports exported to summary CSV.`,
+      });
+    } catch (error) {
+      console.error('Export all CSV failed:', error);
+      toast({
+        title: "Error",
+        description: "Failed to export reports. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -258,8 +355,21 @@ export default function Dashboard() {
 
       {/* Reports Table */}
       <Card>
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-medium text-gray-900">Recent Reports</h3>
+          {reports.length > 0 && (
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleExportAllCSV}
+                className="text-gray-600 hover:text-gray-800"
+              >
+                <FileDown className="mr-2 h-4 w-4" />
+                Export All as CSV
+              </Button>
+            </div>
+          )}
         </div>
         <div className="overflow-x-auto">
           {reports.length === 0 ? (
@@ -323,15 +433,30 @@ export default function Dashboard() {
                             <Edit className="h-4 w-4" />
                           </Button>
                         </Link>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-gray-400 hover:text-gray-600" 
-                          title="Download PDF Report"
-                          onClick={() => handleQuickPDFGeneration(report)}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-gray-400 hover:text-gray-600" 
+                              title="Export Options"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleQuickPDFGeneration(report)}>
+                              <FileText className="mr-2 h-4 w-4" />
+                              Export as PDF
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleCSVExport(report)}>
+                              <FileDown className="mr-2 h-4 w-4" />
+                              Export as CSV
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                         <Button 
                           variant="ghost" 
                           size="sm" 
