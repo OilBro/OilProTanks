@@ -317,7 +317,7 @@ export default function NewReport() {
       inspectionDate: '',
       originalThickness: null,
       originalThicknessUnit: 'in',
-      yearsSinceLastInspection: null,
+      yearsSinceLastInspection: 10,
       constructionStandard: '',
       shellMaterial: '',
       roofType: '',
@@ -745,8 +745,23 @@ export default function NewReport() {
         <ThicknessTable
           measurements={measurements}
           onMeasurementsChange={setMeasurements}
-          yearsSinceLastInspection={Number(watchedValues.yearsSinceLastInspection) || 1}
+          yearsSinceLastInspection={Number(watchedValues.yearsSinceLastInspection) || 10}
         />
+
+        {/* Settlement Analysis Section */}
+        <Card>
+          <CardContent className="p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Settlement Analysis</h3>
+            {!createdReport ? (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <p className="text-gray-600 mb-2">Settlement analysis requires a saved report.</p>
+                <p className="text-sm text-gray-500">Save the report first, then edit it to access settlement analysis features.</p>
+              </div>
+            ) : (
+              <SettlementSurvey reportId={createdReport.id} />
+            )}
+          </CardContent>
+        </Card>
 
         {/* Appurtenance Inspection Section */}
         <AppurtenanceInspection
