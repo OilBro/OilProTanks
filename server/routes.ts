@@ -104,7 +104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isAllowed) {
         cb(null, true);
       } else {
-        cb(new Error('Invalid file type. Only Excel (.xlsx, .xls, .xlsm) and PDF files are allowed.'), false);
+        cb(new Error('Invalid file type. Only Excel (.xlsx, .xls, .xlsm) and PDF files are allowed.'));
       }
     }
   });
@@ -267,7 +267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           preview: result.preview,
           aiInsights: {
             confidence: result.aiAnalysis.confidence,
-            detectedColumns: result.aiAnalysis.detectedColumns,
+            detectedColumns: (result.aiAnalysis as any).detectedColumns || [],
             mappingSuggestions: result.aiAnalysis.mappingSuggestions
           }
         });
@@ -287,7 +287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           preview: result.preview,
           aiInsights: {
             confidence: result.aiAnalysis.confidence,
-            detectedColumns: result.aiAnalysis.detectedColumns,
+            detectedColumns: (result.aiAnalysis as any).detectedColumns || [],
             mappingSuggestions: result.aiAnalysis.mappingSuggestions
           }
         });
@@ -675,7 +675,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(repairs);
     } catch (error) {
       console.error('Error fetching repair recommendations:', error);
-      res.status(500).json({ message: "Failed to fetch repair recommendations", error: error.message });
+      res.status(500).json({ 
+        message: "Failed to fetch repair recommendations", 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      });
     }
   });
 
@@ -926,7 +929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const csvContent = req.file.buffer.toString('utf-8');
-      let processedData;
+      let processedData: any[] = [];
       
       switch (type) {
         case 'basepage':
@@ -945,11 +948,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               reportId,
               component: `Shell Course ${tml.course}`,
               location: tml.location,
-              currentThickness: avgThickness,
-              previousThickness: 0, // Would need to look up from previous inspection
-              nominalThickness: 0, // Would come from basepage nominals
-              corrosionRate: 0, // Will be calculated
-              remainingLife: 0, // Will be calculated
+              currentThickness: avgThickness.toString(),
+              originalThickness: "0", // Would come from basepage nominals
+              corrosionRate: "0", // Will be calculated
+              remainingLife: "0", // Will be calculated
               status: 'acceptable',
               notes: `Q1: ${tml.q1_thickness}, Q2: ${tml.q2_thickness}, Q3: ${tml.q3_thickness}, Q4: ${tml.q4_thickness}`
             });
@@ -992,19 +994,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         jointEfficiency: 0.85,
         yieldStrength: 30000,
         designStress: 20000,
-        api650Edition: report.api650Edition || 'Unknown',
-        constructionCode: report.constructionCode || 'API 650'
+        api650Edition: 'Unknown', // These fields don't exist in schema yet
+        constructionCode: 'API 650'
       };
       
       // Prepare component thickness data
       const components: ComponentThickness[] = measurements.map(m => ({
-        component: m.component,
-        nominalThickness: m.nominalThickness || parseFloat(report.originalThickness || '0'),
-        currentThickness: m.currentThickness,
-        previousThickness: m.previousThickness || 0,
+        component: m.component || 'Unknown',
+        nominalThickness: parseFloat(m.originalThickness || report.originalThickness || '0'),
+        currentThickness: parseFloat(m.currentThickness || '0'),
+        previousThickness: 0, // previousThickness field doesn't exist in schema yet
         corrosionAllowance: 0.0625,
         dateCurrent: new Date(report.inspectionDate || Date.now()),
-        datePrevious: report.lastInspectionDate ? new Date(report.lastInspectionDate) : undefined
+        datePrevious: new Date(report.inspectionDate || Date.now()) // lastInspectionDate field doesn't exist yet
       }));
       
       // Perform API 653 evaluation
