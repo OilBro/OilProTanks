@@ -952,8 +952,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               originalThickness: "0", // Would come from basepage nominals
               corrosionRate: "0", // Will be calculated
               remainingLife: "0", // Will be calculated
-              status: 'acceptable',
-              notes: `Q1: ${tml.q1_thickness}, Q2: ${tml.q2_thickness}, Q3: ${tml.q3_thickness}, Q4: ${tml.q4_thickness}`
+              status: 'acceptable'
             });
           }
           break;

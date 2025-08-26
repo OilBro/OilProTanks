@@ -55,7 +55,6 @@ export function EditReport() {
         throw new Error('Failed to update report');
       }
       return response.json();
-      return response;
     },
     onSuccess: () => {
       toast({
@@ -185,7 +184,7 @@ export function EditReport() {
               
               <div>
                 <Label htmlFor="service">Service</Label>
-                <Select value={form.watch('service')} onValueChange={(value) => form.setValue('service', value)}>
+                <Select value={form.watch('service') || undefined} onValueChange={(value) => form.setValue('service', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Service" />
                   </SelectTrigger>
@@ -273,7 +272,7 @@ export function EditReport() {
             <div>
               <Label htmlFor="status">Report Status</Label>
               <Select 
-                value={form.watch('status')} 
+                value={form.watch('status') || undefined} 
                 onValueChange={(value) => form.setValue('status', value as any)}
               >
                 <SelectTrigger>

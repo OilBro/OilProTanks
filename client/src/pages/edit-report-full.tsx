@@ -22,7 +22,7 @@ import { VentingSystemInspection } from "@/components/venting-system-inspection"
 import { ReportAttachments } from "@/components/report-attachments";
 import { SettlementSurvey } from "@/components/settlement-survey";
 import { NDETestLocations } from "@/components/nde-test-locations";
-import { SecondaryContainment } from "@/components/secondary-containment";
+import { SecondaryContainment, ContainmentSystem } from "@/components/secondary-containment";
 import { VisualDocumentation } from "@/components/visual-documentation";
 import { insertInspectionReportSchema, type InspectionReport, type InsertInspectionReport, 
          type ThicknessMeasurement, type InspectionChecklist, type AppurtenanceInspection as AppurtenanceInspectionType,
@@ -114,6 +114,7 @@ export function EditReportFull() {
   const [containmentData, setContainmentData] = useState<ContainmentSystem>({
     systemType: 'earthen_dyke' as const,
     capacity: 110,
+    capacityUnit: 'gal' as const,
     drainageSystem: true,
     monitoring: false,
     components: [],
@@ -191,7 +192,7 @@ export function EditReportFull() {
     if (existingChecklists) {
       const updatedChecklist = checklist.map(item => {
         const existing = existingChecklists.find(c => c.item === item.item);
-        return existing ? { ...item, checked: existing.checked, notes: existing.notes || '' } : item;
+        return existing ? { ...item, checked: existing.checked || false, notes: existing.notes || '' } : item;
       });
       setChecklist(updatedChecklist);
     }
@@ -204,7 +205,7 @@ export function EditReportFull() {
   const updateReportMutation = useMutation({
     mutationFn: async (data: InsertInspectionReport) => {
       const response = await fetch(`/api/reports/${reportId}`, {
-        method: 'PATCH',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
@@ -217,9 +218,9 @@ export function EditReportFull() {
       // Update related data
       // Update thickness measurements
       for (const measurement of measurements) {
-        const method = measurement.id ? 'PATCH' : 'POST';
+        const method = measurement.id ? 'PUT' : 'POST';
         const url = measurement.id 
-          ? `/api/reports/${reportId}/measurements/${measurement.id}`
+          ? `/api/measurements/${measurement.id}`
           : `/api/reports/${reportId}/measurements`;
         
         await fetch(url, {
@@ -232,9 +233,9 @@ export function EditReportFull() {
       // Update checklists
       for (const item of checklist) {
         const existing = existingChecklists?.find(c => c.item === item.item);
-        const method = existing ? 'PATCH' : 'POST';
+        const method = existing ? 'PUT' : 'POST';
         const url = existing
-          ? `/api/reports/${reportId}/checklists/${existing.id}`
+          ? `/api/checklists/${existing.id}`
           : `/api/reports/${reportId}/checklists`;
         
         await fetch(url, {
@@ -356,7 +357,7 @@ export function EditReportFull() {
                   <div>
                     <Label htmlFor="service">Service Type</Label>
                     <Select 
-                      value={form.watch('service')} 
+                      value={form.watch('service') || undefined} 
                       onValueChange={(value) => form.setValue('service', value)}
                     >
                       <SelectTrigger>
@@ -427,7 +428,7 @@ export function EditReportFull() {
                   <div>
                     <Label htmlFor="status">Report Status</Label>
                     <Select 
-                      value={form.watch('status')} 
+                      value={form.watch('status') || undefined} 
                       onValueChange={(value) => form.setValue('status', value as any)}
                     >
                       <SelectTrigger>
@@ -558,14 +559,7 @@ export function EditReportFull() {
             />
 
             <SettlementSurvey
-              data={settlementSurveyData}
-              onDataChange={(data) => setSettlementSurveyData({
-                referenceElevation: data.referenceElevation,
-                measurementDate: data.measurementDate,
-                instrument: data.instrument,
-                points: data.points,
-                analysisNotes: data.analysisNotes || ''
-              })}
+              reportId={reportId}
             />
 
             <NDETestLocations
