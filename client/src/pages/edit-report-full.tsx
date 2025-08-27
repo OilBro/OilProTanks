@@ -22,7 +22,7 @@ import { VentingSystemInspection } from "@/components/venting-system-inspection"
 import { ReportAttachments } from "@/components/report-attachments";
 import { SettlementSurvey } from "@/components/settlement-survey";
 import { NDETestLocations } from "@/components/nde-test-locations";
-import { SecondaryContainment, ContainmentSystem } from "@/components/secondary-containment";
+import { SecondaryContainment } from "@/components/secondary-containment";
 import { VisualDocumentation } from "@/components/visual-documentation";
 import { insertInspectionReportSchema, type InspectionReport, type InsertInspectionReport, 
          type ThicknessMeasurement, type InspectionChecklist, type AppurtenanceInspection as AppurtenanceInspectionType,
@@ -37,9 +37,10 @@ interface SettlementData {
   notes: string;
 }
 
-interface ContainmentSystem {
+interface LocalContainmentSystem {
   systemType: 'earthen_dyke' | 'concrete_dyke' | 'synthetic_liner' | 'clay_liner' | 'composite';
   capacity: number;
+  capacityUnit: 'gal' | 'bbl' | 'liters';
   drainageSystem: boolean;
   monitoring: boolean;
   components: any[];
@@ -111,7 +112,7 @@ export function EditReportFull() {
     analysisNotes: ''
   });
   const [ndeResults, setNDEResults] = useState<any[]>([]);
-  const [containmentData, setContainmentData] = useState<ContainmentSystem>({
+  const [containmentData, setContainmentData] = useState<LocalContainmentSystem>({
     systemType: 'earthen_dyke' as const,
     capacity: 110,
     capacityUnit: 'gal' as const,
@@ -262,7 +263,14 @@ export function EditReportFull() {
   });
 
   const onSubmit = (data: InsertInspectionReport) => {
-    updateReportMutation.mutate(data);
+    // Convert numeric values to strings for the backend
+    const processedData = {
+      ...data,
+      diameter: data.diameter !== null && data.diameter !== undefined ? String(data.diameter) : null,
+      height: data.height !== null && data.height !== undefined ? String(data.height) : null,
+      originalThickness: data.originalThickness !== null && data.originalThickness !== undefined ? String(data.originalThickness) : null
+    };
+    updateReportMutation.mutate(processedData);
   };
 
   if (isLoading) {

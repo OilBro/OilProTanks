@@ -92,7 +92,14 @@ export function EditReport() {
   }, [report, form]);
 
   const onSubmit = (data: InsertInspectionReport) => {
-    updateReportMutation.mutate(data);
+    // Convert numeric values to strings for the backend
+    const processedData = {
+      ...data,
+      diameter: data.diameter !== null && data.diameter !== undefined ? String(data.diameter) : null,
+      height: data.height !== null && data.height !== undefined ? String(data.height) : null,
+      originalThickness: data.originalThickness !== null && data.originalThickness !== undefined ? String(data.originalThickness) : null
+    };
+    updateReportMutation.mutate(processedData);
   };
 
   if (isLoading) {
