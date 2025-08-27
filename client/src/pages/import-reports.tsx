@@ -23,6 +23,11 @@ interface ImportResult {
     detectedColumns: string[];
     mappingSuggestions: Record<string, string>;
   };
+  aiAnalysis?: {
+    confidence: number;
+    detectedColumns: string[];
+    mappingSuggestions: Record<string, string>;
+  };
 }
 
 export default function ImportReports() {
@@ -582,19 +587,6 @@ export default function ImportReports() {
             <div className="mt-6 flex justify-end space-x-4">
               <Button variant="outline" onClick={() => setImportResult(null)}>
                 Cancel
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  console.log('=== DEBUG BUTTON CLICKED ===');
-                  console.log('Current importResult:', importResult);
-                  console.log('importedData exists?', !!importResult.importedData);
-                  if (importResult.importedData) {
-                    console.log('importedData contents:', importResult.importedData);
-                  }
-                }}
-              >
-                Debug Data
               </Button>
               <Button
                 onClick={createReport}

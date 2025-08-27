@@ -99,18 +99,18 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
   doc.rect(0, 0, 210, 297, 'F');
   
   doc.setFontSize(24);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('API 653 TANK INSPECTION REPORT', 105, 60, { align: 'center' });
   
   doc.setFontSize(18);
-  doc.text(report.tankId, 105, 80, { align: 'center' });
+  doc.text(report.tankId || 'N/A', 105, 80, { align: 'center' });
   
   doc.setFontSize(14);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   doc.text(`Service: ${(report.service || '').toUpperCase()}`, 105, 100, { align: 'center' });
-  doc.text(`Report No: ${report.reportNumber}`, 105, 115, { align: 'center' });
-  doc.text(`Inspection Date: ${report.inspectionDate}`, 105, 130, { align: 'center' });
-  doc.text(`Inspector: ${report.inspector}`, 105, 145, { align: 'center' });
+  doc.text(`Report No: ${report.reportNumber || 'N/A'}`, 105, 115, { align: 'center' });
+  doc.text(`Inspection Date: ${report.inspectionDate || 'N/A'}`, 105, 130, { align: 'center' });
+  doc.text(`Inspector: ${report.inspector || 'N/A'}`, 105, 145, { align: 'center' });
   
   // Add certification statement
   doc.setFontSize(12);
@@ -132,18 +132,18 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
   yPosition = 20;
   
   doc.setFontSize(18);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('EXECUTIVE SUMMARY', margin, yPosition);
   yPosition += 15;
   
   doc.setFontSize(12);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   
   // Tank Information Summary
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('TANK SPECIFICATIONS', margin, yPosition);
   yPosition += 10;
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   
   const specs = [
     `Tank ID: ${report.tankId}`,
@@ -174,10 +174,10 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
   if (urgentRepairs.length > 0 || failedVenting.length > 0 || criticalMeasurements.length > 0) {
     doc.setFillColor(255, 240, 240);
     doc.rect(margin, yPosition, 170, 40, 'F');
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.setTextColor(200, 0, 0);
     doc.text('CRITICAL FINDINGS - IMMEDIATE ATTENTION REQUIRED', margin + 5, yPosition + 8);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     doc.setTextColor(0, 0, 0);
     yPosition += 15;
     
@@ -197,10 +197,10 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
   }
   
   // Inspection Overview
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('INSPECTION OVERVIEW', margin, yPosition);
   yPosition += 10;
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   
   const overview = [
     `Total Thickness Measurements: ${measurements.length}`,
@@ -223,12 +223,12 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
     yPosition = 20;
     
     doc.setFontSize(16);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('THICKNESS MEASUREMENT RESULTS', margin, yPosition);
     yPosition += 15;
     
     doc.setFontSize(12);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     doc.text(`Total Measurements: ${measurements.length}`, margin, yPosition);
     yPosition += 10;
     
@@ -248,13 +248,13 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
       checkPageBreak(20);
       
       doc.setFontSize(14);
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text(`${(componentName || '').toUpperCase()} MEASUREMENTS (${componentMeasurements.length})`, margin, yPosition);
       yPosition += 10;
       
       // Table header
       doc.setFontSize(10);
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text('Location', margin, yPosition);
       doc.text('Original (in)', margin + 50, yPosition);
       doc.text('Current (in)', margin + 90, yPosition);
@@ -266,7 +266,7 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
       doc.line(margin, yPosition - 2, margin + 200, yPosition - 2);
       yPosition += 3;
       
-      doc.setFont(undefined, 'normal');
+      doc.setFont('helvetica', 'normal');
       componentMeasurements.forEach((measurement, index) => {
         checkPageBreak(8);
         
@@ -306,12 +306,12 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
     checkPageBreak(30);
     yPosition += 5;
     doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('MEASUREMENT SUMMARY', margin, yPosition);
     yPosition += 10;
     
     doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     
     const validMeasurements = measurements.filter(m => {
       const original = parseFloat(m.originalThickness || '0');
@@ -360,11 +360,11 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
     doc.addPage();
     yPosition = 20;
     doc.setFontSize(16);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('THICKNESS MEASUREMENTS', margin, yPosition);
     yPosition += 15;
     doc.setFontSize(12);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     doc.text('No thickness measurements available for this report.', margin, yPosition);
   }
   
@@ -374,21 +374,21 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
     yPosition = 20;
     
     doc.setFontSize(16);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('APPURTENANCE INSPECTION RESULTS', margin, yPosition);
     yPosition += 15;
     
     doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     
     appurtenanceInspections.forEach((inspection) => {
       checkPageBreak(25);
       
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text(`${(inspection.appurtenanceType || '').toUpperCase()}: ${inspection.appurtenanceId}`, margin, yPosition);
       yPosition += 6;
       
-      doc.setFont(undefined, 'normal');
+      doc.setFont('helvetica', 'normal');
       doc.text(`Location: ${inspection.location}`, margin + 5, yPosition);
       doc.text(`Condition: ${(inspection.condition || '').toUpperCase()}`, margin + 100, yPosition);
       yPosition += 6;
@@ -419,12 +419,12 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
     yPosition = 20;
     
     doc.setFontSize(16);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('REPAIR RECOMMENDATIONS', margin, yPosition);
     yPosition += 15;
     
     doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     
     // Sort by priority
     const sortedRecommendations = [...repairRecommendations].sort((a, b) => {
@@ -435,20 +435,20 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
     sortedRecommendations.forEach((rec, index) => {
       checkPageBreak(35);
       
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text(`${index + 1}. ${rec.component} - ${(rec.priority || '').toUpperCase()} PRIORITY`, margin, yPosition);
       yPosition += 6;
       
-      doc.setFont(undefined, 'normal');
+      doc.setFont('helvetica', 'normal');
       doc.text('Defect:', margin + 5, yPosition);
       yPosition += 4;
-      const defectLines = doc.splitTextToSize(rec.defectDescription, 160);
+      const defectLines = doc.splitTextToSize(rec.defectDescription || '', 160);
       doc.text(defectLines, margin + 10, yPosition);
       yPosition += defectLines.length * 4 + 2;
       
       doc.text('Recommendation:', margin + 5, yPosition);
       yPosition += 4;
-      const recLines = doc.splitTextToSize(rec.recommendation, 160);
+      const recLines = doc.splitTextToSize(rec.recommendation || '', 160);
       doc.text(recLines, margin + 10, yPosition);
       yPosition += recLines.length * 4 + 2;
       
@@ -467,21 +467,21 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
     yPosition = 20;
     
     doc.setFontSize(16);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('INSPECTION CHECKLIST', margin, yPosition);
     yPosition += 15;
     
     doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     
     const externalItems = checklists.filter(item => item.category === 'external');
     const internalItems = checklists.filter(item => item.category === 'internal');
     
     if (externalItems.length > 0) {
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text('EXTERNAL INSPECTION:', margin, yPosition);
       yPosition += 8;
-      doc.setFont(undefined, 'normal');
+      doc.setFont('helvetica', 'normal');
       
       externalItems.forEach((item) => {
         checkPageBreak(6);
@@ -492,10 +492,10 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
     }
     
     if (internalItems.length > 0) {
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text('INTERNAL INSPECTION:', margin, yPosition);
       yPosition += 8;
-      doc.setFont(undefined, 'normal');
+      doc.setFont('helvetica', 'normal');
       
       internalItems.forEach((item) => {
         checkPageBreak(6);
@@ -511,29 +511,30 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
     yPosition = 20;
     
     doc.setFontSize(16);
-    doc.setFont(undefined, 'bold');
+    doc.setFont('helvetica', 'bold');
     doc.text('SUPPORTING DOCUMENTATION', margin, yPosition);
     yPosition += 15;
     
     doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
     
     doc.text(`Total Attachments: ${attachments.length}`, margin, yPosition);
     yPosition += 10;
     
     const groupedAttachments = attachments.reduce((acc, att) => {
-      if (!acc[att.category]) acc[att.category] = [];
-      acc[att.category].push(att);
+      const category = att.category || 'uncategorized';
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(att);
       return acc;
     }, {} as Record<string, typeof attachments>);
     
     Object.entries(groupedAttachments).forEach(([category, catAttachments]) => {
       checkPageBreak(15);
       
-      doc.setFont(undefined, 'bold');
+      doc.setFont('helvetica', 'bold');
       doc.text(`${(category || '').replace('_', ' ').toUpperCase()} (${catAttachments.length}):`, margin, yPosition);
       yPosition += 6;
-      doc.setFont(undefined, 'normal');
+      doc.setFont('helvetica', 'normal');
       
       catAttachments.forEach((att) => {
         checkPageBreak(8);
