@@ -233,7 +233,7 @@ export function EditReport() {
                 <Input
                   id="diameter"
                   type="number"
-                  {...form.register('diameter')}
+                  {...form.register('diameter', { valueAsNumber: true })}
                   placeholder="120"
                 />
               </div>
@@ -243,7 +243,7 @@ export function EditReport() {
                 <Input
                   id="height"
                   type="number"
-                  {...form.register('height')}
+                  {...form.register('height', { valueAsNumber: true })}
                   placeholder="48"
                 />
               </div>
