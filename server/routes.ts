@@ -87,13 +87,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
         'application/vnd.ms-excel', // .xls
         'application/vnd.ms-excel.sheet.macroEnabled.12', // .xlsm
-        'application/pdf' // .pdf
+        'application/pdf', // .pdf
+        'text/csv', // .csv
+        'application/csv' // .csv alternate mime type
       ];
       const isAllowed = allowedTypes.includes(file.mimetype) || 
                        file.originalname.toLowerCase().endsWith('.xlsx') ||
                        file.originalname.toLowerCase().endsWith('.xls') ||
                        file.originalname.toLowerCase().endsWith('.xlsm') ||
-                       file.originalname.toLowerCase().endsWith('.pdf');
+                       file.originalname.toLowerCase().endsWith('.pdf') ||
+                       file.originalname.toLowerCase().endsWith('.csv');
       
       console.log('File upload validation:', {
         filename: file.originalname,
@@ -104,7 +107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isAllowed) {
         cb(null, true);
       } else {
-        cb(new Error('Invalid file type. Only Excel (.xlsx, .xls, .xlsm) and PDF files are allowed.'));
+        cb(new Error('Invalid file type. Only Excel (.xlsx, .xls, .xlsm), PDF, and CSV files are allowed.'));
       }
     }
   });
@@ -196,9 +199,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         console.log('Creating report from imported data:', reportData);
         
-        // Parse and validate the report data
+        // Parse and validate the report data - convert numbers to strings where needed
         const validatedData = insertInspectionReportSchema.parse({
           ...reportData,
+          diameter: reportData.diameter != null ? String(reportData.diameter) : null,
+          height: reportData.height != null ? String(reportData.height) : null,
+          originalThickness: reportData.originalThickness != null ? String(reportData.originalThickness) : null,
           status: reportData.status || null,
           yearsSinceLastInspection: reportData.yearsSinceLastInspection ? parseInt(reportData.yearsSinceLastInspection) : null
         });
