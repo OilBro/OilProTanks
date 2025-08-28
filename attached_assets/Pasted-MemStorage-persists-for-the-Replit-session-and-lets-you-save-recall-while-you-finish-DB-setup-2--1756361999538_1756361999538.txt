@@ -1,0 +1,42 @@
+MemStorage persists for the Replit session and lets you save/recall while you finish DB setup.
+
+	2.	Correct the corrosion-rate and t-min logic
+
+	•	Apply the targeted hotfix:
+[Unified diff] (sandbox:/mnt/data/oilpro-hotfix-20250828.patch)
+[Patched api653-calculator.ts] (sandbox:/mnt/data/api653-calculator.patched.ts)
+Changes:
+	•	Long-term CR now uses yearsInService if provided; otherwise it is omitted so the governing rate defaults to short-term (API 653 §4.3.3.5).
+	•	calculateTMin(course, tankParams, isBottom, heightAbovePointFt?) accepts explicit head for the one-foot method; if absent, it falls back conservatively (API 653 §4.3.3.1).
+	•	Bottom t-min placeholder is flagged for full §4.4.5 implementation.
+	•	calculateNextInspectionInterval returns { external, internal } so you can align to Table 6.1 and §6.3/§6.4.
+
+	3.	Proper production persistence (recommended)
+
+	•	Provision Postgres (Neon works with this code).
+	•	In Replit → Secrets, set DATABASE_URL to your Postgres URL.
+	•	Push schema: npm run db:push (uses shared/schema.ts).
+	•	Start: npm run dev (server binds to 0.0.0.0:5000).
+	•	Smoke test: GET /api/health should return OK.
+
+References you care about
+	•	API 653 §4.3.3.1 One-foot method for shell t-min.
+	•	API 653 §4.3.3.5 Corrosion rate and governing rate selection.
+	•	API 653 §4.4.5 Bottom plate minimum thickness and evaluation.
+	•	API 653 §6.3, §6.4 and Table 6.1 Inspection intervals.
+	•	API 653 Annex B Settlement evaluation.
+
+Files I inspected and exported for your review
+	•	server/api653-calculator.ts → [full text] (sandbox:/mnt/data/api653-calculator.ts.txt)
+	•	server/api653-calculations.ts → [full text] (sandbox:/mnt/data/api653-calculations.ts.txt)
+	•	server/settlement-calculator.ts → [full text] (sandbox:/mnt/data/settlement-calculator.ts.txt)
+	•	shared/schema.ts → [full text] (sandbox:/mnt/data/schema.ts.txt)
+
+Execution checklist
+	•	Apply the two patches or copy the patched files.
+	•	If you stay in dev mode: run with the MemStorage fallback to validate save/recall flows.
+	•	When ready for production: set DATABASE_URL and run npm run db:push, then remove or keep the fallback as a safety valve.
+	•	Validate calculations with a known tank: input actual course heights or pass heightAbovePointFt so the one-foot method reflects real head.
+	•	Recheck CR and RL outputs against your last API 653 workbook.
+
+If you want, I can generate a single consolidated patch covering both files so you can git apply once.

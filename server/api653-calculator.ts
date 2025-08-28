@@ -10,6 +10,8 @@ export interface TankParameters {
   designStress: number;   // psi
   api650Edition?: string;
   constructionCode?: string;
+  yearsInService?: number;  // For long-term corrosion rate calculation
+  installationDate?: Date;
 }
 
 export interface ComponentThickness {
@@ -51,24 +53,36 @@ export interface KPIMetrics {
 export function calculateTMin(
   course: number,
   tankParams: TankParameters,
-  isBottom: boolean = false
+  isBottom: boolean = false,
+  heightAbovePointFt?: number  // Explicit height for one-foot method
 ): number {
   if (isBottom) {
     // Bottom plates per API 653 Section 4.4.5
-    // With reinforcing pad or without, depending on annular ring
-    return 0.1; // inches - minimum for bottom with no underside corrosion
+    // TODO: Implement full §4.4.5 logic with MRT, critical zone, etc.
+    // Placeholder minimum for bottom with no underside corrosion
+    return 0.1; // inches
   }
 
-  // Shell courses per API 653 Section 4.3.3.1
+  // Shell courses per API 653 Section 4.3.3.1 - One-foot method
   const D = tankParams.diameter; // feet
-  const H = tankParams.height - (course - 1) * 8; // height to bottom of course (assuming 8ft courses)
+  
+  // Use explicit height if provided, otherwise conservative estimate
+  let H: number;
+  if (heightAbovePointFt !== undefined) {
+    H = heightAbovePointFt;
+  } else {
+    // Conservative: assume point is at bottom of course
+    // Note: This should be replaced with actual course heights when available
+    H = tankParams.height - (course - 1) * 8;
+  }
+  
   const G = tankParams.specificGravity;
   const E = tankParams.jointEfficiency;
   const S = tankParams.designStress || 20000; // psi, typical for A36 steel
 
   // API 653 Formula 4.1: t_min = 2.6 * D * (H - 1) * G / (S * E)
   // Using the 1-foot method per 4.3.3.1
-  const tMin = (2.6 * D * (H - 1) * G) / (S * E);
+  const tMin = (2.6 * D * Math.max(H - 1, 0) * G) / (S * E);
 
   // Minimum absolute thickness per Table 4.1
   const absoluteMin = getAbsoluteMinThickness(D);
@@ -87,7 +101,8 @@ function getAbsoluteMinThickness(diameter: number): number {
 // Calculate corrosion rates per API 653 Section 4.3.3.5
 export function calculateCorrosionRates(
   current: ComponentThickness,
-  previousInspection?: ComponentThickness
+  previousInspection?: ComponentThickness,
+  yearsInService?: number
 ): { shortTerm?: number; longTerm?: number; governing: number } {
   let shortTermRate: number | undefined;
   let longTermRate: number | undefined;
@@ -102,12 +117,24 @@ export function calculateCorrosionRates(
   }
 
   // Long-term corrosion rate (from original to current)
-  const totalLoss = current.nominalThickness - current.currentThickness;
-  const totalYears = (current.dateCurrent.getTime() - new Date('1990-01-01').getTime()) / (365.25 * 24 * 60 * 60 * 1000);
-  longTermRate = totalLoss / totalYears;
+  // Only calculate if yearsInService is provided, per API 653 §4.3.3.5
+  if (yearsInService && yearsInService > 0) {
+    const totalLoss = current.nominalThickness - current.currentThickness;
+    longTermRate = totalLoss / yearsInService;
+  }
 
-  // Governing rate per API 653 (use higher of short-term or long-term)
-  const governing = Math.max(shortTermRate || 0, longTermRate || 0);
+  // Governing rate per API 653 §4.3.3.5
+  // If long-term not available, use short-term as governing
+  let governing: number;
+  if (shortTermRate !== undefined && longTermRate !== undefined) {
+    governing = Math.max(shortTermRate, longTermRate);
+  } else if (shortTermRate !== undefined) {
+    governing = shortTermRate;
+  } else if (longTermRate !== undefined) {
+    governing = longTermRate;
+  } else {
+    governing = 0; // No corrosion rate available
+  }
 
   return {
     shortTerm: shortTermRate,
@@ -155,12 +182,12 @@ export function determineStatus(
   }
 }
 
-// Calculate next inspection interval per API 653 Table 6.1
+// Calculate next inspection interval per API 653 Table 6.1 and §6.3/§6.4
 export function calculateNextInspectionInterval(
   remainingLife: number,
   corrosionRate: number,
   tankClass: 'I' | 'II' | 'III' = 'II'
-): number {
+): { external: number; internal: number } {
   // API 653 Table 6.1 inspection intervals
   const maxIntervals = {
     'I': { external: 5, internal: 10 },
@@ -168,16 +195,26 @@ export function calculateNextInspectionInterval(
     'III': { external: 5, internal: 20 }
   };
 
-  // RBI alternative per 6.4.2
-  let interval = Math.min(remainingLife / 2, maxIntervals[tankClass].internal);
+  // Calculate intervals per API 653 §6.3 (external) and §6.4 (internal)
+  // RBI alternative per 6.4.2: interval = min(RL/2, max from Table 6.1)
+  const internalInterval = Math.min(
+    remainingLife / 2,
+    maxIntervals[tankClass].internal
+  );
 
-  // Additional constraints
+  // External inspection per §6.3
+  let externalInterval = maxIntervals[tankClass].external;
+
+  // Additional constraints for high corrosion
   if (corrosionRate > 0.005) {
     // High corrosion rate - more frequent inspection
-    interval = Math.min(interval, 5);
+    externalInterval = Math.min(externalInterval, 3);
   }
 
-  return Math.max(interval, 1); // Minimum 1 year
+  return {
+    external: Math.max(externalInterval, 1), // Minimum 1 year
+    internal: Math.max(internalInterval, 1)  // Minimum 1 year
+  };
 }
 
 // Perform comprehensive API 653 evaluation
@@ -210,7 +247,11 @@ export function performAPI653Evaluation(
     }
 
     // Calculate corrosion rates
-    const corrosionRates = calculateCorrosionRates(component);
+    const corrosionRates = calculateCorrosionRates(
+      component,
+      undefined, // Previous inspection - would need to be passed in
+      tankParams.yearsInService
+    );
 
     // Calculate remaining life
     const remainingLife = calculateRemainingLife(
@@ -227,13 +268,15 @@ export function performAPI653Evaluation(
       remainingLife
     );
 
-    // Calculate next inspection date
-    const inspectionInterval = calculateNextInspectionInterval(
+    // Calculate next inspection intervals
+    const inspectionIntervals = calculateNextInspectionInterval(
       remainingLife,
       corrosionRates.governing
     );
     const nextInspectionDate = new Date();
-    nextInspectionDate.setFullYear(nextInspectionDate.getFullYear() + inspectionInterval);
+    nextInspectionDate.setFullYear(
+      nextInspectionDate.getFullYear() + inspectionIntervals.internal
+    );
 
     results.push({
       component: component.component,
