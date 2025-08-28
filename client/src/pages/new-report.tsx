@@ -368,22 +368,56 @@ export default function NewReport() {
 
   const saveMeasurementsMutation = useMutation({
     mutationFn: async ({ reportId, measurements }: { reportId: number; measurements: ThicknessMeasurement[] }) => {
-      const promises = measurements.map(measurement =>
-        apiRequest('POST', `/api/reports/${reportId}/measurements`, {
-          component: measurement.component,
-          location: measurement.location,
-          measurementType: measurement.measurementType || 'shell',
-          // Ensure all numeric fields are sent as strings for decimal database fields
-          currentThickness: measurement.currentThickness ? String(measurement.currentThickness) : null,
-          originalThickness: measurement.originalThickness ? String(measurement.originalThickness) : null,
-          corrosionRate: measurement.corrosionRate ? String(measurement.corrosionRate) : null,
-          remainingLife: measurement.remainingLife ? String(measurement.remainingLife) : null,
-          status: measurement.status,
-          elevation: measurement.elevation || null,
-          createdAt: new Date().toISOString()
-        })
-      );
-      return Promise.all(promises);
+      console.log('Saving measurements for report:', reportId);
+      console.log('Measurements to save:', measurements);
+      
+      const results = [];
+      const errors = [];
+      
+      // Process measurements sequentially to avoid race conditions
+      for (let i = 0; i < measurements.length; i++) {
+        const measurement = measurements[i];
+        try {
+          console.log(`Saving measurement ${i + 1}/${measurements.length}:`, measurement);
+          
+          const response = await apiRequest('POST', `/api/reports/${reportId}/measurements`, {
+            component: measurement.component,
+            location: measurement.location,
+            measurementType: measurement.measurementType || 'shell',
+            elevation: measurement.elevation || null,
+            gridReference: measurement.gridReference || null,
+            plateNumber: measurement.plateNumber || null,
+            annularRingPosition: measurement.annularRingPosition || null,
+            criticalZoneType: measurement.criticalZoneType || null,
+            repadNumber: measurement.repadNumber || null,
+            repadType: measurement.repadType || null,
+            repadThickness: measurement.repadThickness || null,
+            nozzleId: measurement.nozzleId || null,
+            nozzleSize: measurement.nozzleSize || null,
+            flangeClass: measurement.flangeClass || null,
+            flangeType: measurement.flangeType || null,
+            currentThickness: measurement.currentThickness ? String(measurement.currentThickness) : null,
+            originalThickness: measurement.originalThickness ? String(measurement.originalThickness) : null,
+            corrosionRate: measurement.corrosionRate ? String(measurement.corrosionRate) : null,
+            remainingLife: measurement.remainingLife ? String(measurement.remainingLife) : null,
+            status: measurement.status || 'acceptable',
+            createdAt: new Date().toISOString()
+          });
+          
+          results.push(response);
+        } catch (error) {
+          console.error(`Failed to save measurement ${i + 1}:`, error);
+          errors.push({ measurement, error });
+        }
+      }
+      
+      if (errors.length > 0) {
+        console.error('Some measurements failed to save:', errors);
+        throw new Error(`Failed to save ${errors.length} of ${measurements.length} measurements`);
+      }
+      
+      console.log('All measurements saved successfully');
+      return results;
     }
   });
 

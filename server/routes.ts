@@ -546,19 +546,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const reportId = parseInt(req.params.reportId);
       
+      console.log('=== MEASUREMENT CREATION DEBUG ===');
+      console.log('Report ID:', reportId);
+      console.log('Request body:', JSON.stringify(req.body, null, 2));
+      
       // Get the report to have tank parameters for calculations
       const report = await storage.getInspectionReport(reportId);
       if (!report) {
+        console.log('Report not found:', reportId);
         return res.status(404).json({ message: "Report not found" });
       }
       
-      // Determine measurementType based on component name if not provided
+      // More robust measurementType determination
       let measurementType = req.body.measurementType || "shell";
       if (!req.body.measurementType && req.body.component) {
-        const componentLower = req.body.component.toLowerCase();
-        if (componentLower.includes("bottom plate")) {
+        const componentLower = req.body.component.toLowerCase().trim();
+        console.log('Auto-detecting measurement type for component:', componentLower);
+        
+        if (componentLower === "bottom plate" || componentLower.includes("bottom plate")) {
           measurementType = "bottom_plate";
-        } else if (componentLower.includes("critical zone")) {
+        } else if (componentLower === "critical zone" || componentLower.includes("critical zone")) {
           measurementType = "critical_zone";
         } else if (componentLower.includes("roof")) {
           measurementType = "roof";
@@ -572,6 +579,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           measurementType = "chime";
         }
       }
+      
+      console.log('Determined measurement type:', measurementType);
       
       const dataToValidate = {
         ...req.body,
@@ -639,25 +648,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const validatedData = insertThicknessMeasurementSchema.parse(dataToValidate);
-      const measurement = await storage.createThicknessMeasurement(validatedData);
+      console.log('Data to validate:', JSON.stringify(dataToValidate, null, 2));
+      
+      // Better validation error handling
+      let validatedData;
+      try {
+        validatedData = insertThicknessMeasurementSchema.parse(dataToValidate);
+        console.log('Schema validation passed');
+      } catch (validationError: any) {
+        console.error('Schema validation failed:', validationError);
+        return res.status(400).json({ 
+          message: "Validation failed",
+          error: validationError.message,
+          issues: validationError.issues,
+          receivedData: dataToValidate
+        });
+      }
+      
+      // Better database error handling
+      let measurement;
+      try {
+        measurement = await storage.createThicknessMeasurement(validatedData);
+        console.log('Measurement created successfully:', measurement.id);
+      } catch (dbError: any) {
+        console.error('Database error:', dbError);
+        return res.status(500).json({ 
+          message: "Database error",
+          error: dbError.message,
+          validatedData: validatedData
+        });
+      }
+      
+      console.log('=== MEASUREMENT CREATION SUCCESS ===');
       res.status(201).json(measurement);
+      
     } catch (error: any) {
-      console.error('Error creating measurement:', error);
+      console.error('=== MEASUREMENT CREATION FAILED ===');
+      console.error('Error:', error);
+      console.error('Stack:', error.stack);
+      
       let detailedMessage = "Invalid measurement data";
       if (error.issues) {
         const issueMessages = error.issues.map((issue: any) => {
           const fieldPath = issue.path.join('.');
           return `${fieldPath}: ${issue.message}`;
         });
-        detailedMessage = `Validation failed: ${issueMessages.join(', ')}`;
+        detailedMessage = `Validation errors: ${issueMessages.join(', ')}`;
       }
       
       res.status(400).json({ 
-        message: detailedMessage, 
-        error: error.issues || error.message,
-        receivedData: req.body,
-        validationDetails: error.issues
+        message: detailedMessage,
+        error: error.message,
+        issues: error.issues,
+        stack: error.stack
       });
     }
   });
