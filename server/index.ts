@@ -1,8 +1,15 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import cors from "cors";
 
 const app = express();
+
+// Enable CORS for cross-origin requests
+app.use(cors({
+  origin: process.env.CLIENT_URL || true,
+  credentials: true
+}));
 
 // Security headers middleware - addressing audit findings
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -36,6 +43,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Health check endpoint
+app.get('/api/health', (_req: Request, res: Response) => {
+  res.json({ ok: true, ts: Date.now(), service: 'ReportArchitect' });
+});
 
 app.use((req, res, next) => {
   const start = Date.now();
