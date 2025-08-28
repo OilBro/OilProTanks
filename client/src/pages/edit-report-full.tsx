@@ -234,28 +234,65 @@ export function EditReportFull() {
       }
       
       // Update thickness measurements
+      console.log('Saving measurements:', measurements);
       for (const measurement of measurements) {
-        // Check if this is a new measurement (ID > 1000000000000 indicates it's from Date.now())
-        // or if it doesn't match existing measurements
-        const isNewMeasurement = !measurement.id || 
-                                  measurement.id > 1000000000000 || 
-                                  !existingMeasurements?.find(m => m.id === measurement.id);
-        
-        const method = isNewMeasurement ? 'POST' : 'PUT';
-        const url = isNewMeasurement
-          ? `/api/reports/${reportId}/measurements`
-          : `/api/measurements/${measurement.id}`;
-        
-        // Remove temporary ID for new measurements
-        const dataToSend = isNewMeasurement 
-          ? { ...measurement, reportId, id: undefined }
-          : { ...measurement, reportId };
-        
-        await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(dataToSend),
-        });
+        try {
+          // Skip if measurement has no component (empty row)
+          if (!measurement.component) continue;
+          
+          // Check if this is a new measurement (ID > 1000000000000 indicates it's from Date.now())
+          // or if it doesn't match existing measurements
+          const isNewMeasurement = !measurement.id || 
+                                    measurement.id > 1000000000000 || 
+                                    !existingMeasurements?.find(m => m.id === measurement.id);
+          
+          const method = isNewMeasurement ? 'POST' : 'PUT';
+          const url = isNewMeasurement
+            ? `/api/reports/${reportId}/measurements`
+            : `/api/measurements/${measurement.id}`;
+          
+          // Ensure all required fields are present for new measurements
+          const dataToSend: any = {
+            component: measurement.component,
+            location: measurement.location || '',
+            originalThickness: measurement.originalThickness || '0',
+            currentThickness: measurement.currentThickness || '0',
+            measurementType: measurement.measurementType || 'shell',
+            reportId: reportId
+          };
+          
+          // Add optional fields if they exist
+          if (!isNewMeasurement) {
+            dataToSend.id = measurement.id;
+          }
+          if (measurement.elevation) dataToSend.elevation = measurement.elevation;
+          if (measurement.gridReference) dataToSend.gridReference = measurement.gridReference;
+          if (measurement.plateNumber) dataToSend.plateNumber = measurement.plateNumber;
+          if (measurement.nozzleId) dataToSend.nozzleId = measurement.nozzleId;
+          if (measurement.corrosionRate) dataToSend.corrosionRate = measurement.corrosionRate;
+          if (measurement.remainingLife) dataToSend.remainingLife = measurement.remainingLife;
+          if (measurement.status) dataToSend.status = measurement.status;
+          
+          console.log(`Saving measurement: ${method} to ${url}`, dataToSend);
+          
+          const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataToSend),
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Failed to save measurement: ${errorText}`);
+            throw new Error(`Failed to save measurement: ${errorText}`);
+          }
+          
+          const savedMeasurement = await response.json();
+          console.log(`Successfully saved measurement ${measurement.component}`, savedMeasurement);
+        } catch (error) {
+          console.error('Error saving measurement:', error);
+          throw error;
+        }
       }
 
       // Update checklists
@@ -277,7 +314,10 @@ export function EditReportFull() {
         title: "Success",
         description: "Report updated successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
+      // Invalidate all relevant queries
+      await queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
+      await queryClient.invalidateQueries({ queryKey: [`/api/reports/${reportId}`] });
+      await queryClient.invalidateQueries({ queryKey: [`/api/reports/${reportId}/measurements`] });
       navigate(`/report/${reportId}`);
     },
     onError: (error: any) => {
