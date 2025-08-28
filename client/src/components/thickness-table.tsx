@@ -160,8 +160,24 @@ export function ThicknessTable({
     onMeasurementsChange([...measurements, measurement]);
     setNewMeasurement({
       component: "",
+      measurementType: "shell",
       location: "",
-      currentThickness: "",
+      elevation: null,
+      gridReference: null,
+      plateNumber: null,
+      annularRingPosition: null,
+      criticalZoneType: null,
+      repadNumber: null,
+      repadType: null,
+      repadThickness: null,
+      nozzleId: null,
+      nozzleSize: null,
+      flangeClass: null,
+      flangeType: null,
+      originalThickness: null,
+      currentThickness: null,
+      corrosionRate: null,
+      remainingLife: null,
       status: "acceptable"
     });
   };

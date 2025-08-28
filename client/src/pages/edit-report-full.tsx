@@ -217,6 +217,22 @@ export function EditReportFull() {
     },
     onSuccess: async () => {
       // Update related data
+      // Delete removed thickness measurements
+      if (existingMeasurements) {
+        const currentMeasurementIds = measurements
+          .filter(m => m.id && m.id < 1000000000000) // Only check real IDs, not temporary ones
+          .map(m => m.id);
+        
+        for (const existingMeasurement of existingMeasurements) {
+          if (!currentMeasurementIds.includes(existingMeasurement.id)) {
+            // This measurement was deleted in the UI
+            await fetch(`/api/measurements/${existingMeasurement.id}`, {
+              method: 'DELETE',
+            });
+          }
+        }
+      }
+      
       // Update thickness measurements
       for (const measurement of measurements) {
         // Check if this is a new measurement (ID > 1000000000000 indicates it's from Date.now())
