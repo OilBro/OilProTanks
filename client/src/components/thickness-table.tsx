@@ -113,11 +113,29 @@ export function ThicknessTable({
       yearsSinceLastInspection
     );
 
+    // Determine measurementType based on component name
+    let measurementType = "shell";
+    if (newMeasurement.component?.toLowerCase().includes("bottom plate")) {
+      measurementType = "bottom_plate";
+    } else if (newMeasurement.component?.toLowerCase().includes("critical zone")) {
+      measurementType = "critical_zone";
+    } else if (newMeasurement.component?.toLowerCase().includes("roof")) {
+      measurementType = "roof";
+    } else if (newMeasurement.component?.toLowerCase().includes("nozzle")) {
+      measurementType = "nozzle";
+    } else if (newMeasurement.component?.toLowerCase().includes("internal annular")) {
+      measurementType = "internal_annular";
+    } else if (newMeasurement.component?.toLowerCase().includes("external repad")) {
+      measurementType = "external_repad";
+    } else if (newMeasurement.component?.toLowerCase().includes("chime")) {
+      measurementType = "chime";
+    }
+
     const measurement: ThicknessMeasurement = {
       id: Date.now(),
       reportId: 0,
       component: newMeasurement.component!,
-      measurementType: newMeasurement.measurementType || "shell",
+      measurementType: measurementType,
       location: newMeasurement.location!,
       elevation: newMeasurement.elevation || null,
       gridReference: newMeasurement.gridReference || null,
