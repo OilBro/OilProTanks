@@ -1,0 +1,79 @@
+# Comprehensive OilPro Tanks Testing Results
+
+## Test Report: COMPREHENSIVE-TEST-2025-001
+
+### Test Objective
+Input comprehensive audit report data using realistic values to test system functionality and verify if the thickness measurement persistence issue has been resolved.
+
+### Test Data Input
+**Basic Information:**
+- Report Number: COMPREHENSIVE-TEST-2025-001
+- Tank ID: TK-COMPREHENSIVE-101
+- Service: Crude Oil
+- Diameter: 150 ft
+- Height: 52 ft
+- Inspector: Robert Anderson, P.E., API 653 Certified
+- Inspection Date: 08/28/2025
+- Original Plate Thickness: 0.625 in
+- Years Since Last Inspection: 8
+
+**Thickness Measurements Added:**
+1. **Shell Course 1 (Bottom)**
+   - Location: "North Side, 0-8 ft elevation, Grid A-1"
+   - Original Thickness: 0.625 in
+   - Current Thickness: 0.592 in
+   - System Calculated: Corrosion Rate 0.0041 in/yr, Remaining Life 67.8 years, Status: Acceptable
+
+2. **Bottom Plate** (Known problematic component)
+   - Location: "Center area, Grid B-3, High corrosion zone"
+   - Original Thickness: 0.250 in
+   - Current Thickness: 0.218 in
+   - System Calculated: Corrosion Rate 0.0040 in/yr, Remaining Life 23.3 years, Status: Acceptable
+
+### Test Results
+
+#### ✅ SUCCESSFUL FEATURES
+1. **Advanced Interface**: The system now has a significantly improved professional interface
+2. **Automatic Calculations**: System correctly calculates corrosion rates, remaining life, and status
+3. **Real-time Validation**: Input validation works properly during data entry
+4. **Report Creation**: Successfully creates and saves reports
+5. **Navigation**: Improved navigation between sections and tabs
+
+#### ❌ CRITICAL PERSISTENCE ISSUE CONFIRMED
+**The thickness measurement persistence bug is NOT FIXED:**
+
+**Evidence:**
+1. **Service Type Lost**: The service type "Crude Oil" was lost and shows as "N/A" in report view
+2. **Thickness Measurements Lost**: Only 1 measurement row remains with default values
+3. **Specific Data Lost**: 
+   - Shell Course 1 measurement (0.625→0.592) completely lost
+   - Bottom Plate measurement (0.250→0.218) completely lost
+   - All location descriptions lost
+   - All calculated values lost
+
+**Current State After Save/Reload:**
+- Shows only 1 empty measurement row with "Select Component" dropdown
+- Default placeholder values (0.500, 0.485) instead of actual data
+- No component selection preserved
+- No location descriptions preserved
+
+### Root Cause Analysis
+Based on code analysis, the issue is in the server-side auto-detection logic for `measurementType` in `server/routes.ts`. The system fails to properly map component names to measurement types, causing schema validation failures that are not properly reported to users.
+
+### Impact Assessment
+- **Severity**: CRITICAL - Data loss in production system
+- **Scope**: Affects all thickness measurements for specific components
+- **Compliance Risk**: API 653 audit reports are incomplete and unreliable
+- **User Experience**: Silent data loss with no error feedback
+
+### Recommendations
+1. **Immediate**: Implement the server-side fixes provided in the code analysis
+2. **Priority**: Add comprehensive error handling and user feedback
+3. **Testing**: Implement automated tests for thickness measurement persistence
+4. **Monitoring**: Add logging to track data persistence issues
+
+### Conclusion
+While the OilPro Tanks system has received significant interface improvements and enhanced functionality, the core data persistence issue remains unresolved. The system continues to lose critical thickness measurement data during save operations, making it unreliable for API 653 compliance reporting.
+
+**Status: PERSISTENCE ISSUE NOT FIXED**
+

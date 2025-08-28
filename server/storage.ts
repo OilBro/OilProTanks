@@ -295,6 +295,7 @@ export class MemStorage implements IStorage {
     const now = new Date().toISOString();
     const newReport: InspectionReport = { 
       ...report,
+      service: report.service || null,  // FIX: Explicitly include service field
       diameter: report.diameter || null,
       height: report.height || null,
       originalThickness: report.originalThickness || null,
