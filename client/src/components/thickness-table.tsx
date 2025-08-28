@@ -248,6 +248,28 @@ export function ThicknessTable({
         
         const updated = { ...measurement, [field]: processedValue };
         
+        // Update measurementType if component changed
+        if (field === 'component' && value) {
+          const componentLower = value.toLowerCase();
+          if (componentLower.includes("bottom plate")) {
+            updated.measurementType = "bottom_plate";
+          } else if (componentLower.includes("critical zone")) {
+            updated.measurementType = "critical_zone";
+          } else if (componentLower.includes("roof")) {
+            updated.measurementType = "roof";
+          } else if (componentLower.includes("nozzle")) {
+            updated.measurementType = "nozzle";
+          } else if (componentLower.includes("internal annular")) {
+            updated.measurementType = "internal_annular";
+          } else if (componentLower.includes("external repad")) {
+            updated.measurementType = "external_repad";
+          } else if (componentLower.includes("chime")) {
+            updated.measurementType = "chime";
+          } else {
+            updated.measurementType = "shell";
+          }
+        }
+        
         // Recalculate if thickness changed and we have both original and current thickness
         if ((field === 'currentThickness' || field === 'originalThickness') && 
             updated.originalThickness && updated.currentThickness) {

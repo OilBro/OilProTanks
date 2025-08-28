@@ -219,15 +219,26 @@ export function EditReportFull() {
       // Update related data
       // Update thickness measurements
       for (const measurement of measurements) {
-        const method = measurement.id ? 'PUT' : 'POST';
-        const url = measurement.id 
-          ? `/api/measurements/${measurement.id}`
-          : `/api/reports/${reportId}/measurements`;
+        // Check if this is a new measurement (ID > 1000000000000 indicates it's from Date.now())
+        // or if it doesn't match existing measurements
+        const isNewMeasurement = !measurement.id || 
+                                  measurement.id > 1000000000000 || 
+                                  !existingMeasurements?.find(m => m.id === measurement.id);
+        
+        const method = isNewMeasurement ? 'POST' : 'PUT';
+        const url = isNewMeasurement
+          ? `/api/reports/${reportId}/measurements`
+          : `/api/measurements/${measurement.id}`;
+        
+        // Remove temporary ID for new measurements
+        const dataToSend = isNewMeasurement 
+          ? { ...measurement, reportId, id: undefined }
+          : { ...measurement, reportId };
         
         await fetch(url, {
           method,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...measurement, reportId }),
+          body: JSON.stringify(dataToSend),
         });
       }
 
