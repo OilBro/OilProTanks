@@ -29,6 +29,12 @@ import {
   type TankParameters,
   type ComponentThickness
 } from "./api653-calculator";
+import { 
+  calculateCorrosionRate,
+  calculateRemainingLife,
+  calculateMinimumRequiredThickness,
+  determineInspectionStatus
+} from "./api653-calculations";
 
 // Unit converter utilities
 const UnitConverter = {
@@ -540,6 +546,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const reportId = parseInt(req.params.reportId);
       
+      // Get the report to have tank parameters for calculations
+      const report = await storage.getInspectionReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      
       // Determine measurementType based on component name if not provided
       let measurementType = req.body.measurementType || "shell";
       if (!req.body.measurementType && req.body.component) {
@@ -567,10 +579,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reportId
       };
       
+      // Perform API 653 calculations if we have necessary data
+      if (dataToValidate.currentThickness && report.originalThickness) {
+        const currentThickness = parseFloat(dataToValidate.currentThickness);
+        const nominalThickness = parseFloat(dataToValidate.nominalThickness || dataToValidate.originalThickness || report.originalThickness || '0.375');
+        const yearBuilt = report.yearBuilt ? parseInt(report.yearBuilt) : null;
+        const ageInYears = yearBuilt ? new Date().getFullYear() - yearBuilt : report.yearsSinceLastInspection || 10;
+        
+        // Calculate corrosion rate
+        const { rateInchesPerYear, rateMPY } = calculateCorrosionRate(
+          nominalThickness,
+          currentThickness,
+          ageInYears
+        );
+        
+        // Calculate minimum required thickness based on component type
+        let minimumRequired = 0.1; // Default minimum
+        if (measurementType === 'shell' && report.diameter && report.height) {
+          const courseNumber = dataToValidate.component?.match(/\d+/)?.[0] || '1';
+          minimumRequired = calculateMinimumRequiredThickness(
+            parseInt(courseNumber),
+            parseFloat(report.diameter),
+            report.specificGravity ? parseFloat(report.specificGravity) : 0.85,
+            parseFloat(report.height),
+            0.85 // Default joint efficiency
+          );
+        } else if (measurementType === 'bottom_plate') {
+          minimumRequired = 0.1; // API 653 minimum for bottom plates
+        } else if (measurementType === 'roof') {
+          minimumRequired = 0.09; // API 653 minimum for roof plates  
+        }
+        
+        // Calculate remaining life
+        const remainingLife = calculateRemainingLife(
+          currentThickness,
+          minimumRequired,
+          rateInchesPerYear
+        );
+        
+        // Determine status
+        const status = determineInspectionStatus(
+          remainingLife,
+          currentThickness,
+          minimumRequired
+        );
+        
+        // Add calculated values to the measurement data
+        dataToValidate.corrosionRate = rateInchesPerYear.toFixed(4);
+        dataToValidate.remainingLife = remainingLife.toFixed(1);
+        dataToValidate.status = status;
+        
+        console.log('API 653 Calculations performed:', {
+          nominalThickness,
+          currentThickness,
+          minimumRequired,
+          corrosionRate: dataToValidate.corrosionRate,
+          remainingLife: dataToValidate.remainingLife,
+          status: dataToValidate.status
+        });
+      }
+      
       const validatedData = insertThicknessMeasurementSchema.parse(dataToValidate);
       const measurement = await storage.createThicknessMeasurement(validatedData);
       res.status(201).json(measurement);
     } catch (error: any) {
+      console.error('Error creating measurement:', error);
       let detailedMessage = "Invalid measurement data";
       if (error.issues) {
         const issueMessages = error.issues.map((issue: any) => {
@@ -592,10 +665,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/measurements/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const validatedData = insertThicknessMeasurementSchema.partial().parse(req.body);
+      
+      // Get existing measurement to get report ID for calculations
+      const existingMeasurements = await db.select().from(thicknessMeasurements).where(eq(thicknessMeasurements.id, id));
+      if (existingMeasurements.length === 0) {
+        return res.status(404).json({ message: "Measurement not found" });
+      }
+      
+      const reportId = existingMeasurements[0].reportId;
+      const report = await storage.getInspectionReport(reportId);
+      
+      // Perform calculations if thickness values are being updated
+      const dataToUpdate = { ...req.body };
+      if ((dataToUpdate.currentThickness || existingMeasurements[0].currentThickness) && report) {
+        const currentThickness = parseFloat(dataToUpdate.currentThickness || existingMeasurements[0].currentThickness);
+        const nominalThickness = parseFloat(dataToUpdate.nominalThickness || existingMeasurements[0].originalThickness || report.originalThickness || '0.375');
+        const yearBuilt = report.yearBuilt ? parseInt(report.yearBuilt) : null;
+        const ageInYears = yearBuilt ? new Date().getFullYear() - yearBuilt : report.yearsSinceLastInspection || 10;
+        
+        // Calculate corrosion rate
+        const { rateInchesPerYear } = calculateCorrosionRate(
+          nominalThickness,
+          currentThickness,
+          ageInYears
+        );
+        
+        // Calculate minimum required thickness
+        let minimumRequired = 0.1;
+        const measurementType = existingMeasurements[0].measurementType;
+        if (measurementType === 'shell' && report.diameter && report.height) {
+          const courseNumber = existingMeasurements[0].component?.match(/\d+/)?.[0] || '1';
+          minimumRequired = calculateMinimumRequiredThickness(
+            parseInt(courseNumber),
+            parseFloat(report.diameter),
+            report.specificGravity ? parseFloat(report.specificGravity) : 0.85,
+            parseFloat(report.height),
+            0.85
+          );
+        }
+        
+        // Calculate remaining life
+        const remainingLife = calculateRemainingLife(
+          currentThickness,
+          minimumRequired,
+          rateInchesPerYear
+        );
+        
+        // Determine status
+        const status = determineInspectionStatus(
+          remainingLife,
+          currentThickness,
+          minimumRequired
+        );
+        
+        dataToUpdate.corrosionRate = rateInchesPerYear.toFixed(4);
+        dataToUpdate.remainingLife = remainingLife.toFixed(1);
+        dataToUpdate.status = status;
+      }
+      
+      const validatedData = insertThicknessMeasurementSchema.partial().parse(dataToUpdate);
       const measurement = await storage.updateThicknessMeasurement(id, validatedData);
       res.json(measurement);
     } catch (error) {
+      console.error('Error updating measurement:', error);
       res.status(400).json({ message: "Failed to update measurement", error });
     }
   });

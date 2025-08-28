@@ -1,0 +1,35 @@
+The OilPro Tanks project is currently under heavy scrutiny because its web‑based API 653 inspection application has regressed from a nearly production‑ready state to one that cannot perform core calculations or meet regulatory requirements.
+
+### Current technical issues
+
+* **Excel import malfunction** – Audit logs show that the Excel import routine creates “ghost” reports: dashboard entries are created but underlying inspection reports are missing. The root cause is that the import handler incorrectly passes the `findings` field directly to the `Inspection` constructor, causing the database save to fail silently. Recommended repairs include sanitizing field mappings, creating the inspection object only with valid fields, and then assigning `findings` afterwards. The team is also advised to add robust data validation and remove orphaned dashboard entries.
+
+* **Backend API defects** – An urgent memo flags that the API route for retrieving reports returns an array rather than a single object and omits related thickness measurements and checklist items. The fix requires extracting the single report, joining related data (thickness measurements and checklist items) and formatting dates before returning the JSON response. The same memo also specifies corrections to the POST route used when manually creating reports: data type conversions, field validation and proper error handling.
+
+* **Broken calculation engine and settlement analysis** – Multiple audits note that the thickness calculation engine (which should compute corrosion rates and remaining life) is completely non‑functional: test inputs show that no calculation is performed. In addition, the settlement analysis system – which is critical for API 653 Annex B compliance – either consistently fails to create surveys or has been removed from the latest version. Without these features, inspectors cannot perform required foundation‑settlement assessments or generate the cosine‑curve plots specified in Annex B.
+
+* **Ghost reports and unusable report generation** – Because calculations and settlement analysis are broken, generated reports contain no meaningful data. This undermines the ability to produce inspection summaries compliant with API 653 and API 510 (pressure vessels) requirements.
+
+### Audit findings
+
+* **Deep audit (29 June 2025)** – A comprehensive audit earlier this summer gave the system an **85 % success rate**, praising its API 653‑compliant form structure, multi‑step workflows, template system and professional PDF generation. Critical issues were limited to a broken “Download PDF” endpoint, incorrect routing of dashboard links, and date‑formatting bugs, all of which were deemed easy to fix.
+
+* **Re‑audit and subsequent audits (18–19 Aug 2025)** – A re‑audit two months later found **no improvements** in core functionality; the thickness calculation engine and settlement analysis system remained completely non‑functional. The most recent audit (19 Aug 2025) reports a **significant regression** – the settlement analysis functionality has been entirely removed, making API 653 Annex B compliance impossible. Only a minor new feature (“Export All as CSV”) has been added. Auditors strongly recommend restoring settlement analysis, fixing the thickness calculation engine and ensuring data persistence before using the system for real inspections.
+
+### Implications for regulatory compliance
+
+* **API 653, Annex B compliance** – The failures in thickness calculations and settlement analysis directly violate API 653 requirements. The inability to compute corrosion rates, remaining life and differential settlement means that the system cannot support in‑service tank evaluations or foundation assessments mandated by Annex B.
+
+* **Quality and data integrity** – Reports must capture and preserve critical inspection data (thickness measurements, settlement points, appurtenances) and document calculations according to API 653/650 and API 571 guidelines. The current system fails to persist imported data and mismanages essential fields (e.g., service type, dates), undermining data integrity.
+
+### Recommended actions
+
+1. **Immediate code fixes** – Implement the urgent backend changes: correct the report retrieval route, fix manual report creation, and overhaul the Excel import handler to properly map and validate fields.
+
+2. **Restore and verify calculation modules** – Re‑enable or rebuild the corrosion‑rate and remaining‑life calculators so that they perform API 653‑compliant computations and persist results to the database. Ensure that settlement analysis (cosine‑curve plotting) is restored and validated against Annex B formulas.
+
+3. **Test end‑to‑end workflows** – After implementing fixes, run comprehensive unit and integration tests covering all inspection types, Excel imports, manual report creation and PDF exports. Confirm that reports include calculated corrosion rates, remaining life and settlement assessments.
+
+4. **Re‑audit after remediation** – Commission another audit once fixes are deployed to verify that the system meets API 653 requirements, functions as intended and maintains data integrity.
+
+In summary, OilPro Tanks’ inspection application has deteriorated from a promising, 85 %-complete tool to a system that cannot support basic API 653 functions. To regain regulatory compliance and industry credibility, management must prioritize critical code repairs and thorough testing before allowing inspectors to use the application for real-world tank evaluations.
