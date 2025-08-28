@@ -383,14 +383,14 @@ export function EditReportFull() {
                         <SelectValue placeholder="Select service type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="crude_oil">Crude Oil</SelectItem>
-                        <SelectItem value="gasoline">Gasoline</SelectItem>
-                        <SelectItem value="diesel">Diesel</SelectItem>
-                        <SelectItem value="jet_fuel">Jet Fuel</SelectItem>
-                        <SelectItem value="water">Water</SelectItem>
-                        <SelectItem value="chemical">Chemical</SelectItem>
-                        <SelectItem value="waste">Waste</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        <SelectItem value="Crude Oil">Crude Oil</SelectItem>
+                        <SelectItem value="Gasoline">Gasoline</SelectItem>
+                        <SelectItem value="Diesel">Diesel</SelectItem>
+                        <SelectItem value="Jet Fuel">Jet Fuel</SelectItem>
+                        <SelectItem value="Water">Water</SelectItem>
+                        <SelectItem value="Chemical">Chemical</SelectItem>
+                        <SelectItem value="Waste">Waste</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

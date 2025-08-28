@@ -196,13 +196,13 @@ export function EditReport() {
                     <SelectValue placeholder="Select Service" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="crude">Crude Oil</SelectItem>
-                    <SelectItem value="diesel">Diesel</SelectItem>
-                    <SelectItem value="gasoline">Gasoline</SelectItem>
-                    <SelectItem value="jet_fuel">Jet Fuel</SelectItem>
-                    <SelectItem value="water">Water</SelectItem>
-                    <SelectItem value="chemical">Chemical</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="Crude Oil">Crude Oil</SelectItem>
+                    <SelectItem value="Diesel">Diesel</SelectItem>
+                    <SelectItem value="Gasoline">Gasoline</SelectItem>
+                    <SelectItem value="Jet Fuel">Jet Fuel</SelectItem>
+                    <SelectItem value="Water">Water</SelectItem>
+                    <SelectItem value="Chemical">Chemical</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
                 </Select>
                 {form.formState.errors.service && (

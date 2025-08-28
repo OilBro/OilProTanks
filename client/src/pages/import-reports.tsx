@@ -129,7 +129,7 @@ export default function ImportReports() {
                  data.reportData.serviceType || 
                  data.reportData.product || 
                  data.reportData.contents || 
-                 'crude_oil',
+                 'Crude Oil',
         inspector: data.reportData.inspector || 
                    data.reportData.inspectorName || 
                    data.reportData.examiner || 

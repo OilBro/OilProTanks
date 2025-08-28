@@ -173,16 +173,16 @@ import { useLocation } from "wouter";
 
 // CORRECTED: Enhanced service options with proper categorization
 const SERVICE_OPTIONS = [
-  { value: "crude_oil", label: "Crude Oil", category: "petroleum" },
-  { value: "diesel", label: "Diesel Fuel", category: "petroleum" },
-  { value: "gasoline", label: "Gasoline", category: "petroleum" },
-  { value: "jet_fuel", label: "Jet Fuel", category: "petroleum" },
-  { value: "heating_oil", label: "Heating Oil", category: "petroleum" },
-  { value: "lubricating_oil", label: "Lubricating Oil", category: "petroleum" },
-  { value: "water", label: "Water", category: "utility" },
-  { value: "wastewater", label: "Wastewater", category: "utility" },
-  { value: "chemical", label: "Chemical Product", category: "chemical" },
-  { value: "other", label: "Other (Specify)", category: "other" }
+  { value: "Crude Oil", label: "Crude Oil", category: "petroleum" },
+  { value: "Diesel", label: "Diesel Fuel", category: "petroleum" },
+  { value: "Gasoline", label: "Gasoline", category: "petroleum" },
+  { value: "Jet Fuel", label: "Jet Fuel", category: "petroleum" },
+  { value: "Heating Oil", label: "Heating Oil", category: "petroleum" },
+  { value: "Lubricating Oil", label: "Lubricating Oil", category: "petroleum" },
+  { value: "Water", label: "Water", category: "utility" },
+  { value: "Wastewater", label: "Wastewater", category: "utility" },
+  { value: "Chemical", label: "Chemical Product", category: "chemical" },
+  { value: "Other", label: "Other (Specify)", category: "other" }
 ];
 
 // CORRECTED: Tank construction standards with proper API references
