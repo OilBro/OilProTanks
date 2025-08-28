@@ -144,15 +144,29 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
       yearsSinceLastInspection
     );
 
-    console.log('Calculated values:', {
-      corrosionRate: calculation.corrosionRate,
-      remainingLife: calculation.remainingLife,
-      status: calculation.status
-    });
+
+    // Determine measurementType based on component name
+    let measurementType = "shell";
+    const componentLower = newMeasurement.component?.toLowerCase() || "";
+    if (componentLower.includes("bottom plate")) {
+      measurementType = "bottom_plate";
+    } else if (componentLower.includes("critical zone")) {
+      measurementType = "critical_zone";
+    } else if (componentLower.includes("roof")) {
+      measurementType = "roof";
+    } else if (componentLower.includes("nozzle")) {
+      measurementType = "nozzle";
+    } else if (componentLower.includes("internal annular")) {
+      measurementType = "internal_annular";
+    } else if (componentLower.includes("external repad")) {
+      measurementType = "external_repad";
+    } else if (componentLower.includes("chime")) {
+      measurementType = "chime";
+    }
 
     const measurementData = {
       component: newMeasurement.component,
-      measurementType: newMeasurement.measurementType || "shell",
+      measurementType: measurementType,
       location: newMeasurement.location,
       originalThickness: originalThickness.toFixed(3),
       currentThickness: currentThickness.toFixed(3),
@@ -161,7 +175,6 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
       status: calculation.status
     };
 
-    console.log('Saving measurement data:', measurementData);
     addMeasurementMutation.mutate(measurementData);
   };
 

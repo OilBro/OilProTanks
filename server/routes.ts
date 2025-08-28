@@ -539,29 +539,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/reports/:reportId/measurements", async (req, res) => {
     try {
       const reportId = parseInt(req.params.reportId);
-      console.log('Creating thickness measurement:');
-      console.log('ReportId:', reportId);
-      console.log('Request body:', JSON.stringify(req.body, null, 2));
+      
+      // Determine measurementType based on component name if not provided
+      let measurementType = req.body.measurementType || "shell";
+      if (!req.body.measurementType && req.body.component) {
+        const componentLower = req.body.component.toLowerCase();
+        if (componentLower.includes("bottom plate")) {
+          measurementType = "bottom_plate";
+        } else if (componentLower.includes("critical zone")) {
+          measurementType = "critical_zone";
+        } else if (componentLower.includes("roof")) {
+          measurementType = "roof";
+        } else if (componentLower.includes("nozzle")) {
+          measurementType = "nozzle";
+        } else if (componentLower.includes("internal annular")) {
+          measurementType = "internal_annular";
+        } else if (componentLower.includes("external repad")) {
+          measurementType = "external_repad";
+        } else if (componentLower.includes("chime")) {
+          measurementType = "chime";
+        }
+      }
       
       const dataToValidate = {
         ...req.body,
+        measurementType,
         reportId
       };
-      console.log('Data to validate:', JSON.stringify(dataToValidate, null, 2));
       
       const validatedData = insertThicknessMeasurementSchema.parse(dataToValidate);
       const measurement = await storage.createThicknessMeasurement(validatedData);
       res.status(201).json(measurement);
     } catch (error: any) {
-      console.error('Thickness measurement creation error:', error);
-      console.error('Error details:', error.issues || error.message);
-      
       let detailedMessage = "Invalid measurement data";
       if (error.issues) {
-        console.error('Validation issues:');
         const issueMessages = error.issues.map((issue: any) => {
           const fieldPath = issue.path.join('.');
-          console.error(`- Field: ${fieldPath}, Message: ${issue.message}`);
           return `${fieldPath}: ${issue.message}`;
         });
         detailedMessage = `Validation failed: ${issueMessages.join(', ')}`;
