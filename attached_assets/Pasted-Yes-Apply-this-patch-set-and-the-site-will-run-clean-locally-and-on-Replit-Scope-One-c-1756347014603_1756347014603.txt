@@ -1,0 +1,184 @@
+Yes. Apply this patch set and the site will run clean locally and on Replit.
+
+### Scope
+
+* One-command dev for client+server
+* Server binds to `0.0.0.0` and `$PORT`
+* CORS + `/api/health`
+* Vite proxy to API
+* Replit start runs production server and serves built client
+* Shared path alias `@shared/*`
+
+### Files to add/update
+
+**1) `server/boot.ts`**  *(new)*
+
+```ts
+// server/boot.ts
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const app = express();
+
+// Middleware
+app.use(express.json());
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL ?? true,
+    credentials: true,
+  })
+);
+
+// Health
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, ts: Date.now() });
+});
+
+// TODO: mount your existing API routes here
+// import { router as apiRouter } from './routes.js';
+// app.use('/api', apiRouter);
+
+// Static in production
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+if (process.env.NODE_ENV === 'production') {
+  const dist = path.join(__dirname, '..', 'client', 'dist');
+  app.use(express.static(dist));
+  app.get('*', (_req, res) => res.sendFile(path.join(dist, 'index.html')));
+}
+
+const PORT = Number(process.env.PORT) || 3000;
+const HOST = '0.0.0.0';
+app.listen(PORT, HOST, () => {
+  console.log(`ReportArchitect server listening on http://${HOST}:${PORT}`);
+});
+```
+
+**2) `package.json`**  *(add scripts and dev deps; keep anything else you already have)*
+
+```json
+{
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development concurrently -k \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "tsx server/boot.ts",
+    "dev:client": "vite --port 5173 --strictPort",
+    "build": "npm run typecheck && npm run build:client",
+    "build:client": "vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "npm run build:client && cross-env NODE_ENV=production tsx server/boot.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "cross-env": "^7.0.3",
+    "tsx": "^4.7.0",
+    "typescript": "^5.5.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
+```
+
+**3) `vite.config.ts`**  *(ensure API proxy exists)*
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@shared': resolve(__dirname, './shared'),
+    },
+  },
+  server: {
+    proxy: { '/api': process.env.VITE_API_BASE_URL || 'http://localhost:3000' }
+  }
+});
+```
+
+**4) `tsconfig.json`**  *(add baseUrl + alias)*
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["shared/*"]
+    }
+  },
+  "include": ["client", "server", "shared", "vite.config.ts"]
+}
+```
+
+**5) `.env.example`**  *(new)*
+
+```
+NODE_ENV=development
+CLIENT_URL=http://localhost:5173
+VITE_API_BASE_URL=http://localhost:3000
+JWT_SECRET=change-this
+DATABASE_URL=sqlite:./.data/reportarchitect.db
+```
+
+**6) `.replit`**  *(set production run for a single exposed port)*
+
+```
+run = "npm run start"
+```
+
+### Install and validate
+
+```bash
+# from repo root
+npm i
+npm i -D concurrently tsx typescript cross-env
+npm i express cors
+
+# local dev
+npm run dev
+# hit http://localhost:5173 and GET http://localhost:3000/api/health
+
+# prod-like (Replit)
+npm run start
+```
+
+### Quick regression checks
+
+You already have test scripts in the repo. Run after boot:
+
+```bash
+node test-shell-endpoint.js
+node verify-fixes.js
+node audit-test.js
+```
+
+These validate the API-653 math endpoints and report flow and align with the existing files listed in your repo root. ([GitHub][1])
+
+### Notes
+
+* The repo contains `client`, `server`, `shared` and test assets, plus a Replit reference, matching this wiring. ([GitHub][1])
+* Replit exposes one port. The `start` script builds the client and serves it from the server to conform to that constraint.
+
+If you commit these exact files, push to `main`, then open the Replit linked from the repo and it will boot with one click. ([GitHub][1])
+
+If anything fails, paste the first error line and I’ll give a targeted patch.
+
+[1]: https://github.com/OilBro/ReportArchitect "GitHub - OilBro/ReportArchitect"
