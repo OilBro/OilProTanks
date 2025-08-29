@@ -382,7 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Inspection Reports
+  // Inspection Reports - Single endpoint for fetching report by ID
   app.get("/api/reports/:id", async (req, res) => {
     try {
       const reportId = parseInt(req.params.id);
@@ -395,14 +395,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Report not found' });
       }
 
-      const report = reportResult[0]; // ✅ FIX: Extract single object
+      const report = reportResult[0];
       console.log('Report found: Yes');
 
-      // ✅ FIX: Get related data
+      // Get related data
       const thicknessMeasurementsData = await db.select().from(thicknessMeasurements).where(eq(thicknessMeasurements.reportId, reportId));
       const checklistItemsData = await db.select().from(inspectionChecklists).where(eq(inspectionChecklists.reportId, reportId));
 
-      // ✅ FIX: Return properly structured response
+      // Return properly structured response
       const fullReport = {
         ...report,
         thicknessMeasurements: thicknessMeasurementsData || [],
@@ -413,43 +413,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       console.log(`Returning report with ${thicknessMeasurementsData.length} measurements and ${checklistItemsData.length} checklist items`);
-      res.json(fullReport);
-    } catch (error) {
-      console.error('Error fetching report:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  });
-
-  app.get("/api/reports/:id", async (req, res) => {
-    try {
-      const reportId = parseInt(req.params.id);
-      console.log(`Fetching report with ID: ${reportId}`);
-      
-      // Get the main report
-      const reportResult = await db.select().from(inspectionReports).where(eq(inspectionReports.id, reportId));
-      
-      if (reportResult.length === 0) {
-        return res.status(404).json({ error: 'Report not found' });
-      }
-      
-      const report = reportResult[0]; // ✅ FIX: Extract single object
-      console.log('Report found: Yes');
-      
-      // ✅ FIX: Get related data
-      const thicknessMeasurementsData = await db.select().from(thicknessMeasurements).where(eq(thicknessMeasurements.reportId, reportId));
-      const checklistItems = await db.select().from(inspectionChecklists).where(eq(inspectionChecklists.reportId, reportId));
-      
-      // ✅ FIX: Return properly structured response
-      const fullReport = {
-        ...report,
-        thicknessMeasurements: thicknessMeasurementsData || [],
-        checklistItems: checklistItems || [],
-        inspectionDate: report.inspectionDate ? new Date(report.inspectionDate).toISOString().split('T')[0] : null,
-        createdAt: report.createdAt ? new Date(report.createdAt).toISOString() : null,
-        updatedAt: report.updatedAt ? new Date(report.updatedAt).toISOString() : null
-      };
-      
-      console.log(`Returning report with ${thicknessMeasurementsData.length} measurements and ${checklistItems.length} checklist items`);
       res.json(fullReport);
     } catch (error) {
       console.error('Error fetching report:', error);
