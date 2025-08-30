@@ -185,11 +185,11 @@ function generateComprehensiveCoverPage(doc: jsPDF, report: InspectionReport, co
   doc.text('CUSTOMER INFORMATION', leftX, yPos);
   yPos += 8;
   doc.setFont(undefined, 'normal');
-  doc.text(`Customer: ${report.customer || 'Birla Carbon'}`, leftX, yPos);
+  doc.text(`Customer: ${report.customer || 'Not specified'}`, leftX, yPos);
   yPos += 6;
-  doc.text(`Location: ${report.location || 'Centerville, LA'}`, leftX, yPos);
+  doc.text(`Location: ${report.location || 'Not specified'}`, leftX, yPos);
   yPos += 6;
-  doc.text(`Job Number: ${report.reportNumber || 'LR0328'}`, leftX, yPos);
+  doc.text(`Job Number: ${report.reportNumber || 'Not specified'}`, leftX, yPos);
   yPos += 15;
 
   // Inspector section with enhanced formatting
@@ -203,12 +203,12 @@ function generateComprehensiveCoverPage(doc: jsPDF, report: InspectionReport, co
   yPos += 6;
   doc.text(`API-653 #${report.inspectorCertification || 'Not specified'}`, leftX + 5, yPos);
   yPos += 6;
-  doc.text('STI #AC 44162', leftX + 5, yPos);
+  doc.text(report.stiCertification ? `STI #${report.stiCertification}` : '', leftX + 5, yPos);
   yPos += 10;
 
   doc.text('Assistant Inspector:', leftX, yPos);
   yPos += 6;
-  doc.text('F. Hancock (STI #AST 990371)', leftX + 5, yPos);
+  doc.text(report.assistantInspector || '', leftX + 5, yPos);
   yPos += 15;
 
   // Reviewer section
@@ -218,7 +218,7 @@ function generateComprehensiveCoverPage(doc: jsPDF, report: InspectionReport, co
   doc.setFont(undefined, 'normal');
   doc.text(`${report.reviewer || 'Not specified'}`, leftX, yPos);
   yPos += 6;
-  doc.text('P.E., API-653 #43889', leftX, yPos);
+  doc.text(report.reviewerCertification || '', leftX, yPos);
 
   // Right column with tank specifications
   yPos = 50;
@@ -645,11 +645,11 @@ function generateInspectorQualificationsWithVisuals(doc: jsPDF, report: Inspecti
   yPos += 10;
 
   const inspectorData = [
-    ['Name', report.inspector || 'M. Robertson'],
-    ['API-653 Certification', `#${report.inspectorCertification || '24024'}`],
-    ['STI Certification', '#AC 44162'],
-    ['Years Experience', report.inspectorExperience || '15+'],
-    ['Additional Certifications', 'NACE Level 2, AWS CWI']
+    ['Name', report.inspector || 'Not specified'],
+    ['API-653 Certification', report.inspectorCertification ? `#${report.inspectorCertification}` : 'Not specified'],
+    ['STI Certification', report.stiCertification || 'Not specified'],
+    ['Years Experience', report.inspectorExperience || 'Not specified'],
+    ['Additional Certifications', report.additionalCertifications || 'Not specified']
   ];
 
   drawDataTable(doc, inspectorData, 20, yPos);
@@ -670,11 +670,11 @@ function generateInspectorQualificationsWithVisuals(doc: jsPDF, report: Inspecti
   doc.line(110, yPos, 170, yPos);
   yPos += 5;
   doc.setFont(undefined, 'normal');
-  doc.text(report.inspector || 'M. Robertson', 50, yPos, { align: 'center' });
-  doc.text(report.reviewer || 'J. Hart', 140, yPos, { align: 'center' });
+  doc.text(report.inspector || '', 50, yPos, { align: 'center' });
+  doc.text(report.reviewer || '', 140, yPos, { align: 'center' });
   yPos += 5;
-  doc.text(`API-653 #${report.inspectorCertification || '24024'}`, 50, yPos, { align: 'center' });
-  doc.text('P.E., API-653 #43889', 140, yPos, { align: 'center' });
+  doc.text(report.inspectorCertification ? `API-653 #${report.inspectorCertification}` : '', 50, yPos, { align: 'center' });
+  doc.text(report.reviewerCertification || '', 140, yPos, { align: 'center' });
 }
 
 // Chart and diagram drawing functions

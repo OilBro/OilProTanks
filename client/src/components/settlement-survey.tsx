@@ -245,14 +245,35 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
     if (!selectedSurveyId) return;
     
     try {
+      // First update the survey with tank parameters
+      const updateResponse = await fetch(`/api/settlement-surveys/${selectedSurveyId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tankDiameter: tankParams.diameter || null,
+          tankHeight: tankParams.height || null,
+          shellYieldStrength: tankParams.yieldStrength || null,
+          elasticModulus: tankParams.elasticModulus || null
+        })
+      });
+      
+      if (!updateResponse.ok) {
+        throw new Error('Failed to update survey parameters');
+      }
+      
+      // Then save measurements
       await saveMeasurementsMutation.mutateAsync({
         surveyId: selectedSurveyId,
         measurements
       });
+      
+      // Invalidate survey cache to reload updated data
+      queryClient.invalidateQueries({ queryKey: [`/api/reports/${reportId}/settlement-surveys`] });
+      
       setHasUnsavedChanges(false);
       toast({ 
         title: 'Success', 
-        description: 'Measurements saved successfully'
+        description: 'Survey and measurements saved successfully'
       });
     } catch (error) {
       console.error('Error saving measurements:', error);
@@ -356,7 +377,10 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
                     <Input
                       type="number"
                       value={tankParams.diameter}
-                      onChange={(e) => setTankParams({ ...tankParams, diameter: e.target.value })}
+                      onChange={(e) => {
+                        setTankParams({ ...tankParams, diameter: e.target.value });
+                        setHasUnsavedChanges(true);
+                      }}
                       placeholder="55.5"
                     />
                   </div>
@@ -365,7 +389,10 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
                     <Input
                       type="number"
                       value={tankParams.height}
-                      onChange={(e) => setTankParams({ ...tankParams, height: e.target.value })}
+                      onChange={(e) => {
+                        setTankParams({ ...tankParams, height: e.target.value });
+                        setHasUnsavedChanges(true);
+                      }}
                       placeholder="32"
                     />
                   </div>
@@ -374,7 +401,10 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
                     <Input
                       type="number"
                       value={tankParams.yieldStrength}
-                      onChange={(e) => setTankParams({ ...tankParams, yieldStrength: e.target.value })}
+                      onChange={(e) => {
+                        setTankParams({ ...tankParams, yieldStrength: e.target.value });
+                        setHasUnsavedChanges(true);
+                      }}
                     />
                   </div>
                   <div>
@@ -382,7 +412,10 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
                     <Input
                       type="number"
                       value={tankParams.elasticModulus}
-                      onChange={(e) => setTankParams({ ...tankParams, elasticModulus: e.target.value })}
+                      onChange={(e) => {
+                        setTankParams({ ...tankParams, elasticModulus: e.target.value });
+                        setHasUnsavedChanges(true);
+                      }}
                     />
                   </div>
                 </div>
