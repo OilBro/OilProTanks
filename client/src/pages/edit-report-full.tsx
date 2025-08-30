@@ -216,27 +216,38 @@ export function EditReportFull() {
       return response.json();
     },
     onSuccess: async () => {
-      // Update related data
-      // Delete removed thickness measurements
-      if (existingMeasurements) {
-        const currentMeasurementIds = measurements
-          .filter(m => m.id && m.id < 1000000000000) // Only check real IDs, not temporary ones
-          .map(m => m.id);
+      try {
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
         
-        for (const existingMeasurement of existingMeasurements) {
-          if (!currentMeasurementIds.includes(existingMeasurement.id)) {
-            // This measurement was deleted in the UI
-            await fetch(`/api/measurements/${existingMeasurement.id}`, {
-              method: 'DELETE',
-            });
+        // Update related data
+        // Delete removed thickness measurements
+        if (existingMeasurements) {
+          const currentMeasurementIds = measurements
+            .filter(m => m.id && m.id < 1000000000000) // Only check real IDs, not temporary ones
+            .map(m => m.id);
+          
+          const deletePromises = [];
+          for (const existingMeasurement of existingMeasurements) {
+            if (!currentMeasurementIds.includes(existingMeasurement.id)) {
+              // This measurement was deleted in the UI
+              deletePromises.push(
+                fetch(`/api/measurements/${existingMeasurement.id}`, {
+                  method: 'DELETE',
+                  signal: controller.signal
+                }).catch(err => console.error(`Failed to delete measurement ${existingMeasurement.id}:`, err))
+              );
+            }
           }
+          await Promise.all(deletePromises);
         }
-      }
-      
-      // Update thickness measurements
-      console.log('Saving measurements:', measurements);
-      for (const measurement of measurements) {
-        try {
+        
+        // Update thickness measurements - batch process to avoid fetch errors
+        console.log('Saving measurements:', measurements);
+        const measurementPromises = [];
+        
+        for (const measurement of measurements) {
           // Skip if measurement has no component (empty row)
           if (!measurement.component) continue;
           
@@ -275,39 +286,71 @@ export function EditReportFull() {
           
           console.log(`Saving measurement: ${method} to ${url}`, dataToSend);
           
-          const response = await fetch(url, {
+          const measurementPromise = fetch(url, {
             method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dataToSend),
+            signal: controller.signal
+          })
+          .then(async response => {
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`Failed to save measurement: ${errorText}`);
+              return null;
+            }
+            const savedMeasurement = await response.json();
+            console.log(`Successfully saved measurement ${measurement.component}`, savedMeasurement);
+            return savedMeasurement;
+          })
+          .catch(error => {
+            console.error('Error saving measurement:', error);
+            if (error.name !== 'AbortError') {
+              // Only show error if it's not an abort error
+              toast({
+                title: "Warning",
+                description: `Failed to save measurement ${measurement.component}. Please retry.`,
+                variant: "destructive",
+              });
+            }
+            return null;
           });
           
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Failed to save measurement: ${errorText}`);
-            throw new Error(`Failed to save measurement: ${errorText}`);
-          }
-          
-          const savedMeasurement = await response.json();
-          console.log(`Successfully saved measurement ${measurement.component}`, savedMeasurement);
-        } catch (error) {
-          console.error('Error saving measurement:', error);
-          throw error;
+          measurementPromises.push(measurementPromise);
         }
-      }
-
-      // Update checklists
-      for (const item of checklist) {
-        const existing = existingChecklists?.find(c => c.item === item.item);
-        const method = existing ? 'PUT' : 'POST';
-        const url = existing
-          ? `/api/checklists/${existing.id}`
-          : `/api/reports/${reportId}/checklists`;
         
-        await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...item, reportId }),
-        });
+        // Wait for all measurements to save
+        const savedMeasurements = await Promise.all(measurementPromises);
+        const successCount = savedMeasurements.filter(m => m !== null).length;
+        const failedCount = savedMeasurements.filter(m => m === null).length;
+        
+        if (failedCount > 0) {
+          console.warn(`${failedCount} measurements failed to save`);
+        }
+
+        // Update checklists with error handling
+        const checklistPromises = [];
+        for (const item of checklist) {
+          const existing = existingChecklists?.find(c => c.item === item.item);
+          const method = existing ? 'PUT' : 'POST';
+          const url = existing
+            ? `/api/checklists/${existing.id}`
+            : `/api/reports/${reportId}/checklists`;
+          
+          checklistPromises.push(
+            fetch(url, {
+              method,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...item, reportId }),
+              signal: controller.signal
+            }).catch(err => console.error(`Failed to save checklist item:`, err))
+          );
+        }
+        await Promise.all(checklistPromises);
+        
+        clearTimeout(timeout);
+      } catch (error) {
+        console.error('Error during save operations:', error);
+        // Don't throw here - we want to continue even if some operations fail
       }
 
       toast({

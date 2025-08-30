@@ -108,7 +108,8 @@ export function calculateCosineFit(
     ssResidual += deviation * deviation;
   }
   
-  const rSquared = 1 - (ssResidual / ssTotal);
+  // Calculate R² with proper handling for edge cases
+  const rSquared = ssTotal === 0 ? 0 : Math.max(0, 1 - (ssResidual / ssTotal));
   const maxOutOfPlane = Math.max(...outOfPlaneDeviations.map(Math.abs));
   
   // Calculate allowable settlement per B.3.2.1 (cosine fit method)
@@ -133,10 +134,20 @@ export function calculateCosineFit(
     settlementAcceptance = 'ACTION_REQUIRED';
   }
   
-  // Determine Annex reference based on conditions
-  let annexReference = 'B.3.2.1'; // Cosine fit method
-  if (rSquared >= 0.9 && n >= 8) {
-    annexReference = 'B.2.2.4 (Cosine fit validity confirmed)';
+  // Determine Annex reference based on conditions per API 653 Annex B
+  let annexReference = 'B.3.2.1'; // Default cosine fit method
+  
+  // Per API 653 Annex B.2.2.4: R² must be ≥ 0.90 for valid cosine fit
+  // Also requires minimum 8 measurement points for statistical validity
+  if (rSquared >= 0.90 && n >= 8) {
+    annexReference = 'B.2.2.4 (Cosine fit validity confirmed - R² ≥ 0.90)';
+  } else if (rSquared < 0.90) {
+    annexReference = `B.2.2.4 (Invalid cosine fit - R² = ${rSquared.toFixed(3)} < 0.90)`;
+    // When R² < 0.90, alternative methods should be considered
+    console.warn(`Settlement survey R² = ${rSquared.toFixed(3)} is below 0.90 threshold. Consider alternative analysis methods.`);
+  } else if (n < 8) {
+    annexReference = `B.2.2.4 (Insufficient data points - ${n} < 8 required)`;
+    console.warn(`Settlement survey has only ${n} points. Minimum 8 points required for valid analysis.`);
   }
   
   return {

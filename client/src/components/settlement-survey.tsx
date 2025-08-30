@@ -75,20 +75,20 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
   }
 
   // Fetch existing surveys
-  const { data: surveys = [], isLoading: surveysLoading } = useQuery({
+  const { data: surveys = [], isLoading: surveysLoading } = useQuery<SettlementSurvey[]>({
     queryKey: [`/api/reports/${reportId}/settlement-surveys`],
     enabled: isValidReportId
   });
 
   // Fetch measurements for selected survey
-  const { data: surveyMeasurements = [] } = useQuery({
+  const { data: surveyMeasurements = [] } = useQuery<SettlementMeasurement[]>({
     queryKey: [`/api/settlement-surveys/${selectedSurveyId}/measurements`],
     enabled: !!selectedSurveyId
   });
 
   // Load measurements when survey is selected or data changes
   useEffect(() => {
-    if (surveyMeasurements && surveyMeasurements.length > 0) {
+    if (surveyMeasurements && Array.isArray(surveyMeasurements) && surveyMeasurements.length > 0) {
       setMeasurements(surveyMeasurements);
     } else if (selectedSurveyId && measurements.length === 0) {
       // Initialize measurements if none exist
@@ -97,25 +97,38 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
   }, [selectedSurveyId, surveyMeasurements]);
 
   // Create new survey mutation
-  const createSurveyMutation = useMutation({
-    mutationFn: (data: any) => 
-      apiRequest(`/api/reports/${reportId}/settlement-surveys`, { method: 'POST', body: JSON.stringify(data) }),
+  const createSurveyMutation = useMutation<any, Error, any>({
+    mutationFn: async (data: any) => {
+      const response = await fetch(`/api/reports/${reportId}/settlement-surveys`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!response.ok) throw new Error('Failed to create survey');
+      return response.json();
+    },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: [`/api/reports/${reportId}/settlement-surveys`] });
       toast({ title: 'Success', description: 'Settlement survey created successfully' });
       // Set the newly created survey as selected and initialize measurements
-      setSelectedSurveyId(result.id);
-      initializeMeasurements(8);
+      if (result && result.id) {
+        setSelectedSurveyId(result.id);
+        initializeMeasurements(8);
+      }
     }
   });
 
   // Save measurements mutation
-  const saveMeasurementsMutation = useMutation({
-    mutationFn: (data: { surveyId: number; measurements: SettlementMeasurement[] }) =>
-      apiRequest(`/api/settlement-surveys/${data.surveyId}/measurements/bulk`, {
+  const saveMeasurementsMutation = useMutation<any, Error, { surveyId: number; measurements: SettlementMeasurement[] }>({
+    mutationFn: async (data) => {
+      const response = await fetch(`/api/settlement-surveys/${data.surveyId}/measurements/bulk`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ measurements: data.measurements })
-      }),
+      });
+      if (!response.ok) throw new Error('Failed to save measurements');
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/settlement-surveys/${selectedSurveyId}/measurements`] });
       toast({ title: 'Success', description: 'Measurements saved successfully' });
@@ -123,18 +136,24 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
   });
 
   // Calculate settlement analysis mutation
-  const calculateSettlementMutation = useMutation({
-    mutationFn: (data: { surveyId: number; tankParams: any; tiePoints?: any[] }) =>
-      apiRequest(`/api/settlement-surveys/${data.surveyId}/calculate`, {
+  const calculateSettlementMutation = useMutation<any, Error, { surveyId: number; tankParams: any; tiePoints?: any[] }>({
+    mutationFn: async (data) => {
+      const response = await fetch(`/api/settlement-surveys/${data.surveyId}/calculate`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
-      }),
+      });
+      if (!response.ok) throw new Error('Failed to calculate settlement');
+      return response.json();
+    },
     onSuccess: (results) => {
       queryClient.invalidateQueries({ queryKey: [`/api/reports/${reportId}/settlement-surveys`] });
-      toast({ 
-        title: 'Calculation Complete', 
-        description: `Settlement status: ${results.settlementAcceptance}`
-      });
+      if (results && results.settlementAcceptance) {
+        toast({ 
+          title: 'Calculation Complete', 
+          description: `Settlement status: ${results.settlementAcceptance}`
+        });
+      }
       setActiveTab('results');
     }
   });
