@@ -199,9 +199,9 @@ function generateComprehensiveCoverPage(doc: jsPDF, report: InspectionReport, co
   doc.setFont(undefined, 'normal');
   doc.text('Lead Inspector:', leftX, yPos);
   yPos += 6;
-  doc.text(`${report.inspector || 'M. Robertson'}`, leftX + 5, yPos);
+  doc.text(`${report.inspector || 'Not specified'}`, leftX + 5, yPos);
   yPos += 6;
-  doc.text(`API-653 #${report.inspectorCertification || '24024'}`, leftX + 5, yPos);
+  doc.text(`API-653 #${report.inspectorCertification || 'Not specified'}`, leftX + 5, yPos);
   yPos += 6;
   doc.text('STI #AC 44162', leftX + 5, yPos);
   yPos += 10;
@@ -216,7 +216,7 @@ function generateComprehensiveCoverPage(doc: jsPDF, report: InspectionReport, co
   doc.text('TECHNICAL REVIEWER', leftX, yPos);
   yPos += 8;
   doc.setFont(undefined, 'normal');
-  doc.text(`${report.reviewer || 'James Hart'}`, leftX, yPos);
+  doc.text(`${report.reviewer || 'Not specified'}`, leftX, yPos);
   yPos += 6;
   doc.text('P.E., API-653 #43889', leftX, yPos);
 
@@ -229,31 +229,31 @@ function generateComprehensiveCoverPage(doc: jsPDF, report: InspectionReport, co
   doc.setFont(undefined, 'normal');
   doc.text(`Tank Number: ${report.tankId}`, rightX, yPos);
   yPos += 6;
-  doc.text(`Scope: ${report.inspectionScope || 'External'}`, rightX, yPos);
+  doc.text(`Scope: ${report.inspectionScope || 'Not specified'}`, rightX, yPos);
   yPos += 6;
   doc.text(`Date: ${report.inspectionDate || new Date().toLocaleDateString()}`, rightX, yPos);
   yPos += 6;
   doc.text(`Revision: 0 (${new Date().toLocaleDateString()})`, rightX, yPos);
   yPos += 10;
 
-  doc.text(`Product: ${(report.service || 'Carbon Black Feedstock Oil').toUpperCase()}`, rightX, yPos);
+  doc.text(`Product: ${(report.service || 'Not specified').toUpperCase()}`, rightX, yPos);
   yPos += 6;
-  doc.text(`Specific Gravity: ${report.specificGravity || '1.10'} at 120°F`, rightX, yPos);
+  doc.text(`Specific Gravity: ${report.specificGravity || 'Not specified'}`, rightX, yPos);
   yPos += 6;
-  doc.text(`Year Built: ${report.yearBuilt || '1954'}`, rightX, yPos);
+  doc.text(`Year Built: ${report.yearBuilt || 'Not specified'}`, rightX, yPos);
   yPos += 6;
-  doc.text(`Manufacturer: ${report.manufacturer || 'B.A. Rothchild'}`, rightX, yPos);
+  doc.text(`Manufacturer: ${report.manufacturer || 'Not specified'}`, rightX, yPos);
   yPos += 10;
 
-  doc.text(`Diameter: ${report.diameter || '60.00'} ft`, rightX, yPos);
+  doc.text(`Diameter: ${report.diameter || 'Not specified'} ft`, rightX, yPos);
   yPos += 6;
-  doc.text(`Height: ${report.height || '30.00'} ft`, rightX, yPos);
+  doc.text(`Height: ${report.height || 'Not specified'} ft`, rightX, yPos);
   yPos += 6;
-  doc.text(`Capacity: ${report.capacity || '14,604'} barrels`, rightX, yPos);
+  doc.text(`Capacity: ${report.capacity || 'Not specified'} barrels`, rightX, yPos);
   yPos += 6;
-  doc.text(`Foundation: ${report.foundationType || 'Concrete Ringwall'}`, rightX, yPos);
+  doc.text(`Foundation: ${report.foundationType || 'Not specified'}`, rightX, yPos);
   yPos += 6;
-  doc.text(`Roof Type: ${report.roofType || 'Cone'}`, rightX, yPos);
+  doc.text(`Roof Type: ${report.roofType || 'Not specified'}`, rightX, yPos);
 
   // Add tank diagram placeholder
   yPos += 20;
@@ -320,13 +320,29 @@ function generateExecutiveSummaryWithCharts(doc: jsPDF, report: InspectionReport
   yPos += 8;
   doc.setFont(undefined, 'normal');
   
-  const keyFindings = [
-    'Tank foundation shows minor settlement within API 653 limits',
-    'External shell coating requires attention in localized areas',
-    'Thickness measurements indicate general corrosion patterns',
-    'Recommended inspection interval: 5 years with current fill height',
-    'No immediate safety concerns identified'
-  ];
+  // Generate findings based on actual data
+  const keyFindings: string[] = [];
+  
+  // Add findings based on measurement status
+  if (statusCounts.action > 0) {
+    keyFindings.push(`${statusCounts.action} measurement locations require immediate action`);
+  }
+  if (statusCounts.monitor > 0) {
+    keyFindings.push(`${statusCounts.monitor} locations require monitoring`);
+  }
+  if (statusCounts.acceptable === measurements.length) {
+    keyFindings.push('All thickness measurements within acceptable limits');
+  }
+  
+  // Add findings based on recommendations
+  if (repairRecommendations.length > 0) {
+    keyFindings.push(`${repairRecommendations.length} repair items identified`);
+  }
+  
+  // Add general findings if no specific issues
+  if (keyFindings.length === 0) {
+    keyFindings.push('Inspection complete - refer to detailed measurements');
+  }
 
   keyFindings.forEach(finding => {
     doc.text('• ' + finding, 25, yPos);
@@ -362,15 +378,15 @@ function generateTankSpecificationsWithVisuals(doc: jsPDF, report: InspectionRep
 
   const specs = [
     ['Tank ID', report.tankId],
-    ['Diameter', `${report.diameter || '60.00'} ft`],
-    ['Height', `${report.height || '30.00'} ft`],
-    ['Capacity', `${report.capacity || '14,604'} barrels`],
-    ['Year Built', report.yearBuilt || '1954'],
-    ['Manufacturer', report.manufacturer || 'B.A. Rothchild'],
-    ['Foundation', report.foundationType || 'Concrete Ringwall'],
-    ['Shell Material', report.shellMaterial || 'Carbon Steel'],
-    ['Roof Type', report.roofType || 'Cone'],
-    ['Construction Standard', report.constructionStandard || 'API 650']
+    ['Diameter', report.diameter ? `${report.diameter} ft` : 'Not specified'],
+    ['Height', report.height ? `${report.height} ft` : 'Not specified'],
+    ['Capacity', report.capacity ? `${report.capacity} barrels` : 'Not specified'],
+    ['Year Built', report.yearBuilt || 'Not specified'],
+    ['Manufacturer', report.manufacturer || 'Not specified'],
+    ['Foundation', report.foundationType || 'Not specified'],
+    ['Shell Material', report.shellMaterial || 'Not specified'],
+    ['Roof Type', report.roofType || 'Not specified'],
+    ['Construction Standard', report.constructionStandard || 'Not specified']
   ];
 
   drawSpecificationTable(doc, specs, 20, yPos);
@@ -400,11 +416,11 @@ function generateSettlementAnalysisWithCharts(doc: jsPDF, report: InspectionRepo
   yPos += 8;
 
   const settlementData = [
-    ['Maximum Planar Settlement', `${report.maxSettlement || '0.24'} inches`],
-    ['Location', report.settlementLocation || 'Survey Radial 1'],
-    ['Out-of-Plane Settlement', '0.12 inches'],
-    ['API 653 Allowable', '1.13 inches'],
-    ['Compliance Status', report.settlementCompliance || 'ACCEPTABLE']
+    ['Maximum Planar Settlement', report.maxSettlement ? `${report.maxSettlement} inches` : 'Not measured'],
+    ['Location', report.settlementLocation || 'Not specified'],
+    ['Out-of-Plane Settlement', report.outOfPlaneSettlement ? `${report.outOfPlaneSettlement} inches` : 'Not measured'],
+    ['API 653 Allowable', report.allowableSettlement ? `${report.allowableSettlement} inches` : 'Not calculated'],
+    ['Compliance Status', report.settlementCompliance || 'Not evaluated']
   ];
 
   drawDataTable(doc, settlementData, 20, yPos);
@@ -504,12 +520,12 @@ function generateFoundationAnalysisWithVisuals(doc: jsPDF, report: InspectionRep
   yPos += 10;
 
   const foundationData = [
-    ['Foundation Type', report.foundationType || 'Concrete Ringwall'],
-    ['Settlement', report.foundationSettlement || 'Within acceptable limits'],
-    ['Cracking', report.foundationCracking || 'Minor hairline cracks'],
-    ['Sealing Condition', report.foundationSealing || 'Epoxy sealant deteriorated'],
-    ['Containment', 'Concrete secondary containment present'],
-    ['Drainage', 'Requires cleaning and maintenance']
+    ['Foundation Type', report.foundationType || 'Not specified'],
+    ['Settlement', report.foundationSettlement || 'Not evaluated'],
+    ['Cracking', report.foundationCracking || 'Not evaluated'],
+    ['Sealing Condition', report.foundationSealing || 'Not evaluated'],
+    ['Containment', report.containmentType || 'Not specified'],
+    ['Drainage', report.drainageCondition || 'Not evaluated']
   ];
 
   drawDataTable(doc, foundationData, 20, yPos);
@@ -555,11 +571,11 @@ function generateFillHeightAnalysisWithCharts(doc: jsPDF, report: InspectionRepo
   yPos += 10;
 
   const fillHeightData = [
-    ['Current Fill Height', `${report.height ? (parseFloat(report.height) * 0.97).toFixed(2) : 'TBD'} ft`],
-    ['Product Specific Gravity', report.specificGravity || '1.10'],
-    ['Limiting Shell Course', 'Ring 1 (bottom course)'],
-    ['Inspection Interval', '5 years at current fill height'],
-    ['Recommended Action', 'Monitor thickness measurements']
+    ['Current Fill Height', report.currentFillHeight ? `${report.currentFillHeight} ft` : 'Not specified'],
+    ['Product Specific Gravity', report.specificGravity || 'Not specified'],
+    ['Limiting Shell Course', report.limitingCourse || 'Not determined'],
+    ['Inspection Interval', report.inspectionInterval ? `${report.inspectionInterval} years` : 'Not calculated'],
+    ['Recommended Action', report.recommendedAction || 'Not specified']
   ];
 
   drawDataTable(doc, fillHeightData, 20, yPos);
@@ -934,12 +950,14 @@ function drawThicknessMeasurementsTable(doc: jsPDF, measurements: ThicknessMeasu
   // Table data (first 15 measurements)
   doc.setFont(undefined, 'normal');
   measurements.slice(0, 15).forEach(m => {
-    doc.text(m.location || 'N/A', x, currentY);
-    doc.text(m.component || 'Shell', x + 30, currentY);
-    doc.text(`${m.originalThickness || '0.250'}"`, x + 60, currentY);
-    doc.text(`${m.currentThickness || '0.200'}"`, x + 80, currentY);
-    doc.text(`${((parseFloat(m.originalThickness || '0.250') - parseFloat(m.currentThickness || '0.200')) * 1000).toFixed(0)} mils`, x + 100, currentY);
-    doc.text((m.status || 'acceptable').toUpperCase(), x + 120, currentY);
+    doc.text(m.location || '', x, currentY);
+    doc.text(m.component || '', x + 30, currentY);
+    doc.text(m.originalThickness ? `${m.originalThickness}"` : '', x + 60, currentY);
+    doc.text(m.currentThickness ? `${m.currentThickness}"` : '', x + 80, currentY);
+    const loss = m.originalThickness && m.currentThickness ? 
+      ((parseFloat(m.originalThickness) - parseFloat(m.currentThickness)) * 1000).toFixed(0) + ' mils' : '';
+    doc.text(loss, x + 100, currentY);
+    doc.text(m.status ? m.status.toUpperCase() : '', x + 120, currentY);
     currentY += 5;
   });
 }
