@@ -57,6 +57,7 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
     yieldStrength: '20000',
     elasticModulus: '29000000'
   });
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // Check if reportId is valid
   const isValidReportId = reportId && !isNaN(reportId) && reportId > 0;
@@ -86,7 +87,7 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
     enabled: !!selectedSurveyId
   });
 
-  // Load measurements when survey is selected or data changes
+  // Load measurements and tank parameters when survey is selected or data changes
   useEffect(() => {
     if (surveyMeasurements && Array.isArray(surveyMeasurements) && surveyMeasurements.length > 0) {
       setMeasurements(surveyMeasurements);
@@ -94,7 +95,18 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
       // Initialize measurements if none exist
       initializeMeasurements(8);
     }
-  }, [selectedSurveyId, surveyMeasurements]);
+    
+    // Load tank parameters from selected survey
+    const selectedSurvey = surveys.find(s => s.id === selectedSurveyId);
+    if (selectedSurvey) {
+      setTankParams({
+        diameter: selectedSurvey.tankDiameter || '',
+        height: selectedSurvey.tankHeight || '',
+        yieldStrength: selectedSurvey.shellYieldStrength || '20000',
+        elasticModulus: selectedSurvey.elasticModulus || '29000000'
+      });
+    }
+  }, [selectedSurveyId, surveyMeasurements, surveys]);
 
   // Create new survey mutation
   const createSurveyMutation = useMutation<any, Error, any>({
@@ -225,6 +237,31 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
     const updated = [...measurements];
     updated[index] = { ...updated[index], [field]: value };
     setMeasurements(updated);
+    setHasUnsavedChanges(true);
+  };
+  
+  // Save measurements
+  const handleSaveMeasurements = async () => {
+    if (!selectedSurveyId) return;
+    
+    try {
+      await saveMeasurementsMutation.mutateAsync({
+        surveyId: selectedSurveyId,
+        measurements
+      });
+      setHasUnsavedChanges(false);
+      toast({ 
+        title: 'Success', 
+        description: 'Measurements saved successfully'
+      });
+    } catch (error) {
+      console.error('Error saving measurements:', error);
+      toast({ 
+        title: 'Error', 
+        description: 'Failed to save measurements',
+        variant: 'destructive'
+      });
+    }
   };
 
   // Calculate settlement analysis
@@ -380,8 +417,11 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
                             <TableCell>
                               <Input
                                 type="number"
-                                value={m.angle}
-                                onChange={(e) => updateMeasurement(i, 'angle', parseFloat(e.target.value))}
+                                value={m.angle || 0}
+                                onChange={(e) => {
+                                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                                  updateMeasurement(i, 'angle', isNaN(value) ? 0 : value);
+                                }}
                                 className="h-8"
                               />
                             </TableCell>
@@ -389,8 +429,11 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
                               <Input
                                 type="number"
                                 step="0.0001"
-                                value={m.measuredElevation}
-                                onChange={(e) => updateMeasurement(i, 'measuredElevation', parseFloat(e.target.value))}
+                                value={m.measuredElevation || 0}
+                                onChange={(e) => {
+                                  const value = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                                  updateMeasurement(i, 'measuredElevation', isNaN(value) ? 0 : value);
+                                }}
                                 className="h-8"
                               />
                             </TableCell>
@@ -406,7 +449,10 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
                                 type="number"
                                 step="0.0001"
                                 value={m.tieOffset || ''}
-                                onChange={(e) => updateMeasurement(i, 'tieOffset', parseFloat(e.target.value))}
+                                onChange={(e) => {
+                                  const value = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                                  updateMeasurement(i, 'tieOffset', isNaN(value) ? undefined : value);
+                                }}
                                 disabled={!m.tieShot}
                                 className="h-8"
                               />
@@ -420,6 +466,14 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
 
                 {/* Action Buttons */}
                 <div className="flex gap-2">
+                  <Button 
+                    onClick={handleSaveMeasurements} 
+                    variant={hasUnsavedChanges ? "default" : "outline"}
+                    disabled={!hasUnsavedChanges}
+                    className="flex items-center gap-2"
+                  >
+                    Save Measurements
+                  </Button>
                   <Button onClick={handleCalculate} className="flex items-center gap-2">
                     <Calculator className="h-4 w-4" />
                     Calculate Cosine Fit
