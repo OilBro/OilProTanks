@@ -1373,12 +1373,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/settlement-surveys/:surveyId/measurements/bulk", async (req, res) => {
     try {
       const surveyId = parseInt(req.params.surveyId);
+      
+      // Delete existing measurements for this survey first
+      await storage.deleteAdvancedSettlementMeasurements(surveyId);
+      
+      // Create new measurements
       const measurements = req.body.measurements.map((m: any) => ({ ...m, surveyId }));
       const newMeasurements = await storage.createBulkAdvancedSettlementMeasurements(measurements);
       res.json(newMeasurements);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Failed to create measurements" });
+      console.error('Error saving bulk measurements:', err);
+      res.status(500).json({ message: "Failed to create measurements", error: err.message });
     }
   });
 

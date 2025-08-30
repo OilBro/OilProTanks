@@ -100,6 +100,7 @@ export interface IStorage {
   getAdvancedSettlementMeasurements(surveyId: number): Promise<AdvancedSettlementMeasurement[]>;
   createAdvancedSettlementMeasurement(measurement: InsertAdvancedSettlementMeasurement): Promise<AdvancedSettlementMeasurement>;
   createBulkAdvancedSettlementMeasurements(measurements: InsertAdvancedSettlementMeasurement[]): Promise<AdvancedSettlementMeasurement[]>;
+  deleteAdvancedSettlementMeasurements(surveyId: number): Promise<void>;
   
   // Edge Settlements
   getEdgeSettlements(surveyId: number): Promise<EdgeSettlement[]>;
@@ -550,6 +551,12 @@ export class MemStorage implements IStorage {
     return Promise.all(measurements.map(m => this.createAdvancedSettlementMeasurement(m)));
   }
 
+  async deleteAdvancedSettlementMeasurements(surveyId: number): Promise<void> {
+    const keysToDelete = Array.from(this.advancedSettlementMeasurements.keys())
+      .filter(key => this.advancedSettlementMeasurements.get(key)?.surveyId === surveyId);
+    keysToDelete.forEach(key => this.advancedSettlementMeasurements.delete(key));
+  }
+
   async getEdgeSettlements(surveyId: number): Promise<EdgeSettlement[]> {
     return Array.from(this.edgeSettlements.values())
       .filter(settlement => settlement.surveyId === surveyId);
@@ -819,6 +826,10 @@ export class DatabaseStorage implements IStorage {
       .values(measurementsWithTimestamp)
       .returning();
     return newMeasurements;
+  }
+
+  async deleteAdvancedSettlementMeasurements(surveyId: number): Promise<void> {
+    await db.delete(advancedSettlementMeasurements).where(eq(advancedSettlementMeasurements.surveyId, surveyId));
   }
 
   // Edge Settlements
