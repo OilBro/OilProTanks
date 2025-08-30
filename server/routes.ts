@@ -1205,7 +1205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/kpi/overall", async (req, res) => {
     try {
-      // Get all reports
+      // Get all reports and their measurements
       const reports = await storage.getInspectionReports();
       
       // Calculate overall fleet KPIs
@@ -1213,27 +1213,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const completedReports = reports.filter(r => r.status === 'completed').length;
       const inProgressReports = reports.filter(r => r.status === 'in_progress').length;
       
-      // Mock KPI data for now - would aggregate from all reports
+      // Calculate actual metrics from all reports
+      let totalMeasurements = 0;
+      let completedMeasurements = 0;
+      let minRemainingLife = 999;
+      let totalCorrosionRate = 0;
+      let corrosionCount = 0;
+      let criticalFindings = 0;
+      let majorFindings = 0;
+      let minorFindings = 0;
+      
+      // Process each report's measurements
+      for (const report of reports) {
+        const measurements = await storage.getThicknessMeasurements(report.id);
+        totalMeasurements += measurements.length;
+        
+        for (const measurement of measurements) {
+          // Count completed measurements (those with current thickness)
+          if (measurement.currentThickness) {
+            completedMeasurements++;
+          }
+          
+          // Track minimum remaining life
+          if (measurement.remainingLife) {
+            const life = parseFloat(measurement.remainingLife);
+            if (!isNaN(life) && life < minRemainingLife) {
+              minRemainingLife = life;
+            }
+          }
+          
+          // Calculate average corrosion rate
+          if (measurement.corrosionRate) {
+            const rate = parseFloat(measurement.corrosionRate);
+            if (!isNaN(rate) && rate > 0) {
+              totalCorrosionRate += rate;
+              corrosionCount++;
+            }
+          }
+          
+          // Count findings by severity
+          if (measurement.status === 'action_required') {
+            criticalFindings++;
+          } else if (measurement.status === 'monitor') {
+            majorFindings++;
+          } else if (measurement.notes && measurement.notes.length > 0) {
+            minorFindings++;
+          }
+        }
+      }
+      
+      // Calculate percentages and averages
+      const percentTMLsComplete = totalMeasurements > 0 
+        ? (completedMeasurements / totalMeasurements) * 100 
+        : 0;
+      
+      const avgCorrosionRate = corrosionCount > 0 
+        ? totalCorrosionRate / corrosionCount 
+        : 0;
+      
+      // Determine overall status based on findings
+      let overallStatus: 'GO' | 'NO-GO' | 'CONDITIONAL' = 'GO';
+      if (criticalFindings > 0 || minRemainingLife < 2) {
+        overallStatus = 'NO-GO';
+      } else if (majorFindings > 0 || minRemainingLife < 5 || percentTMLsComplete < 90) {
+        overallStatus = 'CONDITIONAL';
+      }
+      
+      // Calculate next inspection due based on minimum remaining life
+      const inspectionInterval = minRemainingLife < 5 ? 1 : minRemainingLife < 10 ? 2.5 : 5;
+      const nextInspectionDue = new Date(Date.now() + inspectionInterval * 365 * 24 * 60 * 60 * 1000).toISOString();
+      
+      // Calculate compliance score
+      const complianceScore = Math.max(0, Math.min(100, 
+        100 - (criticalFindings * 10) - (majorFindings * 3) - (minorFindings * 0.5)
+      ));
+      
       const overallKPI = {
-        percentTMLsComplete: 85,
-        minRemainingLife: 8.5,
-        criticalFindings: 0,
-        majorFindings: 2,
-        minorFindings: 5,
-        overallStatus: 'CONDITIONAL' as const,
-        nextInspectionDue: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-        containmentMargin: 15,
+        percentTMLsComplete: Math.round(percentTMLsComplete),
+        minRemainingLife: minRemainingLife === 999 ? 10 : minRemainingLife,
+        criticalFindings,
+        majorFindings,
+        minorFindings,
+        overallStatus,
+        nextInspectionDue,
+        containmentMargin: 15, // This would need secondary containment data
         tankCount: totalReports,
         reportsInProgress: inProgressReports,
         reportsCompleted: completedReports,
-        avgCorrosionRate: 0.003,
-        complianceScore: 92
+        avgCorrosionRate,
+        complianceScore: Math.round(complianceScore)
       };
       
       res.json(overallKPI);
     } catch (err) {
       console.error("Overall KPI error:", err);
       res.status(500).json({ message: "Failed to calculate overall KPIs" });
+    }
+  });
+
+  // Individual Report KPI endpoint
+  app.get("/api/reports/:id/kpi", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.id);
+      const report = await storage.getInspectionReport(reportId);
+      
+      if (!report) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+      
+      // Get measurements for this specific report
+      const measurements = await storage.getThicknessMeasurements(reportId);
+      
+      // Calculate metrics for this report
+      let totalMeasurements = measurements.length;
+      let completedMeasurements = 0;
+      let minRemainingLife = 999;
+      let totalCorrosionRate = 0;
+      let corrosionCount = 0;
+      let criticalFindings = 0;
+      let majorFindings = 0;
+      let minorFindings = 0;
+      
+      for (const measurement of measurements) {
+        // Count completed measurements
+        if (measurement.currentThickness) {
+          completedMeasurements++;
+        }
+        
+        // Track minimum remaining life
+        if (measurement.remainingLife) {
+          const life = parseFloat(measurement.remainingLife);
+          if (!isNaN(life) && life < minRemainingLife) {
+            minRemainingLife = life;
+          }
+        }
+        
+        // Calculate average corrosion rate
+        if (measurement.corrosionRate) {
+          const rate = parseFloat(measurement.corrosionRate);
+          if (!isNaN(rate) && rate > 0) {
+            totalCorrosionRate += rate;
+            corrosionCount++;
+          }
+        }
+        
+        // Count findings by severity
+        if (measurement.status === 'action_required') {
+          criticalFindings++;
+        } else if (measurement.status === 'monitor') {
+          majorFindings++;
+        } else if (measurement.notes && measurement.notes.length > 0) {
+          minorFindings++;
+        }
+      }
+      
+      // Calculate percentages
+      const percentTMLsComplete = totalMeasurements > 0 
+        ? (completedMeasurements / totalMeasurements) * 100 
+        : 0;
+      
+      const avgCorrosionRate = corrosionCount > 0 
+        ? totalCorrosionRate / corrosionCount 
+        : 0;
+      
+      // Determine status
+      let overallStatus: 'GO' | 'NO-GO' | 'CONDITIONAL' = 'GO';
+      if (criticalFindings > 0 || minRemainingLife < 2) {
+        overallStatus = 'NO-GO';
+      } else if (majorFindings > 0 || minRemainingLife < 5 || percentTMLsComplete < 90) {
+        overallStatus = 'CONDITIONAL';
+      }
+      
+      // Calculate next inspection due
+      const inspectionInterval = minRemainingLife < 5 ? 1 : minRemainingLife < 10 ? 2.5 : 5;
+      const nextInspectionDue = new Date(Date.now() + inspectionInterval * 365 * 24 * 60 * 60 * 1000).toISOString();
+      
+      const reportKPI = {
+        percentTMLsComplete: Math.round(percentTMLsComplete),
+        minRemainingLife: minRemainingLife === 999 ? 10 : minRemainingLife,
+        criticalFindings,
+        majorFindings,
+        minorFindings,
+        overallStatus,
+        nextInspectionDue,
+        containmentMargin: 15,
+        tankCount: 1,
+        reportsInProgress: report.status === 'in_progress' ? 1 : 0,
+        reportsCompleted: report.status === 'completed' ? 1 : 0,
+        avgCorrosionRate,
+        complianceScore: Math.round(Math.max(0, Math.min(100, 
+          100 - (criticalFindings * 10) - (majorFindings * 3) - (minorFindings * 0.5)
+        )))
+      };
+      
+      res.json(reportKPI);
+    } catch (err) {
+      console.error("Report KPI error:", err);
+      res.status(500).json({ message: "Failed to calculate report KPIs" });
     }
   });
 
