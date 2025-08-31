@@ -170,12 +170,15 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
     }
   });
 
-  // Initialize measurement points
+  // Initialize measurement points - enforce even number per API 653
   const initializeMeasurements = (numPoints: number) => {
-    const newMeasurements: SettlementMeasurement[] = [];
-    const angleIncrement = 360 / numPoints;
+    // Ensure even number of points per API 653 requirements
+    const evenPoints = numPoints % 2 === 0 ? numPoints : numPoints + 1;
     
-    for (let i = 0; i < numPoints; i++) {
+    const newMeasurements: SettlementMeasurement[] = [];
+    const angleIncrement = 360 / evenPoints;
+    
+    for (let i = 0; i < evenPoints; i++) {
       newMeasurements.push({
         pointNumber: i + 1,
         angle: i * angleIncrement,
@@ -184,6 +187,19 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
     }
     
     setMeasurements(newMeasurements);
+  };
+  
+  // Calculate recommended number of points based on tank diameter
+  const calculateRecommendedPoints = (diameter: number): number => {
+    if (!diameter || diameter <= 0) return 10;
+    
+    // Maximum spacing of 31.42 ft between points per API 653
+    const circumference = Math.PI * diameter;
+    const minPoints = Math.ceil(circumference / 31.42);
+    
+    // Ensure even number, minimum 8 points
+    const evenPoints = minPoints % 2 === 0 ? minPoints : minPoints + 1;
+    return Math.max(8, evenPoints);
   };
 
   // Create new survey
@@ -197,15 +213,51 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
       return;
     }
 
+    // Calculate recommended points based on tank diameter if available
+    const recommendedPoints = tankParams.diameter 
+      ? calculateRecommendedPoints(parseFloat(tankParams.diameter))
+      : 10;
+    
+    const inputPoints = prompt(
+      `Enter number of measurement points\n` +
+      `(Must be EVEN number, minimum 8 per API 653)\n` +
+      `Recommended for this tank: ${recommendedPoints} points\n` +
+      `(Based on max 31.42 ft spacing between points)\n\n` +
+      `Best Practice: Start with highest point as Point #1`,
+      recommendedPoints.toString()
+    );
+    
+    if (!inputPoints) return;
+    
+    let numPoints = parseInt(inputPoints);
+    
+    // Enforce even number of points
+    if (numPoints % 2 !== 0) {
+      numPoints = numPoints + 1;
+      toast({ 
+        title: 'Adjusted to Even Number', 
+        description: `Using ${numPoints} points (API 653 requires even number)`,
+      });
+    }
+    
+    if (isNaN(numPoints) || numPoints < 8) {
+      toast({ 
+        title: 'Error', 
+        description: 'Number of points must be at least 8 (even number)',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
     try {
       const newSurvey = {
         surveyType: 'external_ringwall',
         surveyDate: new Date().toISOString().split('T')[0],
-        numberOfPoints: 8,
-        tankDiameter: null,
-        tankHeight: null,
-        shellYieldStrength: 20000,
-        elasticModulus: 29000000
+        numberOfPoints: numPoints,
+        tankDiameter: tankParams.diameter || null,
+        tankHeight: tankParams.height || null,
+        shellYieldStrength: tankParams.yieldStrength || 20000,
+        elasticModulus: tankParams.elasticModulus || 29000000
       };
       
       console.log('Creating new survey with data:', newSurvey);
@@ -215,7 +267,7 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
       // Initialize measurements immediately after creation
       if (result && result.id) {
         setSelectedSurveyId(result.id);
-        initializeMeasurements(8);
+        initializeMeasurements(numPoints);
         toast({ 
           title: 'Success', 
           description: 'Settlement survey created successfully'
@@ -427,11 +479,40 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
                     <Button 
                       size="sm" 
                       variant="outline"
-                      onClick={() => initializeMeasurements(8)}
+                      onClick={() => {
+                        const recommended = tankParams.diameter 
+                          ? calculateRecommendedPoints(parseFloat(tankParams.diameter))
+                          : 10;
+                        initializeMeasurements(recommended);
+                        toast({
+                          title: 'Points Reset',
+                          description: `Reset to ${recommended} measurement points based on tank diameter`
+                        });
+                      }}
                     >
-                      Reset to 8 Points
+                      Reset Points ({tankParams.diameter ? calculateRecommendedPoints(parseFloat(tankParams.diameter)) : 10})
                     </Button>
                   </div>
+                  
+                  {/* API 653 Requirements Alert */}
+                  {tankParams.diameter && measurements.length > 0 && (
+                    <Alert className="mb-4">
+                      <AlertDescription className="text-sm">
+                        <strong>API 653 Annex B Requirements:</strong>
+                        <ul className="mt-2 space-y-1">
+                          <li>• Point spacing: {(Math.PI * parseFloat(tankParams.diameter) / measurements.length).toFixed(2)} ft
+                            {(Math.PI * parseFloat(tankParams.diameter) / measurements.length) > 31.42 && (
+                              <span className="text-destructive font-semibold"> - Exceeds 31.42 ft maximum!</span>
+                            )}
+                          </li>
+                          <li>• Start with highest point as Point #1 for optimal cosine fit</li>
+                          <li>• Even number of points required ({measurements.length} points configured)</li>
+                          <li>• R² must be ≥ 0.90 for valid cosine fit (otherwise use B.2.2.5 evaluation)</li>
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
                   <div className="border rounded-lg overflow-hidden">
                     <Table>
                       <TableHeader>
