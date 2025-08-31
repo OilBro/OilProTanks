@@ -565,7 +565,7 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
                                 value={m.tieOffset || ''}
                                 onChange={(e) => {
                                   const value = e.target.value === '' ? undefined : parseFloat(e.target.value);
-                                  updateMeasurement(i, 'tieOffset', isNaN(value) ? undefined : value);
+                                  updateMeasurement(i, 'tieOffset', value === undefined || isNaN(value) ? undefined : value);
                                 }}
                                 disabled={!m.tieShot}
                                 className="h-8"
