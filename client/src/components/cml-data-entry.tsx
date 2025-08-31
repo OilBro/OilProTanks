@@ -15,17 +15,16 @@ interface CMLReading {
 
 interface CMLRecord {
   id: number;
-  cmlNumber: string;
+  cmlId: string;
   component: string;
   location: string;
-  tNominal: number;
-  tPrevious?: number;
-  age: number;
-  readings: CMLReading[];
-  tActual: number; // Lowest reading for calculations
-  corrosionRate?: number;
-  remainingLife?: number;
-  status: 'acceptable' | 'monitor' | 'action_required';
+  currentReading: number;
+  previousReading?: number;
+  practicalTmin: number;
+  corrosionRate: number; // mpy
+  remainingLife: number; // years
+  nextInspDate: string;
+  status: 'acceptable' | 'monitor' | 'action_required' | 'critical';
 }
 
 interface CMLDataEntryProps {
@@ -35,35 +34,88 @@ interface CMLDataEntryProps {
 }
 
 export function CMLDataEntry({ records, onRecordsChange, componentType }: CMLDataEntryProps) {
+  const [quickAddComponent, setQuickAddComponent] = useState('Shell Course 1');
+  const [quickAddLocation, setQuickAddLocation] = useState('');
+  const [autoCMLId, setAutoCMLId] = useState(`CML-${String(records.length + 1).padStart(3, '0')}`);
   const [newRecord, setNewRecord] = useState({
     component: "",
     location: "",
-    tNominal: "",
-    age: "",
+    currentReading: "",
+    previousReading: "",
+    practicalTmin: "0.100",
   });
   
   const [editingCML, setEditingCML] = useState<number | null>(null);
   const [selectedRecords, setSelectedRecords] = useState<number[]>([]);
 
-  const maxReadings = componentType === 'nozzle' ? 4 : 6;
+  // Component options for quick add
+  const COMPONENT_OPTIONS = [
+    'Shell Course 1',
+    'Shell Course 2',
+    'Shell Course 3',
+    'Shell Course 4',
+    'Shell Course 5',
+    'Shell Course 6',
+    'Bottom Plate',
+    'Annular Ring',
+    'Roof',
+    'Nozzle N1',
+    'Nozzle N2',
+    'Manway',
+  ];
 
   const addRecord = () => {
-    if (!newRecord.component || !newRecord.location || !newRecord.tNominal) return;
+    const component = quickAddComponent;
+    const location = quickAddLocation || 'TBD';
+    const currentReading = parseFloat(newRecord.currentReading) || 0;
+    const previousReading = parseFloat(newRecord.previousReading) || currentReading;
+    const practicalTmin = parseFloat(newRecord.practicalTmin) || 0.100;
+    
+    // Calculate corrosion rate and remaining life
+    const yearsSinceLastInspection = 5; // Default assumption
+    const corrosionRate = previousReading > 0 ? 
+      ((previousReading - currentReading) / yearsSinceLastInspection) * 1000 : 0; // Convert to mpy
+    
+    const remainingLife = corrosionRate > 0 ? 
+      ((currentReading - practicalTmin) * 1000) / corrosionRate : 999;
+    
+    // Calculate next inspection date
+    const nextInspYears = Math.min(remainingLife / 2, 10); // Half remaining life or 10 years max
+    const nextDate = new Date();
+    nextDate.setFullYear(nextDate.getFullYear() + Math.floor(nextInspYears));
+    
+    // Determine status
+    let status: CMLRecord['status'] = 'acceptable';
+    if (remainingLife < 2) status = 'critical';
+    else if (remainingLife < 5) status = 'action_required';
+    else if (remainingLife < 10) status = 'monitor';
 
     const record: CMLRecord = {
       id: Date.now(),
-      cmlNumber: `CML-${String(records.length + 1).padStart(3, '0')}`,
-      component: newRecord.component,
-      location: newRecord.location,
-      tNominal: parseFloat(newRecord.tNominal),
-      age: parseInt(newRecord.age) || 10,
-      readings: [],
-      tActual: 0,
-      status: 'acceptable'
+      cmlId: autoCMLId,
+      component,
+      location,
+      currentReading,
+      previousReading,
+      practicalTmin,
+      corrosionRate,
+      remainingLife,
+      nextInspDate: nextDate.toISOString().split('T')[0],
+      status
     };
 
     onRecordsChange([...records, record]);
-    setNewRecord({ component: "", location: "", tNominal: "", age: "" });
+    
+    // Reset and update auto CML ID
+    setQuickAddLocation('');
+    setAutoCMLId(`CML-${String(records.length + 2).padStart(3, '0')}`);
+    setNewRecord({ 
+      component: "", 
+      location: "", 
+      currentReading: "", 
+      previousReading: "",
+      practicalTmin: "0.100" 
+    });
   };
 
   const duplicateRecord = () => {
@@ -73,29 +125,40 @@ export function CMLDataEntry({ records, onRecordsChange, componentType }: CMLDat
     const duplicatedRecords = recordsToDuplicate.map(record => ({
       ...record,
       id: Date.now() + Math.random(),
-      cmlNumber: `CML-${String(records.length + recordsToDuplicate.indexOf(record) + 1).padStart(3, '0')}`,
-      readings: [] // Clear readings for new duplicate
+      cmlId: `CML-${String(records.length + recordsToDuplicate.indexOf(record) + 1).padStart(3, '0')}`,
+      currentReading: 0, // Reset readings for new duplicate
+      previousReading: undefined
     }));
 
     onRecordsChange([...records, ...duplicatedRecords]);
     setSelectedRecords([]);
   };
 
-  const updateCMLReadings = (cmlId: number, readings: CMLReading[]) => {
+  const updateCMLRecord = (cmlId: number, updates: Partial<CMLRecord>) => {
     const updatedRecords = records.map(record => {
       if (record.id === cmlId) {
-        const tActual = readings.length > 0 ? Math.min(...readings.map(r => r.reading)) : 0;
-        const corrosionRate = record.age > 0 ? (record.tNominal - tActual) / record.age : 0;
-        const remainingLife = corrosionRate > 0 ? (tActual - 0.1) / corrosionRate : 999; // Assuming 0.1" minimum
+        const updated = { ...record, ...updates };
         
-        return {
-          ...record,
-          readings,
-          tActual,
-          corrosionRate,
-          remainingLife,
-          status: remainingLife < 5 ? 'action_required' : remainingLife < 10 ? 'monitor' : 'acceptable'
-        };
+        // Recalculate if readings changed
+        if (updates.currentReading !== undefined || updates.previousReading !== undefined) {
+          const yearsSinceLastInspection = 5;
+          const corrosionRate = updated.previousReading && updated.previousReading > 0 ? 
+            ((updated.previousReading - updated.currentReading) / yearsSinceLastInspection) * 1000 : 0;
+          
+          const remainingLife = corrosionRate > 0 ? 
+            ((updated.currentReading - updated.practicalTmin) * 1000) / corrosionRate : 999;
+          
+          let status: CMLRecord['status'] = 'acceptable';
+          if (remainingLife < 2) status = 'critical';
+          else if (remainingLife < 5) status = 'action_required';
+          else if (remainingLife < 10) status = 'monitor';
+          
+          updated.corrosionRate = corrosionRate;
+          updated.remainingLife = remainingLife;
+          updated.status = status;
+        }
+        
+        return updated;
       }
       return record;
     });
@@ -104,16 +167,16 @@ export function CMLDataEntry({ records, onRecordsChange, componentType }: CMLDat
 
   const exportCMLData = () => {
     const csvData = records.map(record => ({
-      CML: record.cmlNumber,
+      'CML ID': record.cmlId,
       Component: record.component,
       Location: record.location,
-      'T Nominal': record.tNominal,
-      Age: record.age,
-      'T Actual': record.tActual,
-      'Corrosion Rate': record.corrosionRate?.toFixed(4) || '',
-      'Remaining Life': record.remainingLife?.toFixed(1) || '',
-      Status: record.status,
-      Readings: record.readings.map(r => r.reading).join(';')
+      'Current Reading': record.currentReading,
+      'Previous Reading': record.previousReading || '',
+      'Practical T-min': record.practicalTmin,
+      'Corrosion Rate (mpy)': record.corrosionRate.toFixed(1),
+      'Remaining Life (yrs)': record.remainingLife.toFixed(1),
+      'Next Inspection': record.nextInspDate,
+      Status: record.status
     }));
 
     const csv = [
@@ -154,61 +217,88 @@ export function CMLDataEntry({ records, onRecordsChange, componentType }: CMLDat
           </div>
         </CardTitle>
         <p className="text-sm text-gray-600">
-          Corrosion Monitoring Location records with thickness readings (up to {maxReadings} points per CML)
+          Component Corrosion Monitoring Locations with thickness tracking and remaining life analysis
         </p>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Add New CML Record */}
-        <div className="border rounded-lg p-4 bg-gray-50">
-          <h4 className="font-medium mb-4">Add New CML Record</h4>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Quick Add CML */}
+        <div className="border rounded-lg p-4 bg-blue-50">
+          <h4 className="font-semibold mb-3 text-blue-900">Quick Add CML</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <Label htmlFor="component">Component</Label>
+              <Label htmlFor="component" className="text-sm">Component:</Label>
+              <Select value={quickAddComponent} onValueChange={setQuickAddComponent}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COMPONENT_OPTIONS.map(opt => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="location" className="text-sm">Location:</Label>
               <Input
-                placeholder="Shell Crs 1, Bottom Plate"
-                value={newRecord.component}
-                onChange={(e) => setNewRecord(prev => ({ ...prev, component: e.target.value }))}
+                placeholder="e.g., North side, 90°"
+                value={quickAddLocation}
+                onChange={(e) => setQuickAddLocation(e.target.value)}
               />
             </div>
             <div>
-              <Label htmlFor="location">Location</Label>
+              <Label htmlFor="autoCMLId" className="text-sm">Auto CML ID:</Label>
               <Input
-                placeholder="Chime Q1-Q2, North Side"
-                value={newRecord.location}
-                onChange={(e) => setNewRecord(prev => ({ ...prev, location: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="tNominal">T Nominal (in)</Label>
-              <Input
-                type="number"
-                step="0.001"
-                placeholder="0.500"
-                value={newRecord.tNominal}
-                onChange={(e) => setNewRecord(prev => ({ ...prev, tNominal: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="age">Age/Prev Insp (years)</Label>
-              <Input
-                type="number"
-                placeholder="10"
-                value={newRecord.age}
-                onChange={(e) => setNewRecord(prev => ({ ...prev, age: e.target.value }))}
+                value={autoCMLId}
+                onChange={(e) => setAutoCMLId(e.target.value)}
+                className="font-mono bg-white"
               />
             </div>
           </div>
-          <div className="flex gap-2 mt-4">
-            <Button type="button" onClick={addRecord}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add CML Record
-            </Button>
-            {selectedRecords.length > 0 && (
-              <Button type="button" variant="outline" onClick={duplicateRecord}>
-                <Copy className="w-4 h-4 mr-2" />
-                Duplicate Selected ({selectedRecords.length})
-              </Button>
-            )}
+          <Button 
+            type="button" 
+            onClick={addRecord} 
+            className="mt-3"
+            disabled={!quickAddComponent}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            Add CML Location
+          </Button>
+        </div>
+
+        {/* CML Data Entry Form */}
+        <div className="border rounded-lg p-4">
+          <h4 className="font-medium mb-4">CML Measurement Data</h4>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div>
+              <Label htmlFor="currentReading" className="text-sm">Current Reading (in)</Label>
+              <Input
+                type="number"
+                step="0.001"
+                placeholder="0.245"
+                value={newRecord.currentReading}
+                onChange={(e) => setNewRecord(prev => ({ ...prev, currentReading: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="previousReading" className="text-sm">Previous Reading (in)</Label>
+              <Input
+                type="number"
+                step="0.001"
+                placeholder="0.250"
+                value={newRecord.previousReading}
+                onChange={(e) => setNewRecord(prev => ({ ...prev, previousReading: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="practicalTmin" className="text-sm">Practical t-min (in)</Label>
+              <Input
+                type="number"
+                step="0.001"
+                value={newRecord.practicalTmin}
+                onChange={(e) => setNewRecord(prev => ({ ...prev, practicalTmin: e.target.value }))}
+              />
+            </div>
           </div>
         </div>
 
@@ -235,10 +325,12 @@ export function CMLDataEntry({ records, onRecordsChange, componentType }: CMLDat
                     <th className="p-2 text-left border-b">CML</th>
                     <th className="p-2 text-left border-b">Component</th>
                     <th className="p-2 text-left border-b">Location</th>
-                    <th className="p-2 text-left border-b">T Nom</th>
-                    <th className="p-2 text-left border-b">T Act</th>
-                    <th className="p-2 text-left border-b">CR (mils/yr)</th>
+                    <th className="p-2 text-left border-b">Current (in)</th>
+                    <th className="p-2 text-left border-b">Previous (in)</th>
+                    <th className="p-2 text-left border-b">T-min (in)</th>
+                    <th className="p-2 text-left border-b">CR (mpy)</th>
                     <th className="p-2 text-left border-b">RL (yrs)</th>
+                    <th className="p-2 text-left border-b">Next Insp</th>
                     <th className="p-2 text-left border-b">Status</th>
                     <th className="p-2 text-left border-b">Actions</th>
                   </tr>
@@ -259,18 +351,19 @@ export function CMLDataEntry({ records, onRecordsChange, componentType }: CMLDat
                           }}
                         />
                       </td>
-                      <td className="p-2 font-mono text-sm">{record.cmlNumber}</td>
+                      <td className="p-2 font-mono text-sm">{record.cmlId}</td>
                       <td className="p-2">{record.component}</td>
                       <td className="p-2">{record.location}</td>
-                      <td className="p-2">{record.tNominal.toFixed(3)}"</td>
+                      <td className="p-2">{record.currentReading.toFixed(3)}</td>
                       <td className="p-2">
-                        {record.tActual > 0 ? record.tActual.toFixed(3) + '"' : '-'}
+                        {record.previousReading ? record.previousReading.toFixed(3) : '-'}
                       </td>
+                      <td className="p-2">{record.practicalTmin.toFixed(3)}</td>
+                      <td className="p-2">{record.corrosionRate.toFixed(1)}</td>
                       <td className="p-2">
-                        {record.corrosionRate ? (record.corrosionRate * 1000).toFixed(1) : '-'}
+                        {record.remainingLife > 100 ? '> 100' : record.remainingLife.toFixed(1)}
                       </td>
-                      <td className="p-2">
-                        {record.remainingLife ? record.remainingLife.toFixed(1) : '-'}
+                      <td className="p-2 text-sm">{record.nextInspDate}
                       </td>
                       <td className="p-2">
                         <Badge variant={getStatusColor(record.status)}>
@@ -305,83 +398,110 @@ export function CMLDataEntry({ records, onRecordsChange, componentType }: CMLDat
           </div>
         )}
 
-        {/* CML Data Entry Modal */}
-        {editingCML && (
-          <CMLReadingsModal
-            record={records.find(r => r.id === editingCML)!}
-            maxReadings={maxReadings}
-            onSave={(readings) => {
-              updateCMLReadings(editingCML, readings);
-              setEditingCML(null);
-            }}
-            onClose={() => setEditingCML(null)}
-          />
+        {/* CML Summary Statistics */}
+        {records.length > 0 && (
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h4 className="font-medium mb-2">CML Summary Statistics</h4>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600">Total CML Locations:</span>
+                <span className="ml-2 font-semibold">{records.length}</span>
+              </div>
+              <div>
+                <span className="text-gray-600">Critical Locations:</span>
+                <span className="ml-2 font-semibold text-red-600">
+                  {records.filter(r => r.status === 'critical').length}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-600">Warning Locations:</span>
+                <span className="ml-2 font-semibold text-orange-600">
+                  {records.filter(r => r.status === 'action_required' || r.status === 'monitor').length}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-600">Min Remaining Life:</span>
+                <span className="ml-2 font-semibold">
+                  {records.length > 0 ? Math.min(...records.map(r => r.remainingLife)).toFixed(1) : 0} years
+                </span>
+              </div>
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>
   );
 }
 
-interface CMLReadingsModalProps {
+// Quick edit modal for updating CML readings
+interface CMLEditModalProps {
   record: CMLRecord;
-  maxReadings: number;
-  onSave: (readings: CMLReading[]) => void;
+  onSave: (updates: Partial<CMLRecord>) => void;
   onClose: () => void;
 }
 
-function CMLReadingsModal({ record, maxReadings, onSave, onClose }: CMLReadingsModalProps) {
-  const [readings, setReadings] = useState<CMLReading[]>(
-    record.readings.length > 0 
-      ? record.readings 
-      : Array.from({ length: maxReadings }, (_, i) => ({ point: i + 1, reading: 0 }))
-  );
-
-  const updateReading = (index: number, reading: number) => {
-    const newReadings = [...readings];
-    newReadings[index] = { ...newReadings[index], reading };
-    setReadings(newReadings);
-  };
+function CMLEditModal({ record, onSave, onClose }: CMLEditModalProps) {
+  const [currentReading, setCurrentReading] = useState(record.currentReading.toString());
+  const [previousReading, setPreviousReading] = useState(record.previousReading?.toString() || '');
+  const [practicalTmin, setPracticalTmin] = useState(record.practicalTmin.toString());
 
   const handleSave = () => {
-    const validReadings = readings.filter(r => r.reading > 0);
-    onSave(validReadings);
+    onSave({
+      currentReading: parseFloat(currentReading) || record.currentReading,
+      previousReading: previousReading ? parseFloat(previousReading) : undefined,
+      practicalTmin: parseFloat(practicalTmin) || record.practicalTmin
+    });
+    onClose();
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">
-            CML Data Entry: {record.cmlNumber}
+            Edit CML: {record.cmlId}
           </h3>
           <Button variant="ghost" onClick={onClose}>×</Button>
         </div>
         
         <div className="mb-4 p-3 bg-gray-50 rounded">
           <p className="text-sm">
-            <strong>Component:</strong> {record.component} | 
-            <strong> Location:</strong> {record.location} | 
-            <strong> T Nominal:</strong> {record.tNominal}" | 
-            <strong> Age:</strong> {record.age} years
+            <strong>Component:</strong> {record.component}<br />
+            <strong>Location:</strong> {record.location}
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-          {readings.map((reading, index) => (
-            <div key={index}>
-              <Label htmlFor={`reading-${index}`}>
-                Reading Point {reading.point} (in)
-              </Label>
-              <Input
-                id={`reading-${index}`}
-                type="number"
-                step="0.001"
-                placeholder="0.000"
-                value={reading.reading || ''}
-                onChange={(e) => updateReading(index, parseFloat(e.target.value) || 0)}
-              />
-            </div>
-          ))}
+        <div className="space-y-4 mb-6">
+          <div>
+            <Label htmlFor="currentReading">Current Reading (in)</Label>
+            <Input
+              id="currentReading"
+              type="number"
+              step="0.001"
+              value={currentReading}
+              onChange={(e) => setCurrentReading(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="previousReading">Previous Reading (in)</Label>
+            <Input
+              id="previousReading"
+              type="number"
+              step="0.001"
+              value={previousReading}
+              onChange={(e) => setPreviousReading(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="practicalTmin">Practical T-min (in)</Label>
+            <Input
+              id="practicalTmin"
+              type="number"
+              step="0.001"
+              value={practicalTmin}
+              onChange={(e) => setPracticalTmin(e.target.value)}
+            />
+          </div>
         </div>
 
         <div className="flex justify-end gap-2">
@@ -389,7 +509,7 @@ function CMLReadingsModal({ record, maxReadings, onSave, onClose }: CMLReadingsM
             Cancel
           </Button>
           <Button onClick={handleSave}>
-            Save Readings
+            Save Changes
           </Button>
         </div>
       </div>

@@ -6,20 +6,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calculator, AlertTriangle, Info } from "lucide-react";
 
 interface ShellCourse {
   course: number;
   height: number; // feet
-  tNominal: number; // inches
-  tActual: number; // inches
+  tOriginal: number; // inches - original thickness
+  tActual: number; // inches - actual measured thickness
+  tRequired: number; // inches - calculated required thickness
+  tMin: number; // inches - minimum allowable thickness
   material: string;
   stressValue: number; // psi
   jointEfficiency: number;
-  altTmin?: number; // Override calculated tmin
-  tmin: number; // calculated minimum thickness
+  corrosionRate: number; // mpy (mils per year)
   remainingLife: number; // years
-  status: 'acceptable' | 'monitor' | 'action_required';
+  status: 'acceptable' | 'monitor' | 'action_required' | 'critical';
 }
 
 interface ShellCalculationData {
@@ -37,15 +39,17 @@ interface ShellCalculationsProps {
   onDataChange: (data: ShellCalculationData) => void;
 }
 
-// API 650 Material specifications
+// API 653 Material specifications with allowable stress values
 const MATERIALS = [
-  { value: "A36", label: "A36", stress: 16000 },
-  { value: "A283C", label: "A283 Grade C", stress: 16000 },
-  { value: "A573-58", label: "A573 Grade 58", stress: 20000 },
-  { value: "A573-65", label: "A573 Grade 65", stress: 22500 },
-  { value: "A516-60", label: "A516 Grade 60", stress: 20000 },
-  { value: "A516-65", label: "A516 Grade 65", stress: 22500 },
-  { value: "A516-70", label: "A516 Grade 70", stress: 24000 }
+  { value: "A36", label: "A36", stress: 26700 },
+  { value: "A283C", label: "A283 Grade C", stress: 24000 },
+  { value: "A285C", label: "A285 Grade C", stress: 24000 },
+  { value: "A516-60", label: "A516 Grade 60", stress: 26700 },
+  { value: "A516-65", label: "A516 Grade 65", stress: 28200 },
+  { value: "A516-70", label: "A516 Grade 70", stress: 30000 },
+  { value: "A573-58", label: "A573 Grade 58", stress: 26700 },
+  { value: "A573-65", label: "A573 Grade 65", stress: 28200 },
+  { value: "A573-70", label: "A573 Grade 70", stress: 30000 }
 ];
 
 // Joint efficiency values per API 650 Table 4-2
@@ -59,26 +63,42 @@ export function ShellCalculations({ data, onDataChange }: ShellCalculationsProps
   const [calculations, setCalculations] = useState<any>({});
 
   // Calculate shell stress and minimum thickness per API 653
-  const calculateShellRequirements = (course: ShellCourse, fillHeight: number) => {
-    const H = fillHeight - data.courses.slice(0, course.course - 1).reduce((sum, c) => sum + c.height, 0);
-    const hydrostaticPressure = 0.433 * data.specificGravity * H; // psi per foot of height
-    const designPressure = hydrostaticPressure + 2.5; // Add atmospheric pressure
+  const calculateShellRequirements = (course: ShellCourse, courseIndex: number) => {
+    // Calculate height from bottom of this course
+    const bottomOfCourse = data.courses.slice(0, courseIndex).reduce((sum, c) => sum + c.height, 0);
+    const H = Math.max(data.fillHeight - bottomOfCourse - 1, 0); // API 653 uses (H-1)
     
-    // Shell thickness calculation per API 650
-    const requiredThickness = (designPressure * data.diameter * 12) / (2 * course.stressValue * course.jointEfficiency) + data.corrosionAllowance;
-    const tmin = Math.max(requiredThickness, 0.100); // Minimum 0.100" per API 653
+    // API 653 Formula: t_required = 2.6 * D * (H - 1) * G / (S * E)
+    const tRequired = (2.6 * data.diameter * H * data.specificGravity) / 
+                      (course.stressValue * course.jointEfficiency);
+    
+    // Minimum thickness per API 653
+    const tMin = Math.max(tRequired, 0.100); // Minimum 0.100" per API 653
+    
+    // Corrosion rate calculation
+    const thicknessLoss = course.tOriginal - course.tActual;
+    const corrosionRate = data.age > 0 ? (thicknessLoss / data.age) * 1000 : 0; // mpy
     
     // Remaining life calculation
-    const corrosionRate = (course.tNominal - course.tActual) / data.age;
-    const remainingLife = corrosionRate > 0 ? (course.tActual - (course.altTmin || tmin)) / corrosionRate : 999;
+    const remainingCorrosionAllowance = course.tActual - tMin;
+    const remainingLife = corrosionRate > 0 ? (remainingCorrosionAllowance * 1000) / corrosionRate : 999;
+    
+    // Determine status based on remaining life
+    let status: ShellCourse['status'] = 'acceptable';
+    if (remainingLife < 2) {
+      status = 'critical';
+    } else if (remainingLife < 5) {
+      status = 'action_required';
+    } else if (remainingLife < 10) {
+      status = 'monitor';
+    }
     
     return {
-      designPressure: designPressure.toFixed(2),
-      requiredThickness: requiredThickness.toFixed(3),
-      tmin: tmin.toFixed(3),
-      corrosionRate: (corrosionRate * 1000).toFixed(1), // mils per year
-      remainingLife: remainingLife.toFixed(1),
-      status: remainingLife < 5 ? 'action_required' : remainingLife < 10 ? 'monitor' : 'acceptable'
+      tRequired: tRequired,
+      tMin: tMin,
+      corrosionRate: corrosionRate,
+      remainingLife: Math.max(remainingLife, 0),
+      status: status
     };
   };
 
@@ -87,10 +107,12 @@ export function ShellCalculations({ data, onDataChange }: ShellCalculationsProps
     newCourses[index] = { ...newCourses[index], ...updates };
     
     // Recalculate when values change
-    const calc = calculateShellRequirements(newCourses[index], data.fillHeight);
-    newCourses[index].tmin = parseFloat(calc.tmin);
-    newCourses[index].remainingLife = parseFloat(calc.remainingLife);
-    newCourses[index].status = calc.status as any;
+    const calc = calculateShellRequirements(newCourses[index], index);
+    newCourses[index].tRequired = calc.tRequired;
+    newCourses[index].tMin = calc.tMin;
+    newCourses[index].corrosionRate = calc.corrosionRate;
+    newCourses[index].remainingLife = calc.remainingLife;
+    newCourses[index].status = calc.status;
     
     onDataChange({ ...data, courses: newCourses });
   };
@@ -99,12 +121,14 @@ export function ShellCalculations({ data, onDataChange }: ShellCalculationsProps
     const newCourse: ShellCourse = {
       course: data.courses.length + 1,
       height: 8,
-      tNominal: 0.5,
-      tActual: 0.45,
+      tOriginal: 0.25,
+      tActual: 0.241,
+      tRequired: 0,
+      tMin: 0.1,
       material: "A36",
-      stressValue: 16000,
-      jointEfficiency: 1.0,
-      tmin: 0.1,
+      stressValue: 26700,
+      jointEfficiency: 0.85,
+      corrosionRate: 0,
       remainingLife: 999,
       status: 'acceptable'
     };
@@ -127,13 +151,15 @@ export function ShellCalculations({ data, onDataChange }: ShellCalculationsProps
 
   useEffect(() => {
     // Recalculate all courses when tank parameters change
-    const updatedCourses = data.courses.map(course => {
-      const calc = calculateShellRequirements(course, data.fillHeight);
+    const updatedCourses = data.courses.map((course, index) => {
+      const calc = calculateShellRequirements(course, index);
       return {
         ...course,
-        tmin: parseFloat(calc.tmin),
-        remainingLife: parseFloat(calc.remainingLife),
-        status: calc.status as any
+        tRequired: calc.tRequired,
+        tMin: calc.tMin,
+        corrosionRate: calc.corrosionRate,
+        remainingLife: calc.remainingLife,
+        status: calc.status
       };
     });
     
@@ -215,7 +241,6 @@ export function ShellCalculations({ data, onDataChange }: ShellCalculationsProps
           </div>
 
           {data.courses.map((course, index) => {
-            const calc = calculateShellRequirements(course, data.fillHeight);
             
             return (
               <div key={course.course} className="border rounded-lg p-4 space-y-4">
@@ -236,12 +261,12 @@ export function ShellCalculations({ data, onDataChange }: ShellCalculationsProps
                     />
                   </div>
                   <div>
-                    <Label>T Nominal (in)</Label>
+                    <Label>T Original (in)</Label>
                     <Input
                       type="number"
                       step="0.001"
-                      value={course.tNominal}
-                      onChange={(e) => updateCourse(index, { tNominal: parseFloat(e.target.value) || 0 })}
+                      value={course.tOriginal}
+                      onChange={(e) => updateCourse(index, { tOriginal: parseFloat(e.target.value) || 0 })}
                     />
                   </div>
                   <div>
@@ -307,15 +332,13 @@ export function ShellCalculations({ data, onDataChange }: ShellCalculationsProps
                     </Select>
                   </div>
                   <div>
-                    <Label>Alt Tmin (override)</Label>
+                    <Label>T Min (in)</Label>
                     <Input
                       type="number"
                       step="0.001"
-                      placeholder="Optional override"
-                      value={course.altTmin || ''}
-                      onChange={(e) => updateCourse(index, { 
-                        altTmin: e.target.value ? parseFloat(e.target.value) : undefined 
-                      })}
+                      value={course.tMin.toFixed(3)}
+                      readOnly
+                      className="bg-gray-50"
                     />
                   </div>
                   <div className="flex flex-col justify-end">
@@ -335,37 +358,31 @@ export function ShellCalculations({ data, onDataChange }: ShellCalculationsProps
                 {/* Calculation Results */}
                 <div className="bg-gray-50 rounded p-3 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">Design Pressure:</span><br />
-                    {calc.designPressure} psi
+                    <span className="font-medium">T Required:</span><br />
+                    {course.tRequired.toFixed(3)}"
                   </div>
                   <div>
-                    <span className="font-medium">Required Thickness:</span><br />
-                    {calc.requiredThickness}"
-                  </div>
-                  <div>
-                    <span className="font-medium">Tmin:</span><br />
-                    {calc.tmin}"
+                    <span className="font-medium">T Min:</span><br />
+                    {course.tMin.toFixed(3)}"
                   </div>
                   <div>
                     <span className="font-medium">Corrosion Rate:</span><br />
-                    {calc.corrosionRate} mils/yr
+                    {course.corrosionRate.toFixed(1)} mpy
+                  </div>
+                  <div>
+                    <span className="font-medium">Remaining Life:</span><br />
+                    {course.remainingLife > 100 ? '> 100' : course.remainingLife.toFixed(1)} years
                   </div>
                 </div>
                 
-                <div className="bg-gray-50 rounded p-3 flex justify-between items-center">
-                  <div>
-                    <span className="font-medium">Remaining Life: </span>
-                    <span className={`font-bold ${course.remainingLife < 10 ? 'text-red-600' : 'text-green-600'}`}>
-                      {calc.remainingLife} years
+                {course.remainingLife < 10 && (
+                  <div className="bg-red-50 rounded p-3 flex items-center gap-2 text-red-600">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="text-sm font-medium">
+                      Attention Required - Remaining Life: {course.remainingLife.toFixed(1)} years
                     </span>
                   </div>
-                  {course.remainingLife < 10 && (
-                    <div className="flex items-center gap-1 text-amber-600">
-                      <AlertTriangle className="w-4 h-4" />
-                      <span className="text-sm">Attention Required</span>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             );
           })}
