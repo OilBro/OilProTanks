@@ -39,6 +39,8 @@ export const inspectionReports = pgTable("inspection_reports", {
   surveyMethod: text("survey_method"),
   inspectorCertification: text("inspector_certification"),
   inspectorExperience: text("inspector_experience"),
+  findings: text("findings"),
+  recommendations: text("recommendations"),
 });
 
 export const thicknessMeasurements = pgTable("thickness_measurements", {

@@ -679,6 +679,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const reportId = existingMeasurements[0].reportId;
+      if (!reportId) {
+        return res.status(400).json({ message: "Measurement has no associated report" });
+      }
       const report = await storage.getInspectionReport(reportId);
       
       // Perform calculations if thickness values are being updated
@@ -1251,12 +1254,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
           
-          // Count findings by severity
-          if (measurement.status === 'action_required') {
+          // Count findings by severity - Fixed mapping
+          // 'critical' status or remaining life < 1 year = critical finding
+          // 'action_required' status or remaining life < 2 years = major finding  
+          // 'monitor' status or remaining life < 5 years = minor finding
+          const life = measurement.remainingLife ? parseFloat(measurement.remainingLife) : 999;
+          
+          if (measurement.status === 'critical' || life < 1) {
             criticalFindings++;
-          } else if (measurement.status === 'monitor') {
+          } else if (measurement.status === 'action_required' || life < 2) {
             majorFindings++;
-          } else if (measurement.notes && measurement.notes.length > 0) {
+          } else if (measurement.status === 'monitor' || life < 5) {
             minorFindings++;
           }
         }
@@ -1272,8 +1280,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : 0;
       
       // Determine overall status based on findings
+      // Fixed: Only NO-GO if actual critical findings (not just low remaining life)
       let overallStatus: 'GO' | 'NO-GO' | 'CONDITIONAL' = 'GO';
-      if (criticalFindings > 0 || minRemainingLife < 2) {
+      if (criticalFindings > 0) {
         overallStatus = 'NO-GO';
       } else if (majorFindings > 0 || minRemainingLife < 5 || percentTMLsComplete < 90) {
         overallStatus = 'CONDITIONAL';
@@ -1357,12 +1366,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        // Count findings by severity
-        if (measurement.status === 'action_required') {
+        // Count findings by severity - Fixed mapping
+        // 'critical' status or remaining life < 1 year = critical finding
+        // 'action_required' status or remaining life < 2 years = major finding  
+        // 'monitor' status or remaining life < 5 years = minor finding
+        const life = measurement.remainingLife ? parseFloat(measurement.remainingLife) : 999;
+        
+        if (measurement.status === 'critical' || life < 1) {
           criticalFindings++;
-        } else if (measurement.status === 'monitor') {
+        } else if (measurement.status === 'action_required' || life < 2) {
           majorFindings++;
-        } else if (measurement.notes && measurement.notes.length > 0) {
+        } else if (measurement.status === 'monitor' || life < 5) {
           minorFindings++;
         }
       }
@@ -1376,9 +1390,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? totalCorrosionRate / corrosionCount 
         : 0;
       
-      // Determine status
+      // Determine status - Fixed: Only NO-GO if actual critical findings
       let overallStatus: 'GO' | 'NO-GO' | 'CONDITIONAL' = 'GO';
-      if (criticalFindings > 0 || minRemainingLife < 2) {
+      if (criticalFindings > 0) {
         overallStatus = 'NO-GO';
       } else if (majorFindings > 0 || minRemainingLife < 5 || percentTMLsComplete < 90) {
         overallStatus = 'CONDITIONAL';

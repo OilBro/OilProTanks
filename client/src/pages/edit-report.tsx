@@ -40,7 +40,9 @@ export function EditReport() {
       height: null,
       originalThickness: null,
       yearsSinceLastInspection: 1,
-      status: "draft"
+      status: "draft",
+      findings: "",
+      recommendations: ""
     }
   });
 
@@ -86,7 +88,9 @@ export function EditReport() {
         height: report.height,
         originalThickness: report.originalThickness,
         yearsSinceLastInspection: report.yearsSinceLastInspection || 1,
-        status: report.status
+        status: report.status,
+        findings: report.findings || '',
+        recommendations: report.recommendations || ''
       });
     }
   }, [report, form]);
@@ -272,6 +276,28 @@ export function EditReport() {
                   type="number"
                   step="0.001"
                   {...form.register('originalThickness', { valueAsNumber: true })}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="findings">Findings</Label>
+                <Textarea
+                  id="findings"
+                  {...form.register('findings')}
+                  placeholder="Enter inspection findings..."
+                  className="min-h-[100px]"
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="recommendations">Recommendations</Label>
+                <Textarea
+                  id="recommendations"
+                  {...form.register('recommendations')}
+                  placeholder="Enter recommendations..."
+                  className="min-h-[100px]"
                 />
               </div>
             </div>
