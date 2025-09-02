@@ -9,9 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Calculator, Upload, Download, AlertTriangle, CheckCircle2, Eye } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 
 interface SettlementSurveyProps {
   reportId: number;
@@ -58,6 +60,7 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
     elasticModulus: '29000000'
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showPlotDialog, setShowPlotDialog] = useState(false);
 
   // Check if reportId is valid
   const isValidReportId = reportId && !isNaN(reportId) && reportId > 0;
@@ -369,6 +372,7 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
   const selectedSurvey = surveys.find((s: SettlementSurvey) => s.id === selectedSurveyId);
 
   return (
+    <>
     <Card className="mt-6">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -700,7 +704,11 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
                     <Download className="h-4 w-4" />
                     Export CSV Data
                   </Button>
-                  <Button variant="outline" className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center gap-2"
+                    onClick={() => setShowPlotDialog(true)}
+                  >
                     <Eye className="h-4 w-4" />
                     View Settlement Plot
                   </Button>
@@ -758,5 +766,99 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
         </Tabs>
       </CardContent>
     </Card>
+
+    {/* Settlement Plot Dialog */}
+    {showPlotDialog && (
+      <Dialog open={showPlotDialog} onOpenChange={setShowPlotDialog}>
+      <DialogContent className="max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>Settlement Analysis Plot</DialogTitle>
+        </DialogHeader>
+        {selectedSurvey && measurements.length > 0 && (
+          <div className="space-y-4">
+            <div className="h-96">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={measurements.map((m, idx) => ({
+                    angle: m.angle,
+                    measured: m.normalizedElevation || 0,
+                    cosineFit: m.cosineFitElevation || 0,
+                    outOfPlane: m.outOfPlane || 0,
+                    pointNumber: m.pointNumber
+                  }))}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="angle" 
+                    label={{ value: 'Angle (degrees)', position: 'insideBottom', offset: -10 }}
+                    domain={[0, 360]}
+                    ticks={[0, 45, 90, 135, 180, 225, 270, 315, 360]}
+                  />
+                  <YAxis 
+                    label={{ value: 'Elevation (inches)', angle: -90, position: 'insideLeft' }}
+                    domain={['dataMin - 0.5', 'dataMax + 0.5']}
+                  />
+                  <Tooltip 
+                    formatter={(value: number) => value.toFixed(3)}
+                    labelFormatter={(label) => `Angle: ${label}°`}
+                  />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="measured" 
+                    stroke="#2563eb" 
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                    name="Measured Elevation"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="cosineFit" 
+                    stroke="#dc2626" 
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                    name="Cosine Fit"
+                  />
+                  <ReferenceLine y={0} stroke="#6b7280" strokeDasharray="3 3" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="text-center">
+                <p className="text-muted-foreground">R² Value</p>
+                <p className="text-lg font-semibold">
+                  {selectedSurvey.rSquared ? parseFloat(selectedSurvey.rSquared).toFixed(4) : '-'}
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-muted-foreground">Max Out-of-Plane</p>
+                <p className="text-lg font-semibold">
+                  {selectedSurvey.maxOutOfPlane ? `${parseFloat(selectedSurvey.maxOutOfPlane).toFixed(3)} in` : '-'}
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-muted-foreground">Acceptance</p>
+                <div className="flex justify-center mt-1">
+                  {selectedSurvey.settlementAcceptance && (
+                    <Badge variant={
+                      selectedSurvey.settlementAcceptance === 'ACCEPTABLE' ? 'default' :
+                      selectedSurvey.settlementAcceptance === 'MONITOR' ? 'secondary' :
+                      'destructive'
+                    }>
+                      {selectedSurvey.settlementAcceptance}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+    )}
+    </>
   );
 }
