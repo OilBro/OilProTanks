@@ -127,16 +127,39 @@ export function ReportExport({ reportId }: ReportExportProps) {
       // Process settlement data
       const latestSettlement = settlementSurveys[0];
       let settlementData = undefined;
-      if (latestSettlement) {
-        settlementData = {
-          measurements: [],
-          amplitude: parseFloat(latestSettlement.cosineAmplitude) || 0,
-          phase: parseFloat(latestSettlement.cosinePhase) || 0,
-          rSquared: parseFloat(latestSettlement.rSquared) || 0,
-          maxSettlement: parseFloat(latestSettlement.maxOutOfPlane) || 0,
-          allowableSettlement: parseFloat(latestSettlement.allowableSettlement) || 0.5,
-          acceptance: latestSettlement.settlementAcceptance || 'PENDING'
-        };
+      if (latestSettlement && latestSettlement.id) {
+        // Fetch settlement measurements for the latest survey
+        try {
+          const measurementResponse = await fetch(`/api/settlement-surveys/${latestSettlement.id}/measurements`);
+          const settlementMeasurements = await measurementResponse.json();
+          
+          settlementData = {
+            measurements: settlementMeasurements.map((m: any) => ({
+              angle: parseFloat(m.angle) || 0,
+              measured: parseFloat(m.measuredElevation) || 0,
+              normalized: parseFloat(m.normalizedElevation) || 0,
+              cosineFit: parseFloat(m.cosineFitElevation) || 0,
+              outOfPlane: parseFloat(m.outOfPlane) || 0
+            })),
+            amplitude: parseFloat(latestSettlement.cosineAmplitude) || 0,
+            phase: parseFloat(latestSettlement.cosinePhase) || 0,
+            rSquared: parseFloat(latestSettlement.rSquared) || 0,
+            maxSettlement: parseFloat(latestSettlement.maxOutOfPlane) || 0,
+            allowableSettlement: parseFloat(latestSettlement.allowableSettlement) || 0.5,
+            acceptance: latestSettlement.settlementAcceptance || 'PENDING'
+          };
+        } catch (error) {
+          console.error('Failed to fetch settlement measurements:', error);
+          settlementData = {
+            measurements: [],
+            amplitude: parseFloat(latestSettlement.cosineAmplitude) || 0,
+            phase: parseFloat(latestSettlement.cosinePhase) || 0,
+            rSquared: parseFloat(latestSettlement.rSquared) || 0,
+            maxSettlement: parseFloat(latestSettlement.maxOutOfPlane) || 0,
+            allowableSettlement: parseFloat(latestSettlement.allowableSettlement) || 0.5,
+            acceptance: latestSettlement.settlementAcceptance || 'PENDING'
+          };
+        }
       }
       
       // Process CML data

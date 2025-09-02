@@ -1624,8 +1624,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Update measurements with calculated values
       for (let i = 0; i < measurements.length; i++) {
-        // Store calculated values in database if needed
-        // This could be expanded to update the measurements with normalized values
+        const normalizedElevation = results.normalizedElevations[i];
+        const cosineFitElevation = results.predictedElevations[i];
+        const outOfPlane = results.outOfPlaneDeviations[i];
+        
+        // Update each measurement with calculated values
+        await storage.updateAdvancedSettlementMeasurement(measurements[i].id, {
+          normalizedElevation: normalizedElevation.toString(),
+          cosineFitElevation: cosineFitElevation.toString(),
+          outOfPlane: outOfPlane.toString()
+        });
       }
       
       res.json(results);

@@ -100,6 +100,7 @@ export interface IStorage {
   getAdvancedSettlementMeasurements(surveyId: number): Promise<AdvancedSettlementMeasurement[]>;
   createAdvancedSettlementMeasurement(measurement: InsertAdvancedSettlementMeasurement): Promise<AdvancedSettlementMeasurement>;
   createBulkAdvancedSettlementMeasurements(measurements: InsertAdvancedSettlementMeasurement[]): Promise<AdvancedSettlementMeasurement[]>;
+  updateAdvancedSettlementMeasurement(id: number, data: Partial<InsertAdvancedSettlementMeasurement>): Promise<AdvancedSettlementMeasurement>;
   deleteAdvancedSettlementMeasurements(surveyId: number): Promise<void>;
   
   // Edge Settlements
@@ -551,6 +552,16 @@ export class MemStorage implements IStorage {
     return Promise.all(measurements.map(m => this.createAdvancedSettlementMeasurement(m)));
   }
 
+  async updateAdvancedSettlementMeasurement(id: number, data: Partial<InsertAdvancedSettlementMeasurement>): Promise<AdvancedSettlementMeasurement> {
+    const existing = this.advancedSettlementMeasurements.get(id);
+    if (!existing) {
+      throw new Error(`Measurement with id ${id} not found`);
+    }
+    const updated = { ...existing, ...data };
+    this.advancedSettlementMeasurements.set(id, updated);
+    return updated;
+  }
+
   async deleteAdvancedSettlementMeasurements(surveyId: number): Promise<void> {
     const keysToDelete = Array.from(this.advancedSettlementMeasurements.keys())
       .filter(key => this.advancedSettlementMeasurements.get(key)?.surveyId === surveyId);
@@ -826,6 +837,18 @@ export class DatabaseStorage implements IStorage {
       .values(measurementsWithTimestamp)
       .returning();
     return newMeasurements;
+  }
+
+  async updateAdvancedSettlementMeasurement(id: number, data: Partial<InsertAdvancedSettlementMeasurement>): Promise<AdvancedSettlementMeasurement> {
+    const [updated] = await db
+      .update(advancedSettlementMeasurements)
+      .set(data)
+      .where(eq(advancedSettlementMeasurements.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error(`Measurement with id ${id} not found`);
+    }
+    return updated;
   }
 
   async deleteAdvancedSettlementMeasurements(surveyId: number): Promise<void> {
