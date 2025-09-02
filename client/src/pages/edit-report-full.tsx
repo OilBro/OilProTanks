@@ -373,12 +373,13 @@ export function EditReportFull() {
   });
 
   const onSubmit = (data: InsertInspectionReport) => {
-    // Convert numeric values to strings for the backend
+    // Ensure numeric values are properly formatted for the backend
     const processedData = {
       ...data,
-      diameter: data.diameter !== null && data.diameter !== undefined ? String(data.diameter) : null,
-      height: data.height !== null && data.height !== undefined ? String(data.height) : null,
-      originalThickness: data.originalThickness !== null && data.originalThickness !== undefined ? String(data.originalThickness) : null
+      diameter: data.diameter ? String(data.diameter) : null,
+      height: data.height ? String(data.height) : null,
+      originalThickness: data.originalThickness ? String(data.originalThickness) : null,
+      yearsSinceLastInspection: data.yearsSinceLastInspection ? Number(data.yearsSinceLastInspection) : 1
     };
     updateReportMutation.mutate(processedData);
   };
@@ -514,7 +515,7 @@ export function EditReportFull() {
                       id="diameter"
                       type="number"
                       step="0.01"
-                      {...form.register('diameter', { valueAsNumber: true })}
+                      {...form.register('diameter')}
                     />
                   </div>
                   <div>
@@ -523,7 +524,7 @@ export function EditReportFull() {
                       id="height"
                       type="number"
                       step="0.01"
-                      {...form.register('height', { valueAsNumber: true })}
+                      {...form.register('height')}
                     />
                   </div>
                   <div>
@@ -532,7 +533,7 @@ export function EditReportFull() {
                       id="originalThickness"
                       type="number"
                       step="0.001"
-                      {...form.register('originalThickness', { valueAsNumber: true })}
+                      {...form.register('originalThickness')}
                     />
                   </div>
                   <div>
@@ -540,7 +541,7 @@ export function EditReportFull() {
                     <Input 
                       id="yearsSinceLastInspection"
                       type="number"
-                      {...form.register('yearsSinceLastInspection', { valueAsNumber: true })}
+                      {...form.register('yearsSinceLastInspection')}
                     />
                   </div>
                   <div>
