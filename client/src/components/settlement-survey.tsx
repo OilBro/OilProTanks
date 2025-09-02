@@ -61,6 +61,7 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
   });
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showPlotDialog, setShowPlotDialog] = useState(false);
+  const [plotMeasurements, setPlotMeasurements] = useState<SettlementMeasurement[]>([]);
 
   // Check if reportId is valid
   const isValidReportId = reportId && !isNaN(reportId) && reportId > 0;
@@ -707,7 +708,20 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
                   <Button 
                     variant="outline" 
                     className="flex items-center gap-2"
-                    onClick={() => setShowPlotDialog(true)}
+                    onClick={async () => {
+                      if (selectedSurveyId) {
+                        try {
+                          const response = await fetch(`/api/settlement-surveys/${selectedSurveyId}/measurements`);
+                          if (response.ok) {
+                            const data = await response.json();
+                            setPlotMeasurements(data);
+                            setShowPlotDialog(true);
+                          }
+                        } catch (error) {
+                          console.error('Failed to load measurements for plot:', error);
+                        }
+                      }
+                    }}
                   >
                     <Eye className="h-4 w-4" />
                     View Settlement Plot
@@ -774,12 +788,12 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
         <DialogHeader>
           <DialogTitle>Settlement Analysis Plot</DialogTitle>
         </DialogHeader>
-        {selectedSurvey && measurements.length > 0 && (
+        {selectedSurvey && plotMeasurements.length > 0 && (
           <div className="space-y-4">
             <div className="h-96">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
-                  data={measurements.map((m, idx) => ({
+                  data={plotMeasurements.map((m, idx) => ({
                     angle: m.angle,
                     measured: m.normalizedElevation || 0,
                     cosineFit: m.cosineFitElevation || 0,
@@ -825,6 +839,14 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
                 </LineChart>
               </ResponsiveContainer>
             </div>
+            
+            {plotMeasurements.length === 0 && (
+              <Alert>
+                <AlertDescription>
+                  No measurement data available for this survey.
+                </AlertDescription>
+              </Alert>
+            )}
             
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div className="text-center">
