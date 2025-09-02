@@ -96,12 +96,13 @@ export function EditReport() {
   }, [report, form]);
 
   const onSubmit = (data: InsertInspectionReport) => {
-    // Convert numeric values to strings for the backend
+    // Convert string values to proper format for database
     const processedData = {
       ...data,
-      diameter: data.diameter !== null && data.diameter !== undefined ? String(data.diameter) : null,
-      height: data.height !== null && data.height !== undefined ? String(data.height) : null,
-      originalThickness: data.originalThickness !== null && data.originalThickness !== undefined ? String(data.originalThickness) : null
+      diameter: data.diameter ? String(data.diameter) : null,
+      height: data.height ? String(data.height) : null,
+      originalThickness: data.originalThickness ? String(data.originalThickness) : null,
+      yearsSinceLastInspection: data.yearsSinceLastInspection ? Number(data.yearsSinceLastInspection) : 1
     };
     updateReportMutation.mutate(processedData);
   };
@@ -244,7 +245,7 @@ export function EditReport() {
                 <Input
                   id="diameter"
                   type="number"
-                  {...form.register('diameter', { valueAsNumber: true })}
+                  {...form.register('diameter')}
                   placeholder="120"
                 />
               </div>
@@ -254,7 +255,7 @@ export function EditReport() {
                 <Input
                   id="height"
                   type="number"
-                  {...form.register('height', { valueAsNumber: true })}
+                  {...form.register('height')}
                   placeholder="48"
                 />
               </div>
@@ -265,7 +266,7 @@ export function EditReport() {
                   id="yearsSinceLastInspection"
                   type="number"
                   step="0.1"
-                  {...form.register('yearsSinceLastInspection', { valueAsNumber: true })}
+                  {...form.register('yearsSinceLastInspection')}
                 />
               </div>
               
@@ -275,7 +276,7 @@ export function EditReport() {
                   id="originalThickness"
                   type="number"
                   step="0.001"
-                  {...form.register('originalThickness', { valueAsNumber: true })}
+                  {...form.register('originalThickness')}
                 />
               </div>
             </div>
