@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { addCoverPageLogo, addHeaderLogo } from '../lib/logo-utils';
 import type { 
   InspectionReport, 
   ThicknessMeasurement, 
@@ -55,9 +56,11 @@ export function generateProfessionalPDF(data: ProfessionalReportData): void {
   // Add page header
   const addPageHeader = () => {
     if (pageNumber > 1) {
+      // Add logo on the left
+      addHeaderLogo(doc);
       doc.setFontSize(8);
       doc.setFont(undefined, 'normal');
-      doc.text('OilPro', margin, 10);
+      doc.setTextColor(0, 0, 0);
       doc.text('API-653 Inspection Report', 210 - margin, 10, { align: 'right' });
       doc.line(margin, 15, 210 - margin, 15);
       yPosition = 25;
@@ -185,11 +188,14 @@ export function generateProfessionalPDF(data: ProfessionalReportData): void {
 }
 
 function generateCoverPage(doc: jsPDF, report: InspectionReport) {
+  // Add OilPro logo at the top
+  addCoverPageLogo(doc);
+  
   // Company Header
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('OilPro', 105, 30, { align: 'center' });
-  doc.text('API-653 Inspection Report', 105, 45, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+  doc.text('API-653 Inspection Report', 105, 35, { align: 'center' });
 
   // Customer Information
   doc.setFontSize(12);

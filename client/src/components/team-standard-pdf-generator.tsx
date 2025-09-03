@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { addCoverPageLogo, addHeaderLogo } from '../lib/logo-utils';
 import type { 
   InspectionReport, 
   ThicknessMeasurement, 
@@ -51,11 +52,13 @@ export function generateTeamStandardPDF(data: TeamStandardReportData): void {
 
   // Helper function to add professional header
   const addProfessionalHeader = () => {
+    // Add logo on the left
+    addHeaderLogo(doc);
+    
     doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
-    doc.text(companyHeader.name, 105, 15, { align: 'center' });
-    doc.setFontSize(10);
-    doc.text(companyHeader.title, 105, 20, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+    doc.text(companyHeader.title, 105, 18, { align: 'center' });
   };
 
   // Helper function to add professional footer
@@ -176,12 +179,14 @@ export function generateTeamStandardPDF(data: TeamStandardReportData): void {
 }
 
 function generateProfessionalCoverPage(doc: jsPDF, report: InspectionReport, companyHeader: any) {
+  // Add OilPro logo at the top
+  addCoverPageLogo(doc);
+  
   // Company Header
-  doc.setFontSize(11);
+  doc.setFontSize(12);
   doc.setFont(undefined, 'bold');
-  doc.text(companyHeader.name, 105, 20, { align: 'center' });
-  doc.setFontSize(10);
-  doc.text(companyHeader.title, 105, 26, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+  doc.text(companyHeader.title, 105, 25, { align: 'center' });
 
   // Two column layout for tank information
   const leftX = 20;

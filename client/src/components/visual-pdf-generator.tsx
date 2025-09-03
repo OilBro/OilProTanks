@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf';
+import { addCoverPageLogo, addHeaderLogo } from '../lib/logo-utils';
 import type { 
   InspectionReport, 
   ThicknessMeasurement, 
@@ -51,11 +52,13 @@ export function generateVisualPDF(data: VisualReportData): void {
 
   // Helper function to add professional header
   const addProfessionalHeader = () => {
+    // Add logo on the left
+    addHeaderLogo(doc);
+    
     doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
-    doc.text(companyHeader.name, 105, 15, { align: 'center' });
-    doc.setFontSize(10);
-    doc.text(companyHeader.title, 105, 20, { align: 'center' });
+    doc.setTextColor(0, 0, 0);
+    doc.text(companyHeader.title, 105, 18, { align: 'center' });
   };
 
   // Helper function to add professional footer
@@ -164,12 +167,14 @@ export function generateVisualPDF(data: VisualReportData): void {
 }
 
 function generateComprehensiveCoverPage(doc: jsPDF, report: InspectionReport, companyHeader: any) {
+  // Add OilPro logo at the top
+  addCoverPageLogo(doc);
+  
   // Premium two-column layout with enhanced visual elements
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text(companyHeader.name, 105, 20, { align: 'center' });
-  doc.setFontSize(12);
-  doc.text(companyHeader.title, 105, 28, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+  doc.text(companyHeader.title, 105, 25, { align: 'center' });
   
   // Add decorative line
   doc.setLineWidth(0.5);
@@ -1235,7 +1240,7 @@ function drawFindingsTable(doc: jsPDF, recommendations: RepairRecommendation[], 
     currentY += 5;
     
     // Stop if we're running out of space
-    if (currentY > 280) break;
+    if (currentY > 280) return;
   });
 }
 
