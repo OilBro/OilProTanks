@@ -263,7 +263,7 @@ function generateCoverPage(doc: jsPDF, report: InspectionReport) {
   doc.text('OilPro', 20, 280);
   doc.setFontSize(8);
   doc.setFont(undefined, 'normal');
-  doc.text('811 Dafney Dr., Lafayette, LA', 20, 285);
+  doc.text('811 Dafney Drive, Lafayette, LA', 20, 285);
   doc.text('Phone: (337) 446-7459 | Contact: Jerry Hartfield', 20, 290);
 }
 

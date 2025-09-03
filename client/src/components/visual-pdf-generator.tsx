@@ -43,7 +43,7 @@ export function generateVisualPDF(data: VisualReportData): void {
   const companyHeader = {
     name: 'OilPro Tanks',
     title: 'API-653 Inspection Report',
-    address1: '811 Dafney Dr.',
+    address1: '811 Dafney Drive',
     address2: 'Lafayette, LA',
     phone: 'Office – (337) 446-7459',
     contact: 'Jerry Hartfield'
