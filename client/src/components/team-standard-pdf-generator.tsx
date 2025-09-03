@@ -359,6 +359,14 @@ function generateProfessionalEvaluationSummary(doc: jsPDF, report: InspectionRep
   doc.text('Tank', 20, yPos);
   yPos += 10;
 
+  // Only show table if there are actual findings
+  if (!repairRecommendations || repairRecommendations.length === 0) {
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'italic');
+    doc.text('No findings or recommendations to report at this time.', 20, yPos + 10);
+    return;
+  }
+
   // Table headers
   doc.setFontSize(8);
   doc.setFont(undefined, 'bold');
@@ -374,54 +382,8 @@ function generateProfessionalEvaluationSummary(doc: jsPDF, report: InspectionRep
 
   // Generate finding IDs and add entries
   doc.setFont(undefined, 'normal');
-  
-  // Fill Height Analysis finding
-  doc.rect(20, yPos, 15, 20);
-  doc.text('FH_1', 22, yPos + 5);
-  doc.rect(35, yPos, 25, 20);
-  doc.text('General', 37, yPos + 5);
-  doc.rect(60, yPos, 80, 20);
-  const fillHeightText = doc.splitTextToSize('The fill height analysis found that the fill height of the tank should not exceed specified limits using a product specific gravity of ' + (report.specificGravity || '1.0'), 75);
-  doc.text(fillHeightText, 62, yPos + 5);
-  doc.rect(140, yPos, 50, 20);
-  const fillHeightAction = doc.splitTextToSize('Continue monitoring per API 653 requirements.', 45);
-  doc.text(fillHeightAction, 142, yPos + 5);
-  yPos += 20;
 
-  // Foundation findings
-  if (report.foundationSettlement || report.foundationCracking || report.foundationSealing) {
-    doc.rect(20, yPos, 15, 20);
-    doc.text('FO-15', 22, yPos + 5);
-    doc.rect(35, yPos, 25, 20);
-    doc.text('Foundation', 37, yPos + 5);
-    doc.rect(60, yPos, 80, 20);
-    const foundationText = doc.splitTextToSize('Foundation condition assessment completed. ' + (report.foundationSettlement || 'Settlement within limits.'), 75);
-    doc.text(foundationText, 62, yPos + 5);
-    doc.rect(140, yPos, 50, 20);
-    const foundationAction = doc.splitTextToSize('Monitor foundation condition during routine inspections.', 45);
-    doc.text(foundationAction, 142, yPos + 5);
-    yPos += 20;
-  }
-
-  // External Shell findings
-  if (measurements.length > 0) {
-    const actionRequired = measurements.filter(m => m.status === 'action_required').length;
-    if (actionRequired > 0) {
-      doc.rect(20, yPos, 15, 20);
-      doc.text('ES-1', 22, yPos + 5);
-      doc.rect(35, yPos, 25, 20);
-      doc.text('External Shell', 37, yPos + 5);
-      doc.rect(60, yPos, 80, 20);
-      const shellText = doc.splitTextToSize(`${actionRequired} thickness measurements require action. See thickness measurement section for details.`, 75);
-      doc.text(shellText, 62, yPos + 5);
-      doc.rect(140, yPos, 50, 20);
-      const shellAction = doc.splitTextToSize('Schedule repairs per API 653 requirements.', 45);
-      doc.text(shellAction, 142, yPos + 5);
-      yPos += 20;
-    }
-  }
-
-  // Add repair recommendations
+  // Add ONLY actual repair recommendations from database
   repairRecommendations.forEach((rec, index) => {
     if (yPos > 240) {
       doc.addPage();
@@ -429,15 +391,39 @@ function generateProfessionalEvaluationSummary(doc: jsPDF, report: InspectionRep
     }
     
     doc.rect(20, yPos, 15, 20);
-    doc.text(`REP-${index + 1}`, 22, yPos + 5);
+    doc.text(`F-${index + 1}`, 22, yPos + 5);
     doc.rect(35, yPos, 25, 20);
     doc.text(rec.component || 'General', 37, yPos + 5);
     doc.rect(60, yPos, 80, 20);
-    const recText = doc.splitTextToSize(rec.defectDescription || 'Defect identified', 75);
+    const recText = doc.splitTextToSize(rec.defectDescription || '', 75);
     doc.text(recText, 62, yPos + 5);
     doc.rect(140, yPos, 50, 20);
-    const recAction = doc.splitTextToSize(rec.recommendation || 'Repair required', 45);
+    const recAction = doc.splitTextToSize(rec.recommendation || '', 45);
     doc.text(recAction, 142, yPos + 5);
+    yPos += 20;
+  });
+  
+  // Add critical thickness measurements if any
+  const criticalMeasurements = measurements.filter(m => m.status === 'action_required');
+  criticalMeasurements.forEach((measurement, index) => {
+    if (yPos > 240) {
+      doc.addPage();
+      yPos = 30;
+    }
+    
+    doc.rect(20, yPos, 15, 20);
+    doc.text(`TM-${index + 1}`, 22, yPos + 5);
+    doc.rect(35, yPos, 25, 20);
+    doc.text(measurement.component || 'Shell', 37, yPos + 5);
+    doc.rect(60, yPos, 80, 20);
+    const measurementText = doc.splitTextToSize(
+      `Thickness at ${measurement.location}: ${measurement.currentThickness}" (Min: ${measurement.minThickness || 'N/A'}")`,
+      75
+    );
+    doc.text(measurementText, 62, yPos + 5);
+    doc.rect(140, yPos, 50, 20);
+    const measurementAction = doc.splitTextToSize('Schedule repair/replacement per API 653', 45);
+    doc.text(measurementAction, 142, yPos + 5);
     yPos += 20;
   });
 }

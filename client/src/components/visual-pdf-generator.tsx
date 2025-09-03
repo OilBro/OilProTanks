@@ -1100,12 +1100,19 @@ function drawNozzleSpecificationTable(doc: jsPDF, appurtenances: AppurtenanceIns
   doc.setFontSize(8);
   let currentY = y;
   
+  // Only show table if there are actual appurtenances
+  if (!appurtenances || appurtenances.length === 0) {
+    doc.setFont(undefined, 'italic');
+    doc.text('No nozzle/appurtenance data available', x, currentY);
+    return;
+  }
+  
   // Table headers
   doc.setFont(undefined, 'bold');
-  doc.text('Nozzle', x, currentY);
-  doc.text('Size', x + 20, currentY);
-  doc.text('Service', x + 40, currentY);
-  doc.text('Elevation', x + 70, currentY);
+  doc.text('ID', x, currentY);
+  doc.text('Type', x + 20, currentY);
+  doc.text('Size', x + 40, currentY);
+  doc.text('Location', x + 60, currentY);
   doc.text('Condition', x + 100, currentY);
   currentY += 6;
   
@@ -1113,19 +1120,16 @@ function drawNozzleSpecificationTable(doc: jsPDF, appurtenances: AppurtenanceIns
   doc.line(x, currentY, x + 130, currentY);
   currentY += 3;
   
-  // Sample nozzle data
-  const nozzles = [
-    ['A', '4"', 'Manway', 'Shell', 'Good'],
-    ['B', '2"', 'Drain', 'Bottom', 'Good'],
-    ['C', '6"', 'Fill', 'Top', 'Fair'],
-    ['D', '1"', 'Gauge', 'Shell', 'Good']
-  ];
-  
+  // Use actual appurtenance data
   doc.setFont(undefined, 'normal');
-  nozzles.forEach(nozzle => {
-    nozzle.forEach((item, index) => {
-      doc.text(item, x + index * 30, currentY);
-    });
+  appurtenances.forEach((app, index) => {
+    if (currentY > 280) return; // Stop if running out of space
+    
+    doc.text(app.nozzleId || `N-${index + 1}`, x, currentY);
+    doc.text((app.type || '').substring(0, 10), x + 20, currentY);
+    doc.text((app.size || '').substring(0, 8), x + 40, currentY);
+    doc.text((app.location || '').substring(0, 15), x + 60, currentY);
+    doc.text(app.condition || '', x + 100, currentY);
     currentY += 5;
   });
 }
@@ -1188,6 +1192,13 @@ function drawFindingsTable(doc: jsPDF, recommendations: RepairRecommendation[], 
   doc.setFontSize(8);
   let currentY = y;
   
+  // Only draw table if there are actual findings
+  if (!recommendations || recommendations.length === 0) {
+    doc.setFont(undefined, 'italic');
+    doc.text('No findings to report', x, currentY);
+    return;
+  }
+  
   // Table headers
   doc.setFont(undefined, 'bold');
   doc.text('Finding ID', x, currentY);
@@ -1201,21 +1212,30 @@ function drawFindingsTable(doc: jsPDF, recommendations: RepairRecommendation[], 
   doc.line(x, currentY, x + 180, currentY);
   currentY += 3;
   
-  // Sample findings
-  const findings = [
-    ['FH_1', 'General', 'Fill height analysis', 'Medium', 'Monitor'],
-    ['FO-15', 'Foundation', 'Sealant deterioration', 'Low', 'Repair'],
-    ['ES-1', 'Shell', 'Coating deterioration', 'Low', 'Paint'],
-    ['AS-1', 'Access', 'Missing toeboards', 'Medium', 'Install']
-  ];
-  
+  // Use actual repair recommendations data
   doc.setFont(undefined, 'normal');
-  findings.forEach(finding => {
-    finding.forEach((item, index) => {
-      const positions = [x, x + 25, x + 60, x + 120, x + 150];
-      doc.text(item, positions[index], currentY);
-    });
+  recommendations.forEach((rec, index) => {
+    const findingId = `F-${index + 1}`;
+    const component = rec.component || 'General';
+    const description = rec.defectDescription || 'See details';
+    const priority = rec.priority || 'Medium';
+    const action = rec.recommendation || 'Monitor';
+    
+    // Truncate long descriptions
+    const maxDescLength = 35;
+    const truncatedDesc = description.length > maxDescLength 
+      ? description.substring(0, maxDescLength) + '...'
+      : description;
+    
+    doc.text(findingId, x, currentY);
+    doc.text(component, x + 25, currentY);
+    doc.text(truncatedDesc, x + 60, currentY);
+    doc.text(priority, x + 120, currentY);
+    doc.text(action.substring(0, 20), x + 150, currentY);
     currentY += 5;
+    
+    // Stop if we're running out of space
+    if (currentY > 280) break;
   });
 }
 
@@ -1280,6 +1300,23 @@ function drawShellCourseTable(doc: jsPDF, measurements: ThicknessMeasurement[], 
   doc.setFontSize(8);
   let currentY = y;
   
+  // Group measurements by shell course
+  const courseGroups = measurements
+    .filter(m => m.component?.toLowerCase().includes('shell') || m.component?.toLowerCase().includes('course'))
+    .reduce((acc, m) => {
+      const course = m.component || 'Shell';
+      if (!acc[course]) acc[course] = [];
+      acc[course].push(m);
+      return acc;
+    }, {} as Record<string, ThicknessMeasurement[]>);
+  
+  // If no shell course data, show message
+  if (Object.keys(courseGroups).length === 0) {
+    doc.setFont(undefined, 'italic');
+    doc.text('No shell course thickness data available', x, currentY);
+    return;
+  }
+  
   // Table headers
   doc.setFont(undefined, 'bold');
   doc.text('Course', x, currentY);
@@ -1292,20 +1329,28 @@ function drawShellCourseTable(doc: jsPDF, measurements: ThicknessMeasurement[], 
   doc.line(x, currentY, x + 140, currentY);
   currentY += 3;
   
-  // Sample course data
-  const courses = [
-    ['Ring 1', '0.245"', '0.220"', 'Monitor'],
-    ['Ring 2', '0.260"', '0.240"', 'Acceptable'],
-    ['Ring 3', '0.270"', '0.250"', 'Acceptable'],
-    ['Ring 4', '0.275"', '0.260"', 'Acceptable']
-  ];
-  
+  // Display actual course data
   doc.setFont(undefined, 'normal');
-  courses.forEach(course => {
-    course.forEach((item, index) => {
-      const positions = [x, x + 30, x + 70, x + 110];
-      doc.text(item, positions[index], currentY);
-    });
+  Object.entries(courseGroups).forEach(([course, measurements]) => {
+    if (currentY > 280) return; // Stop if running out of space
+    
+    const thicknesses = measurements.map(m => parseFloat(m.currentThickness || '0')).filter(t => t > 0);
+    const avgThickness = thicknesses.length > 0 
+      ? (thicknesses.reduce((sum, t) => sum + t, 0) / thicknesses.length).toFixed(3)
+      : 'N/A';
+    const minThickness = thicknesses.length > 0 
+      ? Math.min(...thicknesses).toFixed(3)
+      : 'N/A';
+    
+    // Determine condition based on worst status
+    const hasActionRequired = measurements.some(m => m.status === 'action_required');
+    const hasMonitor = measurements.some(m => m.status === 'monitor');
+    const condition = hasActionRequired ? 'Action Req.' : hasMonitor ? 'Monitor' : 'Acceptable';
+    
+    doc.text(course.substring(0, 20), x, currentY);
+    doc.text(avgThickness + '"', x + 30, currentY);
+    doc.text(minThickness + '"', x + 70, currentY);
+    doc.text(condition, x + 110, currentY);
     currentY += 5;
   });
 }
