@@ -177,12 +177,18 @@ const SERVICE_OPTIONS = [
   { value: "diesel", label: "Diesel Fuel", category: "petroleum" },
   { value: "gasoline", label: "Gasoline", category: "petroleum" },
   { value: "jet_fuel", label: "Jet Fuel", category: "petroleum" },
+  { value: "fuel_oil", label: "Fuel Oil", category: "petroleum" },
   { value: "heating_oil", label: "Heating Oil", category: "petroleum" },
   { value: "lubricating_oil", label: "Lubricating Oil", category: "petroleum" },
+  { value: "asphalt", label: "Asphalt", category: "petroleum" },
+  { value: "ethanol", label: "Ethanol", category: "biofuel" },
+  { value: "biodiesel", label: "Biodiesel", category: "biofuel" },
+  { value: "solubles", label: "Solubles", category: "chemical" },
+  { value: "fish_oil", label: "Fish Oil", category: "organic" },
   { value: "water", label: "Water", category: "utility" },
   { value: "wastewater", label: "Wastewater", category: "utility" },
   { value: "chemical", label: "Chemical Product", category: "chemical" },
-  { value: "other", label: "Other (Specify)", category: "other" }
+  { value: "other", label: "Other (Specify in Notes)", category: "other" }
 ];
 
 // CORRECTED: Tank construction standards with proper API references

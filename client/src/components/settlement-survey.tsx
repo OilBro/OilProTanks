@@ -814,7 +814,12 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
                     domain={['dataMin - 0.5', 'dataMax + 0.5']}
                   />
                   <Tooltip 
-                    formatter={(value: number) => value.toFixed(3)}
+                    formatter={(value: any) => {
+                      if (typeof value === 'number' && !isNaN(value)) {
+                        return value.toFixed(3);
+                      }
+                      return value || '0.000';
+                    }}
                     labelFormatter={(label) => `Angle: ${label}°`}
                   />
                   <Legend />

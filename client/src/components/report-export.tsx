@@ -100,11 +100,11 @@ export function ReportExport({ reportId }: ReportExportProps) {
           shellCourses.push({
             courseNumber: i,
             height: 8, // Default 8ft courses
-            nominalThickness,
-            measuredThickness: minThickness,
-            requiredThickness,
-            corrosionRate,
-            remainingLife,
+            nominalThickness: nominalThickness || 0.25,
+            measuredThickness: minThickness || 0.25,
+            requiredThickness: requiredThickness || 0.1,
+            corrosionRate: isNaN(corrosionRate) ? 0 : corrosionRate,
+            remainingLife: isNaN(remainingLife) || remainingLife > 999 ? 999 : remainingLife,
             status: remainingLife < 5 ? 'ACTION REQ' : remainingLife < 10 ? 'MONITOR' : 'ACCEPTABLE'
           });
         }

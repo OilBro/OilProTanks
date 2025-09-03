@@ -487,10 +487,16 @@ export function EditReportFull() {
                         <SelectItem value="Gasoline">Gasoline</SelectItem>
                         <SelectItem value="Diesel">Diesel</SelectItem>
                         <SelectItem value="Jet Fuel">Jet Fuel</SelectItem>
+                        <SelectItem value="Fuel Oil">Fuel Oil</SelectItem>
+                        <SelectItem value="Asphalt">Asphalt</SelectItem>
+                        <SelectItem value="Ethanol">Ethanol</SelectItem>
+                        <SelectItem value="Biodiesel">Biodiesel</SelectItem>
+                        <SelectItem value="Solubles">Solubles</SelectItem>
+                        <SelectItem value="Fish Oil">Fish Oil</SelectItem>
                         <SelectItem value="Water">Water</SelectItem>
                         <SelectItem value="Chemical">Chemical</SelectItem>
                         <SelectItem value="Waste">Waste</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
+                        <SelectItem value="Other">Other (Specify in Notes)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

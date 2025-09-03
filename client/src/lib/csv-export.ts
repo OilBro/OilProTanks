@@ -32,20 +32,20 @@ export function exportDetailedCSV(data: ExportData): void {
   
   // Basic Report Information
   csv += 'REPORT INFORMATION\n';
-  csv += 'Report Number,Tank ID,Service,Inspector,Inspection Date,Status\n';
-  csv += `${val(report.reportNumber)},${val(report.tankId)},${val(report.service)},${val(report.inspector)},${val(report.inspectionDate)},${val(report.status)}\n\n`;
+  csv += 'Report Number,Tank ID,Service,Inspector,Inspection Date,Status,Facility,Location\n';
+  csv += `${val(report.reportNumber)},${val(report.tankId)},${val(report.product || report.service)},${val(report.inspector)},${val(report.inspectionDate)},${val(report.status)},${val(report.facilityName)},${val(report.location)}\n\n`;
   
   // Tank Specifications
   csv += 'TANK SPECIFICATIONS\n';
-  csv += 'Diameter (ft),Height (ft),Capacity (gal),Original Thickness (in),Years Since Last Inspection,Construction Standard,Shell Material,Roof Type,Foundation Type\n';
-  csv += `${val(report.diameter)},${val(report.height)},${val(report.capacity)},${val(report.originalThickness)},${val(report.yearsSinceLastInspection)},${val(report.constructionStandard)},${val(report.shellMaterial)},${val(report.roofType)},${val(report.foundationType)}\n\n`;
+  csv += 'Diameter (ft),Height (ft),Capacity (bbl),Product,Years Since Last Inspection,Construction Standard,Shell Material,Roof Type,Foundation Type\n';
+  csv += `${val(report.diameter)},${val(report.height)},${val(report.capacity)},${val(report.product || report.service)},${val(report.yearsSinceLastInspection || report.tankAge)},${val(report.constructionStandard || report.designCode)},${val(report.shellMaterial)},${val(report.roofType)},${val(report.foundationType)}\n\n`;
   
   // Thickness Measurements
   if (measurements.length > 0) {
     csv += 'THICKNESS MEASUREMENTS\n';
     csv += 'Component,Location,Type,Current Thickness (in),Original Thickness (in),Corrosion Rate (in/yr),Remaining Life (years),Status,Elevation (ft),Inspection Date\n';
     measurements.forEach(m => {
-      csv += `${val(m.component)},${val(m.location)},${val(m.measurementType)},${val(m.currentThickness)},${val(m.originalThickness)},${val(m.corrosionRate)},${val(m.remainingLife)},${val(m.status)},${val(m.elevation)},${val(m.inspectionDate)}\n`;
+      csv += `${val(m.component)},${val(m.location)},${val(m.measurementType)},${val(m.measuredThickness || m.currentThickness)},${val(m.nominalThickness || m.originalThickness)},${val(m.corrosionRate)},${val(m.remainingLife)},${val(m.status)},${val(m.elevation)},${val(m.inspectionDate)}\n`;
     });
     csv += '\n';
   }
@@ -93,9 +93,9 @@ export function exportDetailedCSV(data: ExportData): void {
   // Settlement Survey Data
   if (settlementSurveys.length > 0) {
     csv += 'SETTLEMENT SURVEY DATA\n';
-    csv += 'Survey Date,Reference Elevation,Max Differential Settlement,Analysis Method,Notes\n';
+    csv += 'Survey Date,Survey Type,Reference Elevation,Cosine Amplitude,Cosine Phase,R-Squared,Max Out-of-Plane,Allowable Settlement,Acceptance Status\n';
     settlementSurveys.forEach(s => {
-      csv += `${val(s.surveyDate)},${val(s.referenceElevation)},${val(s.maxDifferentialSettlement)},${val(s.analysisMethod)},${val(s.notes)}\n`;
+      csv += `${val(s.surveyDate)},${val(s.surveyType)},${val(s.referenceElevation)},${val(s.cosineAmplitude)},${val(s.cosinePhase)},${val(s.rSquared)},${val(s.maxOutOfPlane)},${val(s.allowableSettlement)},${val(s.settlementAcceptance)}\n`;
     });
     csv += '\n';
   }
@@ -140,11 +140,11 @@ export function exportSummaryCSV(reports: InspectionReport[]): void {
   if (reports.length === 0) return;
   
   // Create CSV header
-  let csv = 'Report Number,Tank ID,Service,Inspector,Inspection Date,Status,Diameter (ft),Height (ft),Capacity (gal),Original Thickness (in),Years Since Last,Construction Standard,Shell Material,Roof Type,Foundation Type,Created Date,Updated Date\n';
+  let csv = 'Report Number,Tank ID,Service,Inspector,Inspection Date,Status,Diameter (ft),Height (ft),Capacity (bbl),Shell Material,Roof Type,Foundation Type,Construction Standard,Years Built,Created Date,Updated Date\n';
   
   // Add each report as a row
   reports.forEach(report => {
-    csv += `${val(report.reportNumber)},${val(report.tankId)},${val(report.service)},${val(report.inspector)},${val(report.inspectionDate)},${val(report.status)},${val(report.diameter)},${val(report.height)},${val(report.capacity)},${val(report.originalThickness)},${val(report.yearsSinceLastInspection)},${val(report.constructionStandard)},${val(report.shellMaterial)},${val(report.roofType)},${val(report.foundationType)},${val(report.createdAt)},${val(report.updatedAt)}\n`;
+    csv += `${val(report.reportNumber)},${val(report.tankId)},${val(report.product || report.service)},${val(report.inspector)},${val(report.inspectionDate)},${val(report.status)},${val(report.diameter)},${val(report.height)},${val(report.capacity)},${val(report.shellMaterial)},${val(report.roofType)},${val(report.foundationType)},${val(report.designCode || report.constructionStandard)},${val(report.yearBuilt)},${val(report.createdAt)},${val(report.updatedAt)}\n`;
   });
   
   // Download the CSV
@@ -167,7 +167,7 @@ export function exportMeasurementsCSV(measurements: any[], reportNumber?: string
   let csv = 'Component,Location,Type,Current Thickness,Original Thickness,Corrosion Rate,Remaining Life,Status,Elevation,Inspection Date\n';
   
   measurements.forEach(m => {
-    csv += `${val(m.component)},${val(m.location)},${val(m.measurementType)},${val(m.currentThickness)},${val(m.originalThickness)},${val(m.corrosionRate)},${val(m.remainingLife)},${val(m.status)},${val(m.elevation)},${val(m.inspectionDate)}\n`;
+    csv += `${val(m.component)},${val(m.location)},${val(m.measurementType)},${val(m.measuredThickness || m.currentThickness)},${val(m.nominalThickness || m.originalThickness)},${val(m.corrosionRate)},${val(m.remainingLife)},${val(m.status)},${val(m.elevation)},${val(m.inspectionDate)}\n`;
   });
   
   // Download
