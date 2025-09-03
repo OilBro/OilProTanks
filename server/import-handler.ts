@@ -117,15 +117,31 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
   console.log('About to call analyzeSpreadsheetWithOpenRouter...');
   console.log('Workbook sheets:', workbook.SheetNames);
   console.log('Filename:', fileName);
+  console.log('API Key configured:', !!process.env.OPENROUTER_API_KEY);
   
   let aiAnalysis;
   try {
     console.log('Calling OpenRouter AI analyzer...');
     aiAnalysis = await analyzeSpreadsheetWithOpenRouter(workbook, fileName);
     console.log('OpenRouter AI analysis completed');
-  } catch (error) {
+    console.log('AI Confidence:', aiAnalysis.confidence);
+    console.log('AI found measurements:', aiAnalysis.thicknessMeasurements?.length || 0);
+  } catch (error: any) {
     console.error('=== OPENROUTER CALL FAILED ===');
-    console.error('Error calling analyzeSpreadsheetWithOpenRouter:', error);
+    console.error('Error type:', error.name);
+    console.error('Error message:', error.message);
+    console.error('Full error:', error);
+    console.error('Stack trace:', error.stack);
+    
+    // Provide more helpful error message
+    if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+      console.error('AUTHENTICATION ERROR: OpenRouter API key may be invalid or expired');
+    } else if (error.message?.includes('429')) {
+      console.error('RATE LIMIT ERROR: Too many requests to OpenRouter API');
+    } else if (error.message?.includes('timeout')) {
+      console.error('TIMEOUT ERROR: OpenRouter API took too long to respond');
+    }
+    
     aiAnalysis = {
       reportData: {},
       thicknessMeasurements: [],

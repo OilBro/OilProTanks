@@ -360,13 +360,30 @@ CRITICAL INSTRUCTIONS:
       throw new Error('Failed to parse AI response as JSON');
     }
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('=== OpenRouter Analysis Failed ===');
     console.error('Error type:', error.constructor.name);
     console.error('Error message:', error.message);
     console.error('Full error:', error);
-    console.error('This means your OpenRouter AI call failed!');
-    console.error('Falling back to standard parsing...');
+    
+    // Check for specific error types
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.error('CRITICAL: OPENROUTER_API_KEY is not configured!');
+      console.error('The AI import feature will not work without the API key.');
+    } else if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+      console.error('AUTHENTICATION ERROR: OpenRouter API key is invalid or expired');
+      console.error('Please check your OPENROUTER_API_KEY in environment variables');
+    } else if (error.message?.includes('429')) {
+      console.error('RATE LIMIT ERROR: Too many requests to OpenRouter API');
+      console.error('Please wait a moment and try again');
+    } else if (error.message?.includes('500') || error.message?.includes('502') || error.message?.includes('503')) {
+      console.error('OPENROUTER SERVICE ERROR: The AI service is temporarily unavailable');
+    } else if (error.message?.includes('timeout')) {
+      console.error('TIMEOUT ERROR: The AI analysis took too long');
+      console.error('The file may be too large or complex');
+    }
+    
+    console.error('Falling back to standard parsing without AI assistance...');
     
     // Return a basic analysis as fallback
     return {
