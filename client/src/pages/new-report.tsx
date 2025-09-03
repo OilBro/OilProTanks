@@ -272,12 +272,12 @@ export default function NewReport() {
   const [ventingInspections, setVentingInspections] = useState<VentingSystemInspectionType[]>([]);
   const [attachments, setAttachments] = useState<ReportAttachment[]>([]);
   const [settlementData, setSettlementData] = useState<SettlementData>({
-    referenceElevation: null,
+    referenceElevation: 0,
     referenceElevationUnit: 'ft',
     points: [],
-    maxDifferentialSettlement: null,
+    maxDifferentialSettlement: 0,
     maxDifferentialSettlementUnit: 'in',
-    analysisMethod: '',
+    analysisMethod: 'circumferential',
     notes: ''
   });
   
@@ -290,14 +290,14 @@ export default function NewReport() {
   });
   const [ndeResults, setNDEResults] = useState<any[]>([]);
   const [containmentData, setContainmentData] = useState<ContainmentSystem>({
-    systemType: '',
-    capacity: null,
+    systemType: 'earthen_dyke',
+    capacity: 0,
     capacityUnit: 'gal',
     drainageSystem: false,
     monitoring: false,
     components: [],
-    overallCondition: '',
-    complianceStatus: '',
+    overallCondition: 'satisfactory',
+    complianceStatus: 'compliant',
     notes: ''
   });
 

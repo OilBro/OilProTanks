@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { generateProfessionalReport } from '@/lib/pdf-report-generator';
 import { useToast } from '@/hooks/use-toast';
+import type { InspectionReport, ThicknessMeasurement, InspectionChecklist, SettlementSurvey } from '@shared/schema';
 
 interface ReportExportProps {
   reportId: number;

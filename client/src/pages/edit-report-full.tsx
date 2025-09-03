@@ -40,7 +40,7 @@ interface SettlementData {
 interface LocalContainmentSystem {
   systemType: 'earthen_dyke' | 'concrete_dyke' | 'synthetic_liner' | 'clay_liner' | 'composite';
   capacity: number;
-  capacityUnit: 'gal' | 'bbl' | 'liters';
+  capacityUnit: 'gal' | 'bbl' | 'L' | 'm3' | 'ft3';
   drainageSystem: boolean;
   monitoring: boolean;
   components: any[];
