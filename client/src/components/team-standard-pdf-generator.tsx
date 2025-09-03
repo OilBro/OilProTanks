@@ -43,10 +43,10 @@ export function generateTeamStandardPDF(data: TeamStandardReportData): void {
   const companyHeader = {
     name: 'OilPro Tanks',
     title: 'API-653 Inspection Report',
-    address1: '1234 Industrial Blvd',
-    address2: 'Houston, TX 77001',
-    phone: 'Office – (713) 555-0100',
-    website: 'www.oilpro-tanks.com'
+    address1: '811 Dafney Dr.',
+    address2: 'Lafayette, LA',
+    phone: 'Office – (337) 446-7459',
+    contact: 'Jerry Hartfield'
   };
 
   // Helper function to add professional header
@@ -62,7 +62,7 @@ export function generateTeamStandardPDF(data: TeamStandardReportData): void {
   const addProfessionalFooter = (pageNum: number) => {
     doc.setFontSize(7);
     doc.setFont(undefined, 'normal');
-    doc.text('This document is intended for the sole use of OilPro Tanks and its customers.', 105, 280, { align: 'center' });
+    doc.text('This document is intended for the sole use of OilPro and its customers.', 105, 280, { align: 'center' });
     doc.text('Any unauthorized reproduction of this document is prohibited. © 2025', 105, 284, { align: 'center' });
     doc.text(`${pageNum} of ${totalPages}`, 190, 284, { align: 'right' });
   };

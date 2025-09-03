@@ -57,7 +57,7 @@ export function generateProfessionalPDF(data: ProfessionalReportData): void {
     if (pageNumber > 1) {
       doc.setFontSize(8);
       doc.setFont(undefined, 'normal');
-      doc.text('OilPro Tanks', margin, 10);
+      doc.text('OilPro', margin, 10);
       doc.text('API-653 Inspection Report', 210 - margin, 10, { align: 'right' });
       doc.line(margin, 15, 210 - margin, 15);
       yPosition = 25;
@@ -68,7 +68,7 @@ export function generateProfessionalPDF(data: ProfessionalReportData): void {
   const addPageFooter = () => {
     doc.setFontSize(8);
     doc.setFont(undefined, 'normal');
-    doc.text('This document is intended for the sole use of OilPro Tanks and its customers.', 105, 285, { align: 'center' });
+    doc.text('This document is intended for the sole use of OilPro and its customers.', 105, 285, { align: 'center' });
     doc.text('Any unauthorized reproduction of this document is prohibited. © 2025', 105, 290, { align: 'center' });
     doc.text(`${pageNumber} of ${doc.getNumberOfPages()}`, 210 - margin, 285, { align: 'right' });
   };
@@ -188,7 +188,7 @@ function generateCoverPage(doc: jsPDF, report: InspectionReport) {
   // Company Header
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('OilPro Tanks', 105, 30, { align: 'center' });
+  doc.text('OilPro', 105, 30, { align: 'center' });
   doc.text('API-653 Inspection Report', 105, 45, { align: 'center' });
 
   // Customer Information
@@ -260,9 +260,11 @@ function generateCoverPage(doc: jsPDF, report: InspectionReport) {
   // Company Footer
   doc.setFontSize(10);
   doc.setFont(undefined, 'bold');
-  doc.text('OilPro Tanks', 20, 280);
+  doc.text('OilPro', 20, 280);
+  doc.setFontSize(8);
   doc.setFont(undefined, 'normal');
-  doc.text('Professional Tank Inspection Services', 20, 290);
+  doc.text('811 Dafney Dr., Lafayette, LA', 20, 285);
+  doc.text('Phone: (337) 446-7459 | Contact: Jerry Hartfield', 20, 290);
 }
 
 function generateRevisionHistory(doc: jsPDF, report: InspectionReport, yPos: number) {
