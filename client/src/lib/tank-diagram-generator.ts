@@ -27,9 +27,18 @@ export function generateShellLayoutDiagram(
   height: number,
   tankData: TankDimensions
 ) {
-  // Draw tank outline
-  doc.setLineWidth(0.5);
+  console.log('generateShellLayoutDiagram called with:', { x, y, width, height, tankData });
+  
+  // Test: Draw a simple rectangle first
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(1);
   doc.rect(x, y, width, height);
+  
+  // Test: Draw some text
+  doc.setFontSize(10);
+  doc.text('Tank Shell Diagram', x + width/2, y - 5, { align: 'center' });
+  
+  console.log('Basic shapes drawn successfully');
   
   // Calculate course heights proportionally
   const totalHeight = tankData.shellCourses.reduce((sum, course) => sum + course.height, 0);

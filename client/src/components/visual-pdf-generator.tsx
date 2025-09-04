@@ -31,7 +31,9 @@ export interface VisualReportData {
 }
 
 export function generateVisualPDF(data: VisualReportData): void {
-  console.log('Generating comprehensive visual API 653 report...');
+  console.log('generateVisualPDF called with data:', data);
+  console.log('Report details:', data.report);
+  console.log('Measurements count:', data.measurements?.length);
   
   const doc = new jsPDF();
   const { 
@@ -669,6 +671,9 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
   doc.setFont(undefined, 'bold');
   doc.text('TANK VISUAL DIAGRAMS', 105, yPos, { align: 'center' });
   yPos += 15;
+  
+  console.log('Starting tank diagram generation with report:', report);
+  console.log('Measurements count:', measurements.length);
 
   // Prepare shell course data
   const shellCourses = ['8R1', '8R2', '8R3', '8R4'].map((courseId, index) => {
@@ -702,10 +707,20 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
   doc.setFont(undefined, 'normal');
   yPos += 5;
   
-  generateShellLayoutDiagram(doc, 30, yPos, 60, 80, tankDimensions);
+  console.log('About to generate shell layout diagram with:', tankDimensions);
+  try {
+    generateShellLayoutDiagram(doc, 30, yPos, 60, 80, tankDimensions);
+    console.log('Shell layout diagram generated');
+  } catch (error) {
+    console.error('Error generating shell layout:', error);
+    doc.setFontSize(9);
+    doc.text('Shell diagram unavailable', 60, yPos + 40, { align: 'center' });
+  }
   
   // Generate roof layout diagram
-  generatePlateLayoutDiagram(
+  console.log('About to generate roof layout diagram');
+  try {
+    generatePlateLayoutDiagram(
     doc, 
     140, 
     yPos + 40, 
@@ -719,12 +734,24 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
         value: parseFloat(m.currentThickness || '0') || 0,
         condition: parseFloat(m.corrosionRate || '0') > 0.01 ? 'corrosion' : undefined
       }))
-  );
+    );
+    console.log('Roof layout diagram generated');
+  } catch (error) {
+    console.error('Error generating roof layout:', error);
+    doc.setFontSize(9);
+    doc.text('Roof diagram unavailable', 155, yPos + 40, { align: 'center' });
+  }
 
   yPos += 100;
 
   // Add inspection legend
-  generateInspectionLegend(doc, 20, yPos);
+  console.log('Generating inspection legend');
+  try {
+    generateInspectionLegend(doc, 20, yPos);
+    console.log('Inspection legend generated');
+  } catch (error) {
+    console.error('Error generating legend:', error);
+  }
   
   // Add settlement graph if data available
   if (report.maxSettlement) { // Use a field that exists
@@ -740,7 +767,15 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
       cosineValue: 4.24 + Math.cos((i * 15) * Math.PI / 180) * 0.015
     }));
     
-    generateSettlementGraph(doc, 20, 45, 170, 80, settlementPoints);
+    console.log('Generating settlement graph with points:', settlementPoints.length);
+    try {
+      generateSettlementGraph(doc, 20, 45, 170, 80, settlementPoints);
+      console.log('Settlement graph generated');
+    } catch (error) {
+      console.error('Error generating settlement graph:', error);
+      doc.setFontSize(10);
+      doc.text('Settlement graph unavailable', 105, 85, { align: 'center' });
+    }
   }
 }
 
