@@ -425,7 +425,7 @@ function generateSettlementAnalysisWithCharts(doc: jsPDF, report: InspectionRepo
   yPos += 10;
 
   // Generate professional API-653 style settlement graph
-  if (report.settlementDate) {
+  if (report.maxSettlement) {
     // Generate settlement data (would come from actual survey data in production)
     const settlementPoints = Array.from({ length: 24 }, (_, i) => ({
       point: i + 1,
@@ -676,7 +676,7 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
       .filter(m => m.component === 'shell' && m.location?.includes(courseId))
       .map(m => ({
         point: m.location || '',
-        thickness: m.currentThickness,
+        thickness: parseFloat(m.currentThickness || '0') || 0,
         x: 0.2 + (index % 3) * 0.3,
         y: 0.5
       }));
@@ -691,7 +691,7 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
 
   const tankDimensions: TankDimensions = {
     diameter: parseFloat(report.diameter || '0'),
-    height: parseFloat(report.tankHeight || '0'),
+    height: parseFloat(report.height || '0'), // Use 'height' not 'tankHeight'
     shellCourses
   };
 
@@ -716,8 +716,8 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
       .map((m, i) => ({
         angle: (i * 45) * Math.PI / 180,
         radius: 0.3 + (i % 3) * 0.3,
-        value: m.currentThickness,
-        condition: m.corrosionRate > 0.01 ? 'corrosion' : undefined
+        value: parseFloat(m.currentThickness || '0') || 0,
+        condition: parseFloat(m.corrosionRate || '0') > 0.01 ? 'corrosion' : undefined
       }))
   );
 
@@ -727,7 +727,7 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
   generateInspectionLegend(doc, 20, yPos);
   
   // Add settlement graph if data available
-  if (report.settlementDate) {
+  if (report.maxSettlement) { // Use a field that exists
     doc.addPage();
     doc.setFontSize(14);
     doc.setFont(undefined, 'bold');

@@ -6,7 +6,7 @@ export interface ShellCourse {
   nominalThickness: number;
   measurements?: {
     point: string;
-    thickness: number;
+    thickness: number | string | null;
     x?: number;
     y?: number;
   }[];
@@ -66,7 +66,10 @@ export function generateShellLayoutDiagram(
         
         // Add measurement value
         doc.setFontSize(6);
-        doc.text(`(${measurement.thickness})`, pointX + 2, pointY - 2);
+        const thicknessVal = typeof measurement.thickness === 'number' ? 
+          measurement.thickness.toFixed(3) : 
+          measurement.thickness || 'N/A';
+        doc.text(`(${thicknessVal})`, pointX + 2, pointY - 2);
       });
     }
   });
@@ -87,7 +90,7 @@ export function generatePlateLayoutDiagram(
   centerY: number,
   radius: number,
   plateType: 'roof' | 'bottom',
-  measurements?: { angle: number; radius: number; value: number; condition?: string }[]
+  measurements?: { angle: number; radius: number; value: number | string | null; condition?: string }[]
 ) {
   // Draw outer circle
   doc.setLineWidth(0.5);
@@ -131,7 +134,10 @@ export function generatePlateLayoutDiagram(
       // Add measurement value
       doc.setFontSize(6);
       doc.setTextColor(0, 0, 0);
-      doc.text(`${point.value}`, pointX + 3, pointY);
+      const valStr = typeof point.value === 'number' ? 
+        point.value.toFixed(3) : 
+        point.value || 'N/A';
+      doc.text(valStr, pointX + 3, pointY);
     });
   }
   
@@ -170,7 +176,7 @@ export function generateInspectionLegend(doc: jsPDF, x: number, y: number) {
   doc.setFontSize(8);
   symbols.forEach(item => {
     // Draw symbol
-    doc.setTextColor(...item.color);
+    doc.setTextColor(item.color[0], item.color[1], item.color[2]);
     doc.text(item.symbol, x, currentY);
     
     // Draw description
