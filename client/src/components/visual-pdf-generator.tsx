@@ -47,12 +47,13 @@ export function generateVisualPDF(data: VisualReportData): void {
   
   // Professional formatting constants
   const companyHeader = {
-    name: 'OilPro Tanks',
+    name: 'OilPro Consulting',
     title: 'API-653 Inspection Report',
     address1: '811 Dafney Drive',
     address2: 'Lafayette, LA',
     phone: 'Office – (337) 446-7459',
-    contact: 'Jerry Hartfield'
+    contact: 'Jerry Hartfield',
+    tagline: 'A LIMITED LIABILITY COMPANY'
   };
 
   // Helper function to add professional header
@@ -232,9 +233,12 @@ function generateComprehensiveCoverPage(doc: jsPDF, report: InspectionReport, co
   yPos = 220;
   doc.setFontSize(12);
   doc.setFont(undefined, 'bold');
-  doc.text(companyHeader.name, 105, yPos, { align: 'center' });
-  yPos += 8;
+  doc.text(companyHeader.name.toUpperCase(), 105, yPos, { align: 'center' });
+  yPos += 6;
+  doc.setFontSize(9);
   doc.setFont(undefined, 'normal');
+  doc.text(companyHeader.tagline, 105, yPos, { align: 'center' });
+  yPos += 8;
   doc.setFontSize(10);
   doc.text(companyHeader.address1, 105, yPos, { align: 'center' });
   yPos += 6;
