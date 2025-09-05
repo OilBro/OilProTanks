@@ -1,108 +1,126 @@
 import { jsPDF } from 'jspdf';
 import oilproConsultingLogo from '../assets/oilpro-consulting-logo.jpg';
 
-// Cache for the logo data URL
+// Preload and cache the logo as base64
 let logoDataUrl: string | null = null;
+let logoLoading = false;
+let logoLoadPromise: Promise<string> | null = null;
 
-// Convert image to data URL for embedding in PDF
-async function getLogoDataUrl(): Promise<string> {
-  if (logoDataUrl) return logoDataUrl;
+// Preload logo on module load
+function preloadLogo() {
+  if (logoLoading || logoDataUrl) return;
   
-  return new Promise((resolve, reject) => {
+  logoLoading = true;
+  logoLoadPromise = new Promise((resolve, reject) => {
     const img = new Image();
+    img.crossOrigin = 'anonymous';
+    
     img.onload = () => {
-      const canvas = document.createElement('canvas');
-      // Maintain aspect ratio for the logo
-      const aspectRatio = img.width / img.height;
-      canvas.width = 300; // Higher resolution for better quality
-      canvas.height = canvas.width / aspectRatio;
-      
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        // Draw white background for JPEG
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        // Draw the logo
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        logoDataUrl = canvas.toDataURL('image/jpeg', 0.95);
-        resolve(logoDataUrl);
-      } else {
-        reject(new Error('Could not get canvas context'));
+      try {
+        const canvas = document.createElement('canvas');
+        // Use original dimensions for quality
+        canvas.width = img.width;
+        canvas.height = img.height;
+        
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          // Draw the image
+          ctx.drawImage(img, 0, 0);
+          // Convert to base64
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+          logoDataUrl = dataUrl;
+          logoLoading = false;
+          resolve(dataUrl);
+        } else {
+          throw new Error('Could not get canvas context');
+        }
+      } catch (error) {
+        console.error('Error processing logo:', error);
+        logoLoading = false;
+        reject(error);
       }
     };
-    img.onerror = () => reject(new Error('Failed to load logo'));
+    
+    img.onerror = (error) => {
+      console.error('Failed to load logo:', error);
+      logoLoading = false;
+      reject(new Error('Failed to load logo'));
+    };
+    
+    // Set source to load the image
     img.src = oilproConsultingLogo;
   });
 }
 
-// Add OilPro Consulting logo to PDF
-export async function addOilProLogo(doc: jsPDF, x: number, y: number, width: number = 50, height?: number) {
-  try {
-    const dataUrl = await getLogoDataUrl();
-    // Calculate height to maintain aspect ratio if not provided
-    const finalHeight = height || (width / 2.5); // Approximate aspect ratio
-    doc.addImage(dataUrl, 'JPEG', x, y, width, finalHeight);
-  } catch (error) {
-    console.error('Error adding logo:', error);
-    // Fallback to text logo if image fails
-    addTextLogo(doc, x, y, width, height || 20);
+// Start preloading immediately
+if (typeof window !== 'undefined') {
+  preloadLogo();
+}
+
+// Get logo data URL (async)
+async function getLogoDataUrl(): Promise<string> {
+  if (logoDataUrl) return logoDataUrl;
+  if (logoLoadPromise) return logoLoadPromise;
+  
+  preloadLogo();
+  if (logoLoadPromise) return logoLoadPromise;
+  
+  throw new Error('Logo not available');
+}
+
+// Add OilPro Consulting logo to PDF (synchronous with fallback)
+export function addOilProLogoSync(doc: jsPDF, x: number, y: number, width: number = 50, height?: number) {
+  // Calculate aspect ratio (approximately 2.5:1 for the OilPro logo)
+  const finalHeight = height || (width / 2.5);
+  
+  if (logoDataUrl) {
+    try {
+      // Logo is loaded, add it to PDF
+      doc.addImage(logoDataUrl, 'JPEG', x, y, width, finalHeight);
+      return;
+    } catch (error) {
+      console.error('Error adding logo to PDF:', error);
+    }
+  }
+  
+  // Fallback: Draw placeholder
+  // Don't draw the blue box - just leave space for logo
+  // The logo will be added in next generation after it loads
+  if (!logoDataUrl && logoLoadPromise) {
+    // Logo is loading, try to wait briefly
+    logoLoadPromise.then(() => {
+      console.log('Logo loaded for next PDF generation');
+    }).catch(console.error);
   }
 }
 
-// Fallback text-based logo
-function addTextLogo(doc: jsPDF, x: number, y: number, width: number, height: number) {
-  // Background box with company colors
-  doc.setFillColor(0, 48, 135); // Navy blue
-  doc.roundedRect(x, y, width, height, 2, 2, 'F');
-  
-  // Add "OilPro" text in stylized format
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(14);
-  doc.setFont(undefined, 'bold');
-  
-  // Center the text in the box
-  const centerX = x + width / 2;
-  const centerY = y + height / 2 + 2;
-  
-  doc.text('OilPro', centerX, centerY, { align: 'center' });
-  
-  // Add a small tagline
-  doc.setFontSize(6);
-  doc.setFont(undefined, 'normal');
-  doc.text('CONSULTING', centerX, centerY + 5, { align: 'center' });
+// Async version that ensures logo is loaded
+export async function addOilProLogo(doc: jsPDF, x: number, y: number, width: number = 50, height?: number) {
+  try {
+    const dataUrl = await getLogoDataUrl();
+    const finalHeight = height || (width / 2.5);
+    doc.addImage(dataUrl, 'JPEG', x, y, width, finalHeight);
+  } catch (error) {
+    console.error('Error adding logo:', error);
+    // Don't add fallback text logo
+  }
 }
 
-// Helper to add logo to cover pages - larger size
+// Helper to add logo to cover pages
+export function addCoverPageLogoSync(doc: jsPDF) {
+  addOilProLogoSync(doc, 15, 10, 60, 24);
+}
+
+// Helper to add small logo to headers
+export function addHeaderLogoSync(doc: jsPDF) {
+  addOilProLogoSync(doc, 15, 8, 40, 16);
+}
+
+// Async helpers
 export async function addCoverPageLogo(doc: jsPDF) {
   await addOilProLogo(doc, 15, 10, 60, 24);
 }
 
-// Helper to add small logo to headers
 export async function addHeaderLogo(doc: jsPDF) {
   await addOilProLogo(doc, 15, 8, 40, 16);
-}
-
-// Synchronous versions for backwards compatibility
-export function addCoverPageLogoSync(doc: jsPDF) {
-  // Try to use cached logo if available
-  if (logoDataUrl) {
-    doc.addImage(logoDataUrl, 'JPEG', 15, 10, 60, 24);
-  } else {
-    // Use text fallback
-    addTextLogo(doc, 15, 10, 60, 24);
-    // Trigger async load for next time
-    getLogoDataUrl().catch(console.error);
-  }
-}
-
-export function addHeaderLogoSync(doc: jsPDF) {
-  // Try to use cached logo if available
-  if (logoDataUrl) {
-    doc.addImage(logoDataUrl, 'JPEG', 15, 8, 40, 16);
-  } else {
-    // Use text fallback
-    addTextLogo(doc, 15, 8, 40, 16);
-    // Trigger async load for next time
-    getLogoDataUrl().catch(console.error);
-  }
 }
