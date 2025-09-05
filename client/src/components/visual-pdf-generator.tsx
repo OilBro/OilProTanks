@@ -31,10 +31,6 @@ export interface VisualReportData {
 }
 
 export function generateVisualPDF(data: VisualReportData): void {
-  console.log('generateVisualPDF called with data:', data);
-  console.log('Report details:', data.report);
-  console.log('Measurements count:', data.measurements?.length);
-  
   const doc = new jsPDF();
   const { 
     report, 
@@ -671,26 +667,45 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
   doc.setFont(undefined, 'bold');
   doc.text('TANK VISUAL DIAGRAMS', 105, yPos, { align: 'center' });
   yPos += 15;
-  
-  console.log('Starting tank diagram generation with report:', report);
-  console.log('Measurements count:', measurements.length);
 
-  // Prepare shell course data
-  const shellCourses = ['8R1', '8R2', '8R3', '8R4'].map((courseId, index) => {
-    const courseMeasurements = measurements
-      .filter(m => m.component === 'shell' && m.location?.includes(courseId))
-      .map(m => ({
+  // Get unique shell course identifiers from actual measurements
+  const shellMeasurements = measurements.filter(m => m.component === 'shell');
+  const uniqueCourses = [...new Set(shellMeasurements.map(m => {
+    // Extract course number from location (e.g., "Course 1", "1st Course", "C1", etc.)
+    const location = m.location || '';
+    const courseMatch = location.match(/course\s*(\d+)|^(\d+)|c(\d+)/i);
+    if (courseMatch) {
+      const courseNum = courseMatch[1] || courseMatch[2] || courseMatch[3];
+      return `Course ${courseNum}`;
+    }
+    return location;
+  }).filter(Boolean))].sort();
+
+  // If no courses found in measurements, use default based on tank height
+  const courseIds = uniqueCourses.length > 0 ? uniqueCourses : 
+    (report.height ? Array.from({ length: Math.ceil(parseFloat(report.height) / 96) }, (_, i) => `Course ${i + 1}`) : ['Course 1']);
+
+  // Prepare shell course data from actual measurements
+  const shellCourses = courseIds.map((courseId, index) => {
+    const courseMeasurements = shellMeasurements
+      .filter(m => {
+        const location = m.location || '';
+        return location.includes(courseId) || 
+               location.includes(`${index + 1}`) ||
+               location.toLowerCase().includes(`course ${index + 1}`);
+      })
+      .map((m, mIndex) => ({
         point: m.location || '',
         thickness: parseFloat(m.currentThickness || '0') || 0,
-        x: 0.2 + (index % 3) * 0.3,
+        x: 0.15 + (mIndex % 4) * 0.2, // Distribute measurements across width
         y: 0.5
       }));
 
     return {
       courseNumber: courseId,
-      height: 96, // 8 feet per course
-      nominalThickness: 0.25 + (index * 0.0625), // Varying thickness
-      measurements: courseMeasurements.slice(0, 3) // Show up to 3 measurements per course
+      height: 96, // Standard 8 feet per course
+      nominalThickness: parseFloat(courseMeasurements[0]?.thickness?.toString() || '0.25') || 0.25,
+      measurements: courseMeasurements.slice(0, 4) // Show up to 4 measurements per course
     };
   });
 
@@ -707,10 +722,8 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
   doc.setFont(undefined, 'normal');
   yPos += 5;
   
-  console.log('About to generate shell layout diagram with:', tankDimensions);
   try {
     generateShellLayoutDiagram(doc, 30, yPos, 60, 80, tankDimensions);
-    console.log('Shell layout diagram generated');
   } catch (error) {
     console.error('Error generating shell layout:', error);
     doc.setFontSize(9);
@@ -718,7 +731,6 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
   }
   
   // Generate roof layout diagram
-  console.log('About to generate roof layout diagram');
   try {
     generatePlateLayoutDiagram(
     doc, 
@@ -735,7 +747,6 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
         condition: parseFloat(m.corrosionRate || '0') > 0.01 ? 'corrosion' : undefined
       }))
     );
-    console.log('Roof layout diagram generated');
   } catch (error) {
     console.error('Error generating roof layout:', error);
     doc.setFontSize(9);
@@ -745,10 +756,8 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
   yPos += 100;
 
   // Add inspection legend
-  console.log('Generating inspection legend');
   try {
     generateInspectionLegend(doc, 20, yPos);
-    console.log('Inspection legend generated');
   } catch (error) {
     console.error('Error generating legend:', error);
   }
@@ -767,10 +776,8 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
       cosineValue: 4.24 + Math.cos((i * 15) * Math.PI / 180) * 0.015
     }));
     
-    console.log('Generating settlement graph with points:', settlementPoints.length);
     try {
       generateSettlementGraph(doc, 20, 45, 170, 80, settlementPoints);
-      console.log('Settlement graph generated');
     } catch (error) {
       console.error('Error generating settlement graph:', error);
       doc.setFontSize(10);
