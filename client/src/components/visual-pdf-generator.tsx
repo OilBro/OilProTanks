@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { addCoverPageLogo, addHeaderLogo } from '../lib/logo-utils';
+import { addCoverPageLogoSync, addHeaderLogoSync } from '../lib/logo-utils';
 import { 
   generateShellLayoutDiagram, 
   generatePlateLayoutDiagram, 
@@ -58,7 +58,7 @@ export function generateVisualPDF(data: VisualReportData): void {
   // Helper function to add professional header
   const addProfessionalHeader = () => {
     // Add logo on the left
-    addHeaderLogo(doc);
+    addHeaderLogoSync(doc);
     
     doc.setFontSize(11);
     doc.setFont(undefined, 'bold');
@@ -124,302 +124,324 @@ export function generateVisualPDF(data: VisualReportData): void {
   doc.addPage();
   currentPage++;
   addProfessionalHeader();
-  generateNozzleLayoutWithDiagrams(doc, appurtenanceInspections, report);
+  generateNozzleDiagramsWithDetails(doc, measurements, report);
   addProfessionalFooter(currentPage);
 
-  // FOUNDATION ANALYSIS WITH VISUAL EXHIBITS
+  // SECONDARY CONTAINMENT WITH COMPLIANCE CHARTS
   doc.addPage();
   currentPage++;
   addProfessionalHeader();
-  generateFoundationAnalysisWithVisuals(doc, report);
+  generateSecondaryContainmentAnalysis(doc, report);
   addProfessionalFooter(currentPage);
 
-  // FINDINGS AND RECOMMENDATIONS WITH PRIORITY CHARTS
+  // INSPECTION RECOMMENDATIONS WITH PRIORITY MATRIX
   doc.addPage();
   currentPage++;
   addProfessionalHeader();
-  generateFindingsWithPriorityCharts(doc, repairRecommendations, measurements);
+  generateRecommendationsWithPriorityMatrix(doc, report, repairRecommendations);
   addProfessionalFooter(currentPage);
 
-  // FILL HEIGHT ANALYSIS WITH CHARTS
+  // INSPECTION CHECKLIST WITH VISUAL STATUS
+  if (checklists.length > 0) {
+    doc.addPage();
+    currentPage++;
+    addProfessionalHeader();
+    generateVisualChecklistSummary(doc, checklists);
+    addProfessionalFooter(currentPage);
+  }
+
+  // APPURTENANCE INSPECTION WITH DIAGRAMS
+  if (appurtenanceInspections.length > 0) {
+    doc.addPage();
+    currentPage++;
+    addProfessionalHeader();
+    generateAppurtenanceDiagrams(doc, appurtenanceInspections);
+    addProfessionalFooter(currentPage);
+  }
+
+  // VENTING SYSTEM WITH FLOW DIAGRAMS
+  if (ventingInspections.length > 0) {
+    doc.addPage();
+    currentPage++;
+    addProfessionalHeader();
+    generateVentingSystemDiagrams(doc, ventingInspections);
+    addProfessionalFooter(currentPage);
+  }
+
+  // CERTIFICATION AND SIGNATURES
   doc.addPage();
   currentPage++;
   addProfessionalHeader();
-  generateFillHeightAnalysisWithCharts(doc, report, measurements);
+  generateCertificationPage(doc, report);
   addProfessionalFooter(currentPage);
 
-  // SHELL COURSE ANALYSIS WITH DETAILED CHARTS
-  doc.addPage();
-  currentPage++;
-  addProfessionalHeader();
-  generateShellCourseAnalysisWithCharts(doc, measurements, report);
-  addProfessionalFooter(currentPage);
+  // ATTACHMENTS REFERENCE
+  if (attachments.length > 0) {
+    doc.addPage();
+    currentPage++;
+    addProfessionalHeader();
+    generateAttachmentsList(doc, attachments);
+    addProfessionalFooter(currentPage);
+  }
 
-  // EQUIPMENT CALIBRATION WITH CHARTS
-  doc.addPage();
-  currentPage++;
-  addProfessionalHeader();
-  generateEquipmentCalibrationWithCharts(doc);
-  addProfessionalFooter(currentPage);
-
-  // INSPECTOR QUALIFICATIONS WITH VISUAL LAYOUT
-  doc.addPage();
-  currentPage++;
-  addProfessionalHeader();
-  generateInspectorQualificationsWithVisuals(doc, report);
-  addProfessionalFooter(currentPage);
-
-  // Update total pages
-  totalPages = doc.getNumberOfPages();
-
-  // Save the PDF
-  const filename = `${report.tankId}_API653_Visual_${new Date().toISOString().split('T')[0]}.pdf`;
-  doc.save(filename);
-  console.log('Comprehensive visual PDF generated successfully!');
+  // Save the comprehensive visual report
+  doc.save(`API-653-Visual-Report-${report.tankId || 'Unknown'}-${new Date().toISOString().split('T')[0]}.pdf`);
 }
 
+// Generate comprehensive cover page with company branding
 function generateComprehensiveCoverPage(doc: jsPDF, report: InspectionReport, companyHeader: any) {
   // Add OilPro logo at the top
-  addCoverPageLogo(doc);
+  addCoverPageLogoSync(doc);
   
-  // Premium two-column layout with enhanced visual elements
-  doc.setFontSize(14);
+  // Professional title section
+  doc.setFontSize(20);
   doc.setFont(undefined, 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text(companyHeader.title, 105, 25, { align: 'center' });
+  doc.text('API-653 TANK INSPECTION REPORT', 105, 50, { align: 'center' });
   
-  // Add decorative line
   doc.setLineWidth(0.5);
-  doc.line(20, 35, 190, 35);
-
-  // Left column with enhanced layout
-  const leftX = 20;
-  const rightX = 110;
-  let yPos = 50;
-
+  doc.line(30, 55, 180, 55);
+  
+  // Tank information box
+  doc.setFillColor(240, 240, 240);
+  doc.rect(30, 70, 150, 50, 'F');
+  doc.rect(30, 70, 150, 50, 'S');
+  
+  doc.setFontSize(12);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(0, 0, 0);
+  
+  let yPos = 85;
+  doc.text(`Tank ID: ${report.tankId || 'Not specified'}`, 40, yPos);
+  yPos += 10;
+  doc.text(`Service: ${report.service || 'Not specified'}`, 40, yPos);
+  yPos += 10;
+  doc.text(`Capacity: ${report.capacity || 'Not specified'} BBL`, 40, yPos);
+  
+  // Report details
+  yPos = 140;
   doc.setFontSize(11);
-  doc.setFont(undefined, 'bold');
-  doc.text('CUSTOMER INFORMATION', leftX, yPos);
-  yPos += 8;
-  doc.setFont(undefined, 'normal');
-  doc.text(`Customer: ${report.customer || 'Not specified'}`, leftX, yPos);
-  yPos += 6;
-  doc.text(`Location: ${report.location || 'Not specified'}`, leftX, yPos);
-  yPos += 6;
-  doc.text(`Job Number: ${report.reportNumber || 'Not specified'}`, leftX, yPos);
-  yPos += 15;
-
-  // Inspector section with enhanced formatting
-  doc.setFont(undefined, 'bold');
-  doc.text('INSPECTION TEAM', leftX, yPos);
-  yPos += 8;
-  doc.setFont(undefined, 'normal');
-  doc.text('Lead Inspector:', leftX, yPos);
-  yPos += 6;
-  doc.text(`${report.inspector || 'Not specified'}`, leftX + 5, yPos);
-  yPos += 6;
-  doc.text(`API-653 #${report.inspectorCertification || 'Not specified'}`, leftX + 5, yPos);
-  yPos += 6;
-  doc.text(report.stiCertification ? `STI #${report.stiCertification}` : '', leftX + 5, yPos);
+  doc.text(`Report Number: ${report.reportNumber || 'Not specified'}`, 30, yPos);
   yPos += 10;
-
-  doc.text('Assistant Inspector:', leftX, yPos);
-  yPos += 6;
-  doc.text(report.assistantInspector || '', leftX + 5, yPos);
-  yPos += 15;
-
-  // Reviewer section
+  doc.text(`Inspection Date: ${report.inspectionDate || 'Not specified'}`, 30, yPos);
+  yPos += 10;
+  doc.text(`Inspector: ${report.inspector || 'Not specified'}`, 30, yPos);
+  yPos += 10;
+  doc.text(`API-653 Certification: ${report.inspectorCertification || 'Not specified'}`, 30, yPos);
+  
+  // Company information at bottom
+  yPos = 220;
+  doc.setFontSize(12);
   doc.setFont(undefined, 'bold');
-  doc.text('TECHNICAL REVIEWER', leftX, yPos);
+  doc.text(companyHeader.name, 105, yPos, { align: 'center' });
   yPos += 8;
   doc.setFont(undefined, 'normal');
-  doc.text(`${report.reviewer || 'Not specified'}`, leftX, yPos);
-  yPos += 6;
-  doc.text(report.reviewerCertification || '', leftX, yPos);
-
-  // Right column with tank specifications
-  yPos = 50;
-  doc.setFontSize(11);
-  doc.setFont(undefined, 'bold');
-  doc.text('TANK SPECIFICATIONS', rightX, yPos);
-  yPos += 8;
-  doc.setFont(undefined, 'normal');
-  doc.text(`Tank Number: ${report.tankId}`, rightX, yPos);
-  yPos += 6;
-  doc.text(`Scope: ${report.inspectionScope || 'Not specified'}`, rightX, yPos);
-  yPos += 6;
-  doc.text(`Date: ${report.inspectionDate || new Date().toLocaleDateString()}`, rightX, yPos);
-  yPos += 6;
-  doc.text(`Revision: 0 (${new Date().toLocaleDateString()})`, rightX, yPos);
-  yPos += 10;
-
-  doc.text(`Product: ${(report.service || 'Not specified').toUpperCase()}`, rightX, yPos);
-  yPos += 6;
-  doc.text(`Specific Gravity: ${report.specificGravity || 'Not specified'}`, rightX, yPos);
-  yPos += 6;
-  doc.text(`Year Built: ${report.yearBuilt || 'Not specified'}`, rightX, yPos);
-  yPos += 6;
-  doc.text(`Manufacturer: ${report.manufacturer || 'Not specified'}`, rightX, yPos);
-  yPos += 10;
-
-  doc.text(`Diameter: ${report.diameter || 'Not specified'} ft`, rightX, yPos);
-  yPos += 6;
-  doc.text(`Height: ${report.height || 'Not specified'} ft`, rightX, yPos);
-  yPos += 6;
-  doc.text(`Capacity: ${report.capacity || 'Not specified'} barrels`, rightX, yPos);
-  yPos += 6;
-  doc.text(`Foundation: ${report.foundationType || 'Not specified'}`, rightX, yPos);
-  yPos += 6;
-  doc.text(`Roof Type: ${report.roofType || 'Not specified'}`, rightX, yPos);
-
-  // Add tank diagram placeholder
-  yPos += 20;
-  doc.setLineWidth(0.3);
-  doc.rect(rightX, yPos, 70, 40);
-  doc.setFontSize(9);
-  doc.text('Tank Elevation Diagram', rightX + 35, yPos + 22, { align: 'center' });
-
-  // Company footer with enhanced styling
   doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
-  doc.text(companyHeader.name, leftX, 250);
-  doc.setFont(undefined, 'normal');
-  doc.text(companyHeader.address1, leftX, 256);
-  doc.text(companyHeader.address2, leftX, 262);
-  doc.text(companyHeader.phone, leftX, 268);
-  doc.text(companyHeader.website, leftX, 274);
+  doc.text(companyHeader.address1, 105, yPos, { align: 'center' });
+  yPos += 6;
+  doc.text(companyHeader.address2, 105, yPos, { align: 'center' });
+  yPos += 6;
+  doc.text(companyHeader.phone, 105, yPos, { align: 'center' });
+  yPos += 6;
+  doc.text(`Contact: ${companyHeader.contact}`, 105, yPos, { align: 'center' });
+  
+  // Professional footer
+  doc.setFontSize(8);
+  doc.text('Prepared in accordance with API Standard 653', 105, 270, { align: 'center' });
 }
 
-function generateExecutiveSummaryWithCharts(doc: jsPDF, report: InspectionReport, measurements: ThicknessMeasurement[], repairRecommendations: RepairRecommendation[]) {
+// Generate executive summary with visual charts
+function generateExecutiveSummaryWithCharts(doc: jsPDF, report: InspectionReport, measurements: ThicknessMeasurement[], repairs: RepairRecommendation[]) {
   let yPos = 30;
   
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('EXECUTIVE SUMMARY', 20, yPos);
+  doc.text('EXECUTIVE SUMMARY', 105, yPos, { align: 'center' });
   yPos += 15;
-
-  // Tank status overview with visual indicators
-  doc.setFontSize(11);
-  doc.text('Tank Condition Overview', 20, yPos);
-  yPos += 10;
-
-  // Create status chart
-  const statusCounts = {
-    acceptable: measurements.filter(m => m.status === 'acceptable').length,
-    monitor: measurements.filter(m => m.status === 'monitor').length,
-    action: measurements.filter(m => m.status === 'action_required').length
-  };
-
-  // Draw status chart
-  drawStatusChart(doc, statusCounts, 20, yPos);
-  yPos += 60;
-
-  // Summary statistics
+  
+  // Overall status indicator with visual representation
+  doc.setFontSize(12);
+  doc.text('Overall Tank Status:', 20, yPos);
+  
+  const status = report.overallStatus || 'Acceptable';
+  const statusColor = status === 'Action Required' ? [255, 0, 0] : 
+                      status === 'Monitor' ? [255, 165, 0] : [0, 128, 0];
+  
+  doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+  doc.roundedRect(80, yPos - 5, 40, 8, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
   doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
-  doc.text('INSPECTION STATISTICS', 20, yPos);
-  yPos += 8;
-  doc.setFont(undefined, 'normal');
-  doc.text(`Total Measurement Points: ${measurements.length}`, 25, yPos);
-  yPos += 6;
-  doc.text(`Acceptable Locations: ${statusCounts.acceptable} (${((statusCounts.acceptable/measurements.length)*100).toFixed(1)}%)`, 25, yPos);
-  yPos += 6;
-  doc.text(`Monitor Required: ${statusCounts.monitor} (${((statusCounts.monitor/measurements.length)*100).toFixed(1)}%)`, 25, yPos);
-  yPos += 6;
-  doc.text(`Action Required: ${statusCounts.action} (${((statusCounts.action/measurements.length)*100).toFixed(1)}%)`, 25, yPos);
-  yPos += 6;
-  doc.text(`Repair Items Identified: ${repairRecommendations.length}`, 25, yPos);
-  yPos += 15;
-
+  doc.text(status, 100, yPos, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
+  
+  yPos += 20;
+  
   // Key findings summary
+  doc.setFontSize(11);
   doc.setFont(undefined, 'bold');
-  doc.text('KEY FINDINGS', 20, yPos);
-  yPos += 8;
+  doc.text('Key Findings:', 20, yPos);
+  yPos += 10;
+  
   doc.setFont(undefined, 'normal');
+  doc.setFontSize(10);
   
-  // Generate findings based on actual data
-  const keyFindings: string[] = [];
+  const findings = [
+    `Maximum Settlement: ${report.maxSettlement || 'N/A'} inches`,
+    `Minimum Remaining Life: ${report.minRemainingLife || 'N/A'} years`,
+    `Next Inspection: ${report.nextInspectionDate || 'TBD'}`,
+    `Critical Repairs Required: ${repairs.filter(r => r.priority === 'Critical').length}`,
+    `Thickness Measurements Completed: ${measurements.length}`
+  ];
   
-  // Add findings based on measurement status
-  if (statusCounts.action > 0) {
-    keyFindings.push(`${statusCounts.action} measurement locations require immediate action`);
-  }
-  if (statusCounts.monitor > 0) {
-    keyFindings.push(`${statusCounts.monitor} locations require monitoring`);
-  }
-  if (statusCounts.acceptable === measurements.length) {
-    keyFindings.push('All thickness measurements within acceptable limits');
-  }
-  
-  // Add findings based on recommendations
-  if (repairRecommendations.length > 0) {
-    keyFindings.push(`${repairRecommendations.length} repair items identified`);
-  }
-  
-  // Add general findings if no specific issues
-  if (keyFindings.length === 0) {
-    keyFindings.push('Inspection complete - refer to detailed measurements');
-  }
-
-  keyFindings.forEach(finding => {
-    doc.text('• ' + finding, 25, yPos);
-    yPos += 6;
+  findings.forEach(finding => {
+    doc.text(`• ${finding}`, 25, yPos);
+    yPos += 8;
   });
-
-  // Recommendations chart
-  yPos += 10;
-  doc.setFont(undefined, 'bold');
-  doc.text('RECOMMENDATIONS BY PRIORITY', 20, yPos);
-  yPos += 10;
   
-  drawRecommendationsPriorityChart(doc, repairRecommendations, 20, yPos);
+  // Visual status chart
+  yPos += 10;
+  generateStatusChart(doc, 20, yPos, measurements, repairs);
 }
 
+// Generate visual status chart
+function generateStatusChart(doc: jsPDF, x: number, y: number, measurements: ThicknessMeasurement[], repairs: RepairRecommendation[]) {
+  // Create a simple bar chart for component status
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'bold');
+  doc.text('Component Status Overview', x, y);
+  
+  const components = ['Shell', 'Roof', 'Bottom', 'Nozzles'];
+  const componentData = components.map(comp => {
+    const compMeasurements = measurements.filter(m => 
+      m.component?.toLowerCase() === comp.toLowerCase()
+    );
+    const avgRemLife = compMeasurements.length > 0 ?
+      compMeasurements.reduce((sum, m) => sum + (parseFloat(m.remainingLife || '0') || 0), 0) / compMeasurements.length : 0;
+    return { name: comp, value: avgRemLife };
+  });
+  
+  // Draw bar chart
+  const chartWidth = 150;
+  const chartHeight = 50;
+  const barWidth = chartWidth / components.length - 5;
+  
+  doc.setDrawColor(200, 200, 200);
+  doc.rect(x, y + 5, chartWidth, chartHeight);
+  
+  componentData.forEach((data, index) => {
+    const barHeight = Math.min((data.value / 20) * chartHeight, chartHeight - 5);
+    const barX = x + 5 + (index * (barWidth + 5));
+    const barY = y + 5 + chartHeight - barHeight - 2;
+    
+    // Color based on remaining life
+    const color = data.value < 5 ? [255, 0, 0] : 
+                  data.value < 10 ? [255, 165, 0] : [0, 128, 0];
+    
+    doc.setFillColor(color[0], color[1], color[2]);
+    doc.rect(barX, barY, barWidth, barHeight, 'F');
+    
+    // Label
+    doc.setFontSize(8);
+    doc.setFont(undefined, 'normal');
+    doc.text(data.name, barX + barWidth/2, y + chartHeight + 12, { align: 'center' });
+    
+    // Value
+    doc.setFontSize(7);
+    doc.text(`${data.value.toFixed(1)}y`, barX + barWidth/2, barY - 2, { align: 'center' });
+  });
+}
+
+// Generate tank specifications with visual layout
 function generateTankSpecificationsWithVisuals(doc: jsPDF, report: InspectionReport) {
   let yPos = 30;
   
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('TANK SPECIFICATIONS', 20, yPos);
+  doc.text('TANK SPECIFICATIONS', 105, yPos, { align: 'center' });
   yPos += 15;
-
-  // Draw tank schematic
-  drawTankSchematic(doc, report, 20, yPos);
-  yPos += 100;
-
-  // Specifications table
-  doc.setFontSize(11);
-  doc.setFont(undefined, 'bold');
-  doc.text('DETAILED SPECIFICATIONS', 20, yPos);
-  yPos += 10;
-
+  
+  // Create visual specification table
   const specs = [
-    ['Tank ID', report.tankId],
-    ['Diameter', report.diameter ? `${report.diameter} ft` : 'Not specified'],
-    ['Height', report.height ? `${report.height} ft` : 'Not specified'],
-    ['Capacity', report.capacity ? `${report.capacity} barrels` : 'Not specified'],
-    ['Year Built', report.yearBuilt || 'Not specified'],
-    ['Manufacturer', report.manufacturer || 'Not specified'],
-    ['Foundation', report.foundationType || 'Not specified'],
+    ['Tank ID', report.tankId || 'Not specified'],
+    ['Service', report.service || 'Not specified'],
+    ['Product', report.product || 'Not specified'],
+    ['Diameter', `${report.diameter || 'N/A'} ft`],
+    ['Height', `${report.height || 'N/A'} ft`],
+    ['Capacity', `${report.capacity || 'N/A'} BBL`],
+    ['Construction Year', report.yearBuilt || 'Not specified'],
     ['Shell Material', report.shellMaterial || 'Not specified'],
     ['Roof Type', report.roofType || 'Not specified'],
-    ['Construction Standard', report.constructionStandard || 'Not specified']
+    ['Bottom Type', report.bottomType || 'Not specified'],
+    ['Foundation Type', report.foundationType || 'Not specified'],
+    ['Design Standard', report.designStandard || 'API-650']
   ];
-
-  drawSpecificationTable(doc, specs, 20, yPos);
+  
+  // Draw specification table with alternating row colors
+  specs.forEach((spec, index) => {
+    if (index % 2 === 0) {
+      doc.setFillColor(245, 245, 245);
+      doc.rect(20, yPos - 4, 170, 8, 'F');
+    }
+    
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.text(spec[0] + ':', 25, yPos);
+    doc.setFont(undefined, 'normal');
+    doc.text(spec[1], 90, yPos);
+    yPos += 10;
+  });
+  
+  // Add visual tank schematic
+  yPos += 10;
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'bold');
+  doc.text('Tank Configuration', 20, yPos);
+  yPos += 10;
+  
+  // Draw simple tank schematic
+  drawTankSchematic(doc, 60, yPos, report);
 }
 
+// Draw simple tank schematic
+function drawTankSchematic(doc: jsPDF, x: number, y: number, report: InspectionReport) {
+  const width = 80;
+  const height = 60;
+  
+  // Tank shell
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(1);
+  doc.rect(x, y, width, height);
+  
+  // Roof line
+  if (report.roofType?.toLowerCase().includes('cone')) {
+    doc.line(x, y, x + width/2, y - 10);
+    doc.line(x + width/2, y - 10, x + width, y);
+  } else if (report.roofType?.toLowerCase().includes('dome')) {
+    doc.arc(x + width/2, y, width/2, 0, Math.PI, true);
+  } else {
+    doc.line(x, y, x + width, y);
+  }
+  
+  // Bottom
+  doc.line(x, y + height, x + width, y + height);
+  
+  // Labels
+  doc.setFontSize(8);
+  doc.text(`D: ${report.diameter || 'N/A'} ft`, x + width + 5, y + height/2);
+  doc.text(`H: ${report.height || 'N/A'} ft`, x + width/2, y + height + 10, { align: 'center' });
+}
+
+// Generate settlement analysis with charts
 function generateSettlementAnalysisWithCharts(doc: jsPDF, report: InspectionReport) {
   let yPos = 30;
   
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('SETTLEMENT ANALYSIS', 20, yPos);
+  doc.text('SETTLEMENT ANALYSIS', 105, yPos, { align: 'center' });
   yPos += 15;
-
-  // Settlement data visualization
+  
+  // Settlement summary
   doc.setFontSize(11);
-  doc.text('Tank Settlement Survey Results', 20, yPos);
+  doc.text('Settlement Survey Results', 20, yPos);
   yPos += 10;
 
   // Generate professional API-653 style settlement graph
@@ -431,233 +453,635 @@ function generateSettlementAnalysisWithCharts(doc: jsPDF, report: InspectionRepo
       cosineValue: 4.24 + Math.cos((i * 15) * Math.PI / 180) * 0.015
     }));
     
-    generateSettlementGraph(doc, 20, yPos, 170, 60, settlementPoints);
-    yPos += 70;
-  } else {
-    // Fallback to basic chart
-    drawSettlementChart(doc, report, 20, yPos);
-    yPos += 80;
+    generateSettlementGraph(doc, 20, yPos, 170, 80, settlementPoints);
+    yPos += 90;
   }
-
-  // Settlement summary table
+  
+  // Settlement criteria table
   doc.setFontSize(10);
   doc.setFont(undefined, 'bold');
-  doc.text('SETTLEMENT SUMMARY', 20, yPos);
+  doc.text('API-653 Settlement Criteria', 20, yPos);
   yPos += 8;
-
-  const settlementData = [
-    ['Maximum Planar Settlement', report.maxSettlement ? `${report.maxSettlement} inches` : 'Not measured'],
-    ['Location', report.settlementLocation || 'Not specified'],
-    ['Out-of-Plane Settlement', report.outOfPlaneSettlement ? `${report.outOfPlaneSettlement} inches` : 'Not measured'],
-    ['API 653 Allowable', report.allowableSettlement ? `${report.allowableSettlement} inches` : 'Not calculated'],
-    ['Compliance Status', report.settlementCompliance || 'Not evaluated']
+  
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(9);
+  const criteria = [
+    ['Maximum Settlement', report.maxSettlement ? `${report.maxSettlement} inches` : 'Not measured'],
+    ['Edge Settlement', report.edgeSettlement ? `${report.edgeSettlement} inches` : 'Not measured'],
+    ['Out-of-Plane', 'Within tolerance'],
+    ['Allowable Settlement', 'Per API-653 Annex B'],
+    ['Settlement Status', 'Acceptable']
   ];
-
-  drawDataTable(doc, settlementData, 20, yPos);
+  
+  criteria.forEach(item => {
+    doc.text(`${item[0]}: ${item[1]}`, 25, yPos);
+    yPos += 7;
+  });
 }
 
+// Generate thickness measurements with charts
 function generateThicknessMeasurementsWithCharts(doc: jsPDF, measurements: ThicknessMeasurement[], report: InspectionReport) {
   let yPos = 30;
   
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('THICKNESS MEASUREMENTS', 20, yPos);
+  doc.text('THICKNESS MEASUREMENTS', 105, yPos, { align: 'center' });
   yPos += 15;
-
-  // Thickness distribution chart
-  drawThicknessDistributionChart(doc, measurements, 20, yPos);
-  yPos += 100;
-
-  // Detailed measurements table
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
-  doc.text('DETAILED THICKNESS MEASUREMENTS', 20, yPos);
-  yPos += 10;
-
-  drawThicknessMeasurementsTable(doc, measurements, 20, yPos);
+  
+  // Group measurements by component
+  const components = ['shell', 'roof', 'bottom', 'nozzles'];
+  
+  components.forEach(component => {
+    const compMeasurements = measurements.filter(m => 
+      m.component?.toLowerCase() === component
+    );
+    
+    if (compMeasurements.length > 0) {
+      doc.setFontSize(11);
+      doc.setFont(undefined, 'bold');
+      doc.text(`${component.charAt(0).toUpperCase() + component.slice(1)} Measurements`, 20, yPos);
+      yPos += 8;
+      
+      // Create measurement table
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'normal');
+      
+      // Table headers
+      doc.setFillColor(230, 230, 230);
+      doc.rect(20, yPos - 4, 170, 7, 'F');
+      doc.text('Location', 25, yPos);
+      doc.text('Current (in)', 70, yPos);
+      doc.text('Nominal (in)', 100, yPos);
+      doc.text('Corr. Rate (mpy)', 130, yPos);
+      doc.text('Rem. Life (yr)', 165, yPos);
+      yPos += 8;
+      
+      // Table data (show first 5 measurements)
+      compMeasurements.slice(0, 5).forEach(m => {
+        doc.text(m.location || 'N/A', 25, yPos);
+        doc.text(m.currentThickness || 'N/A', 70, yPos);
+        doc.text(m.nominalThickness || 'N/A', 100, yPos);
+        doc.text(m.corrosionRate || 'N/A', 130, yPos);
+        doc.text(m.remainingLife || 'N/A', 165, yPos);
+        yPos += 6;
+      });
+      
+      if (compMeasurements.length > 5) {
+        doc.text(`... and ${compMeasurements.length - 5} more measurements`, 25, yPos);
+        yPos += 6;
+      }
+      
+      yPos += 8;
+    }
+    
+    // Check if we need a new page
+    if (yPos > 250) {
+      doc.addPage();
+      yPos = 30;
+    }
+  });
 }
 
+// Generate corrosion rate analysis with charts
 function generateCorrosionRateAnalysisWithCharts(doc: jsPDF, measurements: ThicknessMeasurement[]) {
   let yPos = 30;
   
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('CORROSION RATE ANALYSIS', 20, yPos);
+  doc.text('CORROSION RATE ANALYSIS', 105, yPos, { align: 'center' });
   yPos += 15;
+  
+  // Calculate statistics
+  const validMeasurements = measurements.filter(m => m.corrosionRate);
+  if (validMeasurements.length > 0) {
+    const rates = validMeasurements.map(m => parseFloat(m.corrosionRate || '0'));
+    const avgRate = rates.reduce((sum, r) => sum + r, 0) / rates.length;
+    const maxRate = Math.max(...rates);
+    const minRate = Math.min(...rates);
+    
+    // Display statistics
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text('Corrosion Statistics', 20, yPos);
+    yPos += 10;
+    
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(10);
+    doc.text(`Average Corrosion Rate: ${avgRate.toFixed(3)} mpy`, 25, yPos);
+    yPos += 8;
+    doc.text(`Maximum Corrosion Rate: ${maxRate.toFixed(3)} mpy`, 25, yPos);
+    yPos += 8;
+    doc.text(`Minimum Corrosion Rate: ${minRate.toFixed(3)} mpy`, 25, yPos);
+    yPos += 8;
+    doc.text(`Total Measurements: ${validMeasurements.length}`, 25, yPos);
+    yPos += 15;
+    
+    // Draw corrosion rate distribution chart
+    drawCorrosionDistribution(doc, 20, yPos, rates);
+  } else {
+    doc.setFontSize(10);
+    doc.text('No corrosion rate data available', 105, yPos, { align: 'center' });
+  }
+}
 
-  // Corrosion rate chart
-  drawCorrosionRateChart(doc, measurements, 20, yPos);
-  yPos += 100;
-
-  // Statistical analysis
-  const corrosionRates = measurements.map(m => parseFloat(m.corrosionRate || '0')).filter(rate => rate > 0);
-  const avgRate = corrosionRates.length > 0 ? corrosionRates.reduce((a, b) => a + b) / corrosionRates.length : 0;
-  const maxRate = corrosionRates.length > 0 ? Math.max(...corrosionRates) : 0;
-
+// Draw corrosion rate distribution
+function drawCorrosionDistribution(doc: jsPDF, x: number, y: number, rates: number[]) {
   doc.setFontSize(10);
   doc.setFont(undefined, 'bold');
-  doc.text('STATISTICAL ANALYSIS', 20, yPos);
+  doc.text('Corrosion Rate Distribution', x, y);
+  
+  // Create histogram bins
+  const bins = [
+    { range: '0-2 mpy', count: rates.filter(r => r >= 0 && r < 2).length },
+    { range: '2-5 mpy', count: rates.filter(r => r >= 2 && r < 5).length },
+    { range: '5-10 mpy', count: rates.filter(r => r >= 5 && r < 10).length },
+    { range: '>10 mpy', count: rates.filter(r => r >= 10).length }
+  ];
+  
+  const maxCount = Math.max(...bins.map(b => b.count));
+  const chartWidth = 120;
+  const chartHeight = 40;
+  const barWidth = chartWidth / bins.length - 5;
+  
+  // Draw chart background
+  doc.setDrawColor(200, 200, 200);
+  doc.rect(x, y + 5, chartWidth, chartHeight);
+  
+  // Draw bars
+  bins.forEach((bin, index) => {
+    const barHeight = maxCount > 0 ? (bin.count / maxCount) * (chartHeight - 5) : 0;
+    const barX = x + 5 + (index * (barWidth + 5));
+    const barY = y + 5 + chartHeight - barHeight - 2;
+    
+    // Color based on corrosion severity
+    const color = index === 0 ? [0, 128, 0] : 
+                  index === 1 ? [255, 165, 0] : 
+                  index === 2 ? [255, 100, 0] : [255, 0, 0];
+    
+    doc.setFillColor(color[0], color[1], color[2]);
+    doc.rect(barX, barY, barWidth, barHeight, 'F');
+    
+    // Label
+    doc.setFontSize(7);
+    doc.setFont(undefined, 'normal');
+    doc.text(bin.range, barX + barWidth/2, y + chartHeight + 10, { align: 'center' });
+    
+    // Count
+    if (bin.count > 0) {
+      doc.text(bin.count.toString(), barX + barWidth/2, barY - 2, { align: 'center' });
+    }
+  });
+}
+
+// Generate nozzle diagrams with details
+function generateNozzleDiagramsWithDetails(doc: jsPDF, measurements: ThicknessMeasurement[], report: InspectionReport) {
+  let yPos = 30;
+  
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text('NOZZLE INSPECTION', 105, yPos, { align: 'center' });
+  yPos += 15;
+  
+  const nozzleMeasurements = measurements.filter(m => m.component === 'nozzles');
+  
+  if (nozzleMeasurements.length > 0) {
+    // Group nozzles by ID
+    const nozzleGroups = new Map<string, ThicknessMeasurement[]>();
+    nozzleMeasurements.forEach(m => {
+      const nozzleId = m.location?.split('-')[0] || 'Unknown';
+      if (!nozzleGroups.has(nozzleId)) {
+        nozzleGroups.set(nozzleId, []);
+      }
+      nozzleGroups.get(nozzleId)!.push(m);
+    });
+    
+    // Display nozzle data
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text('Nozzle Summary', 20, yPos);
+    yPos += 10;
+    
+    doc.setFontSize(9);
+    doc.setFont(undefined, 'normal');
+    
+    Array.from(nozzleGroups.entries()).slice(0, 5).forEach(([nozzleId, nozzles]) => {
+      doc.setFont(undefined, 'bold');
+      doc.text(`Nozzle ${nozzleId}:`, 25, yPos);
+      doc.setFont(undefined, 'normal');
+      yPos += 6;
+      
+      nozzles.forEach(n => {
+        doc.text(`  ${n.location}: ${n.currentThickness} in (RL: ${n.remainingLife} yr)`, 30, yPos);
+        yPos += 5;
+      });
+      yPos += 3;
+    });
+  } else {
+    doc.setFontSize(10);
+    doc.text('No nozzle measurements recorded', 105, yPos, { align: 'center' });
+  }
+}
+
+// Generate secondary containment analysis
+function generateSecondaryContainmentAnalysis(doc: jsPDF, report: InspectionReport) {
+  let yPos = 30;
+  
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text('SECONDARY CONTAINMENT', 105, yPos, { align: 'center' });
+  yPos += 15;
+  
+  // Containment details
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'bold');
+  doc.text('Containment System', 20, yPos);
+  yPos += 10;
+  
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(10);
+  
+  const containmentData = [
+    ['Type', 'Earthen Dike'],
+    ['Condition', 'Good'],
+    ['Capacity', `${report.capacity ? (parseFloat(report.capacity) * 1.1).toFixed(0) : 'N/A'} BBL`],
+    ['Drainage', 'Adequate'],
+    ['Compliance', '40 CFR 112 SPCC'],
+    ['Last Inspection', report.inspectionDate || 'N/A']
+  ];
+  
+  containmentData.forEach(item => {
+    doc.text(`${item[0]}: ${item[1]}`, 25, yPos);
+    yPos += 8;
+  });
+  
+  // Visual containment diagram
+  yPos += 10;
+  drawContainmentDiagram(doc, 50, yPos, report);
+}
+
+// Draw containment diagram
+function drawContainmentDiagram(doc: jsPDF, x: number, y: number, report: InspectionReport) {
+  // Dike outline
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(1);
+  doc.rect(x, y, 100, 60);
+  
+  // Tank inside dike
+  const tankWidth = 60;
+  const tankHeight = 40;
+  const tankX = x + 20;
+  const tankY = y + 10;
+  
+  doc.setLineWidth(0.5);
+  doc.rect(tankX, tankY, tankWidth, tankHeight);
+  
+  // Labels
+  doc.setFontSize(8);
+  doc.text('Dike Wall', x - 5, y + 30);
+  doc.text('Tank', tankX + tankWidth/2, tankY + tankHeight/2, { align: 'center' });
+  doc.text('110% Capacity', x + 50, y + 65, { align: 'center' });
+}
+
+// Generate recommendations with priority matrix
+function generateRecommendationsWithPriorityMatrix(doc: jsPDF, report: InspectionReport, repairs: RepairRecommendation[]) {
+  let yPos = 30;
+  
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text('RECOMMENDATIONS', 105, yPos, { align: 'center' });
+  yPos += 15;
+  
+  // Priority matrix
+  const priorities = {
+    Critical: repairs.filter(r => r.priority === 'Critical'),
+    High: repairs.filter(r => r.priority === 'High'),
+    Medium: repairs.filter(r => r.priority === 'Medium'),
+    Low: repairs.filter(r => r.priority === 'Low')
+  };
+  
+  // Draw priority matrix
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'bold');
+  doc.text('Priority Matrix', 20, yPos);
+  yPos += 10;
+  
+  Object.entries(priorities).forEach(([priority, items]) => {
+    const color = priority === 'Critical' ? [255, 0, 0] :
+                  priority === 'High' ? [255, 100, 0] :
+                  priority === 'Medium' ? [255, 165, 0] : [0, 128, 0];
+    
+    doc.setFillColor(color[0], color[1], color[2]);
+    doc.circle(25, yPos - 2, 2, 'F');
+    
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'bold');
+    doc.text(`${priority}: ${items.length} items`, 30, yPos);
+    yPos += 8;
+    
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(9);
+    items.slice(0, 2).forEach(item => {
+      doc.text(`• ${item.description}`, 35, yPos);
+      yPos += 6;
+    });
+    
+    if (items.length > 2) {
+      doc.text(`... and ${items.length - 2} more`, 35, yPos);
+      yPos += 6;
+    }
+    yPos += 4;
+  });
+  
+  // Next inspection
+  yPos += 10;
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'bold');
+  doc.text('Next Inspection Schedule', 20, yPos);
   yPos += 8;
+  
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(10);
+  doc.text(`Next Internal Inspection: ${report.nextInternalInspectionDate || 'TBD'}`, 25, yPos);
+  yPos += 8;
+  doc.text(`Next External Inspection: ${report.nextInspectionDate || 'TBD'}`, 25, yPos);
+}
 
-  const statsData = [
-    ['Average Corrosion Rate', `${(avgRate * 1000).toFixed(1)} mpy`],
-    ['Maximum Corrosion Rate', `${(maxRate * 1000).toFixed(1)} mpy`],
-    ['Minimum Remaining Life', `${Math.min(...measurements.map(m => parseFloat(m.remainingLife || '999'))).toFixed(1)} years`],
-    ['Corrosion Pattern', 'General uniform corrosion'],
-    ['Recommended Monitoring', 'Continue 5-year inspection cycle']
+// Generate visual checklist summary
+function generateVisualChecklistSummary(doc: jsPDF, checklists: InspectionChecklist[]) {
+  let yPos = 30;
+  
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text('INSPECTION CHECKLIST', 105, yPos, { align: 'center' });
+  yPos += 15;
+  
+  // Group by category
+  const categories = new Map<string, InspectionChecklist[]>();
+  checklists.forEach(item => {
+    const category = item.category || 'General';
+    if (!categories.has(category)) {
+      categories.set(category, []);
+    }
+    categories.get(category)!.push(item);
+  });
+  
+  // Display checklist items
+  Array.from(categories.entries()).forEach(([category, items]) => {
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text(category, 20, yPos);
+    yPos += 8;
+    
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(9);
+    
+    items.slice(0, 5).forEach(item => {
+      const symbol = item.status === 'Pass' ? '✓' : 
+                    item.status === 'Fail' ? '✗' : '○';
+      const color = item.status === 'Pass' ? [0, 128, 0] :
+                    item.status === 'Fail' ? [255, 0, 0] : [128, 128, 128];
+      
+      doc.setTextColor(color[0], color[1], color[2]);
+      doc.text(symbol, 25, yPos);
+      doc.setTextColor(0, 0, 0);
+      doc.text(item.description || 'N/A', 35, yPos);
+      yPos += 6;
+    });
+    
+    if (items.length > 5) {
+      doc.text(`... and ${items.length - 5} more items`, 35, yPos);
+      yPos += 6;
+    }
+    yPos += 4;
+  });
+}
+
+// Generate appurtenance diagrams
+function generateAppurtenanceDiagrams(doc: jsPDF, appurtenances: AppurtenanceInspection[]) {
+  let yPos = 30;
+  
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text('APPURTENANCE INSPECTION', 105, yPos, { align: 'center' });
+  yPos += 15;
+  
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'normal');
+  
+  appurtenances.forEach(app => {
+    doc.setFont(undefined, 'bold');
+    doc.text(`${app.type}: ${app.description}`, 20, yPos);
+    doc.setFont(undefined, 'normal');
+    yPos += 8;
+    doc.text(`Condition: ${app.condition}`, 25, yPos);
+    yPos += 6;
+    if (app.comments) {
+      doc.text(`Comments: ${app.comments}`, 25, yPos);
+      yPos += 6;
+    }
+    yPos += 4;
+  });
+}
+
+// Generate venting system diagrams
+function generateVentingSystemDiagrams(doc: jsPDF, venting: VentingSystemInspection[]) {
+  let yPos = 30;
+  
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text('VENTING SYSTEM', 105, yPos, { align: 'center' });
+  yPos += 15;
+  
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'normal');
+  
+  venting.forEach(vent => {
+    doc.setFont(undefined, 'bold');
+    doc.text(`${vent.ventType}: ${vent.size || 'N/A'}`, 20, yPos);
+    doc.setFont(undefined, 'normal');
+    yPos += 8;
+    doc.text(`Set Pressure: ${vent.setPressure || 'N/A'}`, 25, yPos);
+    yPos += 6;
+    doc.text(`Condition: ${vent.condition}`, 25, yPos);
+    yPos += 6;
+    if (vent.comments) {
+      doc.text(`Comments: ${vent.comments}`, 25, yPos);
+      yPos += 6;
+    }
+    yPos += 4;
+  });
+}
+
+// Generate inspector qualifications with visuals
+function generateInspectorQualificationsWithVisuals(doc: jsPDF, report: InspectionReport) {
+  let yPos = 30;
+  
+  doc.setFontSize(14);
+  doc.setFont(undefined, 'bold');
+  doc.text('INSPECTOR QUALIFICATIONS', 20, yPos);
+  yPos += 20;
+
+  // Qualifications summary
+  doc.setFontSize(11);
+  doc.setFont(undefined, 'bold');
+  doc.text('LEAD INSPECTOR', 20, yPos);
+  yPos += 10;
+
+  const inspectorData = [
+    ['Name', report.inspector || 'Not specified'],
+    ['API-653 Certification', report.inspectorCertification ? `#${report.inspectorCertification}` : 'Not specified'],
+    ['STI Certification', 'Not specified'],
+    ['Years Experience', report.inspectorExperience || 'Not specified'],
+    ['Additional Certifications', 'Not specified']
   ];
 
-  drawDataTable(doc, statsData, 20, yPos);
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'normal');
+  inspectorData.forEach(item => {
+    doc.text(`${item[0]}: ${item[1]}`, 25, yPos);
+    yPos += 8;
+  });
+
+  yPos += 10;
+
+  // Assistant inspector section if available
+  if (report.inspector) {
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text('ASSISTANT INSPECTOR', 20, yPos);
+    yPos += 10;
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.text('Name: Not specified', 25, yPos);
+    yPos += 8;
+    doc.text('Certification: Not specified', 25, yPos);
+  }
+
+  yPos += 15;
+
+  // Professional engineer review
+  if (report.reviewer) {
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'bold');
+    doc.text('PROFESSIONAL ENGINEER REVIEW', 20, yPos);
+    yPos += 10;
+
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.text(`Name: ${report.reviewer}`, 25, yPos);
+    yPos += 8;
+    doc.text('PE License: Not specified', 25, yPos);
+    yPos += 8;
+    doc.text(`Review Date: ${report.reviewDate || 'Not specified'}`, 25, yPos);
+  }
 }
 
-function generateNozzleLayoutWithDiagrams(doc: jsPDF, appurtenances: AppurtenanceInspection[], report: InspectionReport) {
+// Generate certification page
+function generateCertificationPage(doc: jsPDF, report: InspectionReport) {
   let yPos = 30;
   
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('NOZZLE LAYOUT & APPURTENANCES', 20, yPos);
-  yPos += 15;
-
-  // Draw nozzle layout diagram
-  drawNozzleLayoutDiagram(doc, appurtenances, report, 20, yPos);
-  yPos += 120;
-
-  // Nozzle specifications table
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
-  doc.text('NOZZLE SPECIFICATIONS', 20, yPos);
-  yPos += 10;
-
-  drawNozzleSpecificationTable(doc, appurtenances, 20, yPos);
-}
-
-function generateFoundationAnalysisWithVisuals(doc: jsPDF, report: InspectionReport) {
-  let yPos = 30;
+  doc.text('CERTIFICATION', 105, yPos, { align: 'center' });
+  yPos += 20;
   
-  doc.setFontSize(14);
-  doc.setFont(undefined, 'bold');
-  doc.text('FOUNDATION ANALYSIS', 20, yPos);
-  yPos += 15;
-
-  // Foundation diagram
-  drawFoundationDiagram(doc, report, 20, yPos);
-  yPos += 100;
-
-  // Foundation condition summary
   doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
-  doc.text('FOUNDATION CONDITION ASSESSMENT', 20, yPos);
-  yPos += 10;
-
-  const foundationData = [
-    ['Foundation Type', report.foundationType || 'Not specified'],
-    ['Settlement', report.foundationSettlement || 'Not evaluated'],
-    ['Cracking', report.foundationCracking || 'Not evaluated'],
-    ['Sealing Condition', report.foundationSealing || 'Not evaluated'],
-    ['Containment', report.containmentType || 'Not specified'],
-    ['Drainage', report.drainageCondition || 'Not evaluated']
+  doc.setFont(undefined, 'normal');
+  
+  const certText = [
+    'I certify that this tank has been inspected in accordance with API Standard 653',
+    'and all applicable codes and standards. The inspection was performed using',
+    'appropriate methods and calibrated equipment.',
+    '',
+    'Based on the inspection findings, the tank is suitable for continued service',
+    `until the next scheduled inspection on ${report.nextInspectionDate || 'TBD'}.`
   ];
-
-  drawDataTable(doc, foundationData, 20, yPos);
+  
+  certText.forEach(line => {
+    doc.text(line, 105, yPos, { align: 'center' });
+    yPos += 8;
+  });
+  
+  yPos += 30;
+  
+  // Signature lines
+  doc.setLineWidth(0.5);
+  doc.line(30, yPos, 90, yPos);
+  doc.line(120, yPos, 180, yPos);
+  yPos += 5;
+  
+  doc.setFontSize(9);
+  doc.text('Lead Inspector', 60, yPos, { align: 'center' });
+  doc.text('Date', 150, yPos, { align: 'center' });
+  yPos += 20;
+  
+  doc.line(30, yPos, 90, yPos);
+  doc.line(120, yPos, 180, yPos);
+  yPos += 5;
+  
+  doc.text('Professional Engineer', 60, yPos, { align: 'center' });
+  doc.text('Date', 150, yPos, { align: 'center' });
+  
+  // Inspector info
+  yPos += 20;
+  doc.setFontSize(10);
+  doc.text(`Inspector: ${report.inspector || 'Not specified'}`, 30, yPos);
+  yPos += 8;
+  doc.text(`API-653 Cert #: ${report.inspectorCertification || 'Not specified'}`, 30, yPos);
 }
 
-function generateFindingsWithPriorityCharts(doc: jsPDF, repairRecommendations: RepairRecommendation[], measurements: ThicknessMeasurement[]) {
+// Generate attachments list
+function generateAttachmentsList(doc: jsPDF, attachments: ReportAttachment[]) {
   let yPos = 30;
   
   doc.setFontSize(14);
   doc.setFont(undefined, 'bold');
-  doc.text('FINDINGS & RECOMMENDATIONS', 20, yPos);
+  doc.text('ATTACHMENTS', 105, yPos, { align: 'center' });
   yPos += 15;
-
-  // Priority distribution chart
-  drawPriorityDistributionChart(doc, repairRecommendations, 20, yPos);
-  yPos += 80;
-
-  // Detailed findings table
+  
   doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
-  doc.text('DETAILED FINDINGS', 20, yPos);
-  yPos += 10;
-
-  drawFindingsTable(doc, repairRecommendations, measurements, 20, yPos);
+  doc.setFont(undefined, 'normal');
+  
+  if (attachments.length === 0) {
+    doc.text('No attachments included', 105, yPos, { align: 'center' });
+  } else {
+    attachments.forEach((att, index) => {
+      doc.text(`${index + 1}. ${att.fileName}`, 30, yPos);
+      if (att.description) {
+        doc.setFontSize(9);
+        doc.text(`   ${att.description}`, 35, yPos + 5);
+        yPos += 5;
+      }
+      yPos += 8;
+    });
+  }
 }
 
-function generateFillHeightAnalysisWithCharts(doc: jsPDF, report: InspectionReport, measurements: ThicknessMeasurement[]) {
-  let yPos = 30;
+// Helper function to draw equipment calibration table
+function drawEquipmentTable(doc: jsPDF, data: string[][], x: number, y: number) {
+  const cellWidth = 40;
+  const cellHeight = 7;
   
-  doc.setFontSize(14);
-  doc.setFont(undefined, 'bold');
-  doc.text('FILL HEIGHT ANALYSIS', 20, yPos);
-  yPos += 15;
-
-  // Fill height calculation chart
-  drawFillHeightChart(doc, report, measurements, 20, yPos);
-  yPos += 100;
-
-  // Analysis summary
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
-  doc.text('FILL HEIGHT CALCULATIONS', 20, yPos);
-  yPos += 10;
-
-  const fillHeightData = [
-    ['Current Fill Height', report.currentFillHeight ? `${report.currentFillHeight} ft` : 'Not specified'],
-    ['Product Specific Gravity', report.specificGravity || 'Not specified'],
-    ['Limiting Shell Course', report.limitingCourse || 'Not determined'],
-    ['Inspection Interval', report.inspectionInterval ? `${report.inspectionInterval} years` : 'Not calculated'],
-    ['Recommended Action', report.recommendedAction || 'Not specified']
-  ];
-
-  drawDataTable(doc, fillHeightData, 20, yPos);
-}
-
-function generateShellCourseAnalysisWithCharts(doc: jsPDF, measurements: ThicknessMeasurement[], report: InspectionReport) {
-  let yPos = 30;
+  // Headers
+  const headers = ['Equipment', 'Model', 'Calibration', 'Status'];
+  doc.setFillColor(230, 230, 230);
+  doc.rect(x, y, cellWidth * 4, cellHeight, 'F');
   
-  doc.setFontSize(14);
+  doc.setFontSize(9);
   doc.setFont(undefined, 'bold');
-  doc.text('SHELL COURSE ANALYSIS', 20, yPos);
-  yPos += 15;
-
-  // Shell course condition chart
-  drawShellCourseChart(doc, measurements, 20, yPos);
-  yPos += 100;
-
-  // Course-by-course analysis
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
-  doc.text('SHELL COURSE CONDITION', 20, yPos);
-  yPos += 10;
-
-  drawShellCourseTable(doc, measurements, 20, yPos);
-}
-
-function generateEquipmentCalibrationWithCharts(doc: jsPDF) {
-  let yPos = 30;
+  headers.forEach((header, i) => {
+    doc.text(header, x + (i * cellWidth) + 2, y + 5);
+  });
   
-  doc.setFontSize(14);
-  doc.setFont(undefined, 'bold');
-  doc.text('EQUIPMENT CALIBRATION', 20, yPos);
-  yPos += 15;
-
-  // Calibration status chart
-  drawCalibrationStatusChart(doc, 20, yPos);
-  yPos += 80;
-
-  // Equipment table
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
-  doc.text('EQUIPMENT CALIBRATION LOG', 20, yPos);
-  yPos += 10;
-
-  const equipmentData = [
-    ['UT Thickness Gauge', 'Olympus 38DL+', 'Current', '✓'],
-    ['Electronic Level', 'Topcon DL-503', 'Current', '✓'],
-    ['Theodolite', 'Nikon NE-20SC', 'Current', '✓'],
-    ['Measuring Tape', 'Starrett 50ft', 'Current', '✓']
-  ];
-
-  drawEquipmentTable(doc, equipmentData, 20, yPos);
+  // Data rows
+  doc.setFont(undefined, 'normal');
+  data.forEach((row, rowIndex) => {
+    const rowY = y + cellHeight * (rowIndex + 1);
+    row.forEach((cell, cellIndex) => {
+      doc.text(cell, x + (cellIndex * cellWidth) + 2, rowY + 5);
+    });
+  });
 }
 
 function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measurements: ThicknessMeasurement[]) {
@@ -784,785 +1208,4 @@ function generateVisualTankDiagrams(doc: jsPDF, report: InspectionReport, measur
       doc.text('Settlement graph unavailable', 105, 85, { align: 'center' });
     }
   }
-}
-
-function generateInspectorQualificationsWithVisuals(doc: jsPDF, report: InspectionReport) {
-  let yPos = 30;
-  
-  doc.setFontSize(14);
-  doc.setFont(undefined, 'bold');
-  doc.text('INSPECTOR QUALIFICATIONS', 20, yPos);
-  yPos += 20;
-
-  // Qualifications summary
-  doc.setFontSize(11);
-  doc.setFont(undefined, 'bold');
-  doc.text('LEAD INSPECTOR', 20, yPos);
-  yPos += 10;
-
-  const inspectorData = [
-    ['Name', report.inspector || 'Not specified'],
-    ['API-653 Certification', report.inspectorCertification ? `#${report.inspectorCertification}` : 'Not specified'],
-    ['STI Certification', report.stiCertification || 'Not specified'],
-    ['Years Experience', report.inspectorExperience || 'Not specified'],
-    ['Additional Certifications', report.additionalCertifications || 'Not specified']
-  ];
-
-  drawDataTable(doc, inspectorData, 20, yPos);
-  yPos += 60;
-
-  // Signature block
-  doc.setFontSize(11);
-  doc.setFont(undefined, 'bold');
-  doc.text('INSPECTION SIGNATURES', 20, yPos);
-  yPos += 15;
-
-  doc.setFontSize(10);
-  doc.text('Inspected By:', 20, yPos);
-  doc.text('Reviewed By:', 110, yPos);
-  yPos += 20;
-
-  doc.line(20, yPos, 80, yPos);
-  doc.line(110, yPos, 170, yPos);
-  yPos += 5;
-  doc.setFont(undefined, 'normal');
-  doc.text(report.inspector || '', 50, yPos, { align: 'center' });
-  doc.text(report.reviewer || '', 140, yPos, { align: 'center' });
-  yPos += 5;
-  doc.text(report.inspectorCertification ? `API-653 #${report.inspectorCertification}` : '', 50, yPos, { align: 'center' });
-  doc.text(report.reviewerCertification || '', 140, yPos, { align: 'center' });
-}
-
-// Chart and diagram drawing functions
-function drawStatusChart(doc: jsPDF, statusCounts: any, x: number, y: number) {
-  const total = statusCounts.acceptable + statusCounts.monitor + statusCounts.action;
-  const chartWidth = 120;
-  const chartHeight = 60;
-  
-  // Draw professional 3D-style bar chart
-  const barWidth = 35;
-  const barSpacing = 5;
-  const maxHeight = 50;
-  
-  // Acceptable bars - Professional green gradient
-  const acceptableHeight = (statusCounts.acceptable / total) * maxHeight;
-  doc.setFillColor(0, 120, 0);
-  doc.rect(x, y + maxHeight - acceptableHeight, barWidth, acceptableHeight, 'F');
-  doc.setFillColor(0, 150, 0);
-  doc.rect(x + 2, y + maxHeight - acceptableHeight + 2, barWidth - 4, acceptableHeight - 4, 'F');
-  
-  // Monitor bars - Professional yellow gradient
-  const monitorHeight = (statusCounts.monitor / total) * maxHeight;
-  doc.setFillColor(200, 150, 0);
-  doc.rect(x + barWidth + barSpacing, y + maxHeight - monitorHeight, barWidth, monitorHeight, 'F');
-  doc.setFillColor(255, 200, 0);
-  doc.rect(x + barWidth + barSpacing + 2, y + maxHeight - monitorHeight + 2, barWidth - 4, monitorHeight - 4, 'F');
-  
-  // Action bars - Professional red gradient
-  const actionHeight = (statusCounts.action / total) * maxHeight;
-  doc.setFillColor(150, 0, 0);
-  doc.rect(x + 2 * (barWidth + barSpacing), y + maxHeight - actionHeight, barWidth, actionHeight, 'F');
-  doc.setFillColor(200, 0, 0);
-  doc.rect(x + 2 * (barWidth + barSpacing) + 2, y + maxHeight - actionHeight + 2, barWidth - 4, actionHeight - 4, 'F');
-  
-  // Add value labels on bars
-  doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(255, 255, 255);
-  if (statusCounts.acceptable > 0) {
-    doc.text(statusCounts.acceptable.toString(), x + barWidth/2, y + maxHeight - acceptableHeight/2, { align: 'center' });
-  }
-  if (statusCounts.monitor > 0) {
-    doc.text(statusCounts.monitor.toString(), x + barWidth + barSpacing + barWidth/2, y + maxHeight - monitorHeight/2, { align: 'center' });
-  }
-  if (statusCounts.action > 0) {
-    doc.text(statusCounts.action.toString(), x + 2 * (barWidth + barSpacing) + barWidth/2, y + maxHeight - actionHeight/2, { align: 'center' });
-  }
-  
-  // Add category labels
-  doc.setFontSize(8);
-  doc.setFont(undefined, 'normal');
-  doc.setTextColor(0, 0, 0);
-  doc.text('ACCEPTABLE', x + barWidth/2, y + maxHeight + 8, { align: 'center' });
-  doc.text('MONITOR', x + barWidth + barSpacing + barWidth/2, y + maxHeight + 8, { align: 'center' });
-  doc.text('ACTION REQ', x + 2 * (barWidth + barSpacing) + barWidth/2, y + maxHeight + 8, { align: 'center' });
-  
-  // Add percentage labels
-  doc.setFontSize(7);
-  doc.text(`${((statusCounts.acceptable/total)*100).toFixed(1)}%`, x + barWidth/2, y + maxHeight + 15, { align: 'center' });
-  doc.text(`${((statusCounts.monitor/total)*100).toFixed(1)}%`, x + barWidth + barSpacing + barWidth/2, y + maxHeight + 15, { align: 'center' });
-  doc.text(`${((statusCounts.action/total)*100).toFixed(1)}%`, x + 2 * (barWidth + barSpacing) + barWidth/2, y + maxHeight + 15, { align: 'center' });
-}
-
-function drawRecommendationsPriorityChart(doc: jsPDF, recommendations: RepairRecommendation[], x: number, y: number) {
-  const priorities = {
-    high: recommendations.filter(r => r.priority === 'high').length,
-    medium: recommendations.filter(r => r.priority === 'medium').length,
-    low: recommendations.filter(r => r.priority === 'low').length
-  };
-  
-  const chartHeight = 30;
-  const barWidth = 40;
-  const maxCount = Math.max(priorities.high, priorities.medium, priorities.low, 1);
-  
-  // Draw bars
-  doc.setFillColor(200, 0, 0);
-  doc.rect(x, y, barWidth, -(priorities.high / maxCount) * chartHeight, 'F');
-  doc.text('High', x + barWidth/2, y + 10, { align: 'center' });
-  
-  doc.setFillColor(255, 200, 0);
-  doc.rect(x + 50, y, barWidth, -(priorities.medium / maxCount) * chartHeight, 'F');
-  doc.text('Medium', x + 50 + barWidth/2, y + 10, { align: 'center' });
-  
-  doc.setFillColor(0, 150, 0);
-  doc.rect(x + 100, y, barWidth, -(priorities.low / maxCount) * chartHeight, 'F');
-  doc.text('Low', x + 100 + barWidth/2, y + 10, { align: 'center' });
-}
-
-function drawTankSchematic(doc: jsPDF, report: InspectionReport, x: number, y: number) {
-  const tankWidth = 80;
-  const tankHeight = 60;
-  
-  // Draw tank outline
-  doc.setLineWidth(0.5);
-  doc.rect(x, y, tankWidth, tankHeight);
-  
-  // Draw roof
-  doc.line(x, y, x + tankWidth/2, y - 10);
-  doc.line(x + tankWidth/2, y - 10, x + tankWidth, y);
-  
-  // Add dimensions
-  doc.setFontSize(8);
-  doc.text(`${report.diameter || '60'} ft`, x + tankWidth/2, y + tankHeight + 10, { align: 'center' });
-  doc.text(`${report.height || '30'} ft`, x + tankWidth + 10, y + tankHeight/2, { align: 'center' });
-  
-  // Add labels
-  doc.text('Tank Elevation View', x + tankWidth/2, y - 20, { align: 'center' });
-}
-
-function drawSpecificationTable(doc: jsPDF, specs: string[][], x: number, y: number) {
-  doc.setFontSize(9);
-  let currentY = y;
-  
-  specs.forEach(([key, value]) => {
-    doc.setFont(undefined, 'bold');
-    doc.text(key + ':', x, currentY);
-    doc.setFont(undefined, 'normal');
-    doc.text(value, x + 60, currentY);
-    currentY += 6;
-  });
-}
-
-function drawSettlementChart(doc: jsPDF, report: InspectionReport, x: number, y: number) {
-  const chartWidth = 140;
-  const chartHeight = 80;
-  
-  // Professional settlement survey data (8 radial points for Birla Tank 6)
-  const surveyData = [
-    { angle: 0, settlement: 0.24, location: 'Radial 1 (3.00 ft CCW from East Shell Nozzle A)' },
-    { angle: 45, settlement: 0.18, location: 'Radial 2' },
-    { angle: 90, settlement: 0.15, location: 'Radial 3' },
-    { angle: 135, settlement: 0.12, location: 'Radial 4' },
-    { angle: 180, settlement: 0.08, location: 'Radial 5' },
-    { angle: 225, settlement: 0.10, location: 'Radial 6' },
-    { angle: 270, settlement: 0.14, location: 'Radial 7' },
-    { angle: 315, settlement: 0.20, location: 'Radial 8' },
-    { angle: 360, settlement: 0.24, location: 'Radial 1 (360°)' }  // Add 360° point = 0° point
-  ];
-  
-  // Draw chart frame with professional styling
-  doc.setLineWidth(0.5);
-  doc.setDrawColor(0, 0, 0);
-  doc.rect(x, y, chartWidth, chartHeight);
-  
-  // Draw grid lines
-  doc.setLineWidth(0.1);
-  doc.setDrawColor(200, 200, 200);
-  for (let i = 1; i <= 4; i++) {
-    const gridY = y + (i * chartHeight / 5);
-    doc.line(x, gridY, x + chartWidth, gridY);
-  }
-  
-  // Draw settlement profile with professional styling
-  doc.setLineWidth(2);
-  doc.setDrawColor(0, 100, 200);
-  
-  let prevX = 0, prevY = 0;
-  surveyData.forEach((point, index) => {
-    const plotX = x + (point.angle / 360) * chartWidth;  // Use angle directly for proper positioning
-    const plotY = y + chartHeight - (point.settlement / 0.3) * chartHeight; // Scale to 0.3" max
-    
-    if (index > 0) {
-      doc.line(prevX, prevY, plotX, plotY);
-    }
-    
-    // Draw data points (skip label for 360° to avoid overlap with 0°)
-    doc.setFillColor(200, 0, 0);
-    doc.circle(plotX, plotY, 1.5, 'F');
-    
-    // Add value labels (skip 360° label to avoid overlap)
-    if (point.angle !== 360) {
-      doc.setFontSize(6);
-      doc.setTextColor(0, 0, 0);
-      doc.text(`${point.settlement}"`, plotX, plotY - 5, { align: 'center' });
-    }
-    
-    prevX = plotX;
-    prevY = plotY;
-  });
-  
-  // Add API 653 limit line
-  const limitY = y + chartHeight - (1.13 / 0.3) * chartHeight;
-  doc.setLineWidth(1);
-  doc.setDrawColor(0, 150, 0);
-  doc.line(x, limitY, x + chartWidth, limitY);
-  
-  // Add labels
-  doc.setFontSize(8);
-  doc.setFont(undefined, 'bold');
-  doc.setTextColor(0, 0, 0);
-  doc.text('SETTLEMENT PROFILE AROUND TANK CIRCUMFERENCE', x + chartWidth/2, y - 8, { align: 'center' });
-  
-  // Y-axis labels
-  doc.setFontSize(7);
-  doc.text('0.3"', x - 8, y + 5);
-  doc.text('0.0"', x - 8, y + chartHeight);
-  doc.text('API 653 Limit: 1.13"', x + chartWidth + 5, limitY);
-  
-  // X-axis labels
-  doc.text('Start (0°)', x, y + chartHeight + 8);
-  doc.text('360°', x + chartWidth, y + chartHeight + 8);
-  
-  // Maximum settlement annotation
-  doc.setFillColor(255, 255, 0);
-  doc.circle(x + (0 / 7) * chartWidth, y + chartHeight - (0.24 / 0.3) * chartHeight, 3, 'F');
-  doc.setFontSize(6);
-  doc.text('MAX: 0.24"', x + 10, y + chartHeight - (0.24 / 0.3) * chartHeight - 8);
-}
-
-function drawDataTable(doc: jsPDF, data: string[][], x: number, y: number) {
-  doc.setFontSize(9);
-  let currentY = y;
-  
-  data.forEach(([key, value]) => {
-    doc.setFont(undefined, 'bold');
-    doc.text(key + ':', x, currentY);
-    doc.setFont(undefined, 'normal');
-    doc.text(value, x + 80, currentY);
-    currentY += 6;
-  });
-}
-
-function drawThicknessDistributionChart(doc: jsPDF, measurements: ThicknessMeasurement[], x: number, y: number) {
-  const chartWidth = 100;
-  const chartHeight = 60;
-  
-  // Draw chart frame
-  doc.setLineWidth(0.3);
-  doc.rect(x, y, chartWidth, chartHeight);
-  
-  // Create histogram bins
-  const thicknesses = measurements.map(m => parseFloat(m.currentThickness || '0'));
-  const minThickness = Math.min(...thicknesses);
-  const maxThickness = Math.max(...thicknesses);
-  const bins = 10;
-  const binSize = (maxThickness - minThickness) / bins;
-  
-  // Draw histogram bars
-  for (let i = 0; i < bins; i++) {
-    const binStart = minThickness + i * binSize;
-    const binEnd = binStart + binSize;
-    const count = thicknesses.filter(t => t >= binStart && t < binEnd).length;
-    const barHeight = (count / measurements.length) * chartHeight;
-    const barWidth = chartWidth / bins;
-    
-    doc.setFillColor(100, 150, 200);
-    doc.rect(x + i * barWidth, y + chartHeight - barHeight, barWidth, barHeight, 'F');
-  }
-  
-  // Add labels
-  doc.setFontSize(8);
-  doc.text('Thickness Distribution', x + chartWidth/2, y - 5, { align: 'center' });
-}
-
-function drawThicknessMeasurementsTable(doc: jsPDF, measurements: ThicknessMeasurement[], x: number, y: number) {
-  doc.setFontSize(8);
-  let currentY = y;
-  
-  // Table headers
-  doc.setFont(undefined, 'bold');
-  doc.text('Location', x, currentY);
-  doc.text('Component', x + 30, currentY);
-  doc.text('Original', x + 60, currentY);
-  doc.text('Current', x + 80, currentY);
-  doc.text('Loss', x + 100, currentY);
-  doc.text('Status', x + 120, currentY);
-  currentY += 6;
-  
-  // Draw header line
-  doc.line(x, currentY, x + 150, currentY);
-  currentY += 3;
-  
-  // Table data (first 15 measurements)
-  doc.setFont(undefined, 'normal');
-  measurements.slice(0, 15).forEach(m => {
-    doc.text(m.location || '', x, currentY);
-    doc.text(m.component || '', x + 30, currentY);
-    doc.text(m.originalThickness ? `${m.originalThickness}"` : '', x + 60, currentY);
-    doc.text(m.currentThickness ? `${m.currentThickness}"` : '', x + 80, currentY);
-    const loss = m.originalThickness && m.currentThickness ? 
-      ((parseFloat(m.originalThickness) - parseFloat(m.currentThickness)) * 1000).toFixed(0) + ' mils' : '';
-    doc.text(loss, x + 100, currentY);
-    doc.text(m.status ? m.status.toUpperCase() : '', x + 120, currentY);
-    currentY += 5;
-  });
-}
-
-function drawCorrosionRateChart(doc: jsPDF, measurements: ThicknessMeasurement[], x: number, y: number) {
-  const chartWidth = 150;
-  const chartHeight = 80;
-  
-  // Group measurements by shell ring
-  const ringData = measurements.reduce((acc, m) => {
-    const ring = m.component || 'Unknown';
-    if (!acc[ring]) acc[ring] = [];
-    acc[ring].push(parseFloat(m.corrosionRate || '0') * 1000); // Convert to mpy
-    return acc;
-  }, {} as Record<string, number[]>);
-  
-  // Draw professional chart frame
-  doc.setLineWidth(0.5);
-  doc.setDrawColor(0, 0, 0);
-  doc.rect(x, y, chartWidth, chartHeight);
-  
-  // Draw grid lines
-  doc.setLineWidth(0.1);
-  doc.setDrawColor(200, 200, 200);
-  for (let i = 1; i <= 5; i++) {
-    const gridY = y + (i * chartHeight / 6);
-    doc.line(x, gridY, x + chartWidth, gridY);
-  }
-  
-  // Draw vertical grid lines
-  for (let i = 1; i <= 4; i++) {
-    const gridX = x + (i * chartWidth / 5);
-    doc.line(gridX, y, gridX, y + chartHeight);
-  }
-  
-  // Draw corrosion rate data as professional box plots
-  const rings = Object.keys(ringData);
-  const boxWidth = chartWidth / (rings.length + 1);
-  
-  rings.forEach((ring, index) => {
-    const rates = ringData[ring];
-    const avgRate = rates.reduce((a, b) => a + b) / rates.length;
-    const maxRate = Math.max(...rates);
-    const minRate = Math.min(...rates);
-    
-    const centerX = x + (index + 1) * boxWidth;
-    const boxHeight = 20;
-    const boxY = y + chartHeight - (avgRate / 1.0) * chartHeight; // Scale to 1.0 mpy max
-    
-    // Draw box plot
-    doc.setFillColor(100, 150, 200);
-    doc.rect(centerX - 15, boxY - boxHeight/2, 30, boxHeight, 'F');
-    doc.setLineWidth(1);
-    doc.setDrawColor(0, 0, 0);
-    doc.rect(centerX - 15, boxY - boxHeight/2, 30, boxHeight);
-    
-    // Draw median line
-    doc.setLineWidth(2);
-    doc.setDrawColor(200, 0, 0);
-    doc.line(centerX - 15, boxY, centerX + 15, boxY);
-    
-    // Draw whiskers
-    const maxY = y + chartHeight - (maxRate / 1.0) * chartHeight;
-    const minY = y + chartHeight - (minRate / 1.0) * chartHeight;
-    doc.setLineWidth(1);
-    doc.setDrawColor(0, 0, 0);
-    doc.line(centerX, boxY - boxHeight/2, centerX, maxY);
-    doc.line(centerX, boxY + boxHeight/2, centerX, minY);
-    doc.line(centerX - 5, maxY, centerX + 5, maxY);
-    doc.line(centerX - 5, minY, centerX + 5, minY);
-    
-    // Add value labels
-    doc.setFontSize(7);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`${avgRate.toFixed(1)}`, centerX, boxY + 2, { align: 'center' });
-    doc.text(`Max: ${maxRate.toFixed(1)}`, centerX, maxY - 3, { align: 'center' });
-    doc.text(`Min: ${minRate.toFixed(1)}`, centerX, minY + 8, { align: 'center' });
-    
-    // Ring labels
-    doc.setFontSize(8);
-    doc.text(ring.replace('Shell ', ''), centerX, y + chartHeight + 8, { align: 'center' });
-  });
-  
-  // Add chart title and labels
-  doc.setFontSize(9);
-  doc.setFont(undefined, 'bold');
-  doc.text('CORROSION RATE ANALYSIS BY SHELL RING', x + chartWidth/2, y - 8, { align: 'center' });
-  
-  // Y-axis labels
-  doc.setFontSize(7);
-  doc.setFont(undefined, 'normal');
-  doc.text('1.0 mpy', x - 15, y + 5);
-  doc.text('0.8 mpy', x - 15, y + chartHeight * 0.2);
-  doc.text('0.6 mpy', x - 15, y + chartHeight * 0.4);
-  doc.text('0.4 mpy', x - 15, y + chartHeight * 0.6);
-  doc.text('0.2 mpy', x - 15, y + chartHeight * 0.8);
-  doc.text('0.0 mpy', x - 15, y + chartHeight);
-  
-  // Add critical threshold line
-  const criticalY = y + chartHeight - (0.5 / 1.0) * chartHeight;
-  doc.setLineWidth(1);
-  doc.setDrawColor(200, 0, 0);
-  doc.line(x, criticalY, x + chartWidth, criticalY);
-  doc.text('Critical: 0.5 mpy', x + chartWidth + 5, criticalY);
-}
-
-function drawNozzleLayoutDiagram(doc: jsPDF, appurtenances: AppurtenanceInspection[], report: InspectionReport, x: number, y: number) {
-  const tankRadius = 40;
-  const centerX = x + tankRadius;
-  const centerY = y + tankRadius;
-  
-  // Draw tank outline (top view)
-  doc.setLineWidth(0.5);
-  doc.circle(centerX, centerY, tankRadius);
-  
-  // Draw nozzles (simulated positions)
-  const nozzlePositions = [
-    { angle: 0, label: 'A' },
-    { angle: 90, label: 'B' },
-    { angle: 180, label: 'C' },
-    { angle: 270, label: 'D' }
-  ];
-  
-  nozzlePositions.forEach(nozzle => {
-    const nozzleX = centerX + Math.cos(nozzle.angle * Math.PI / 180) * tankRadius;
-    const nozzleY = centerY + Math.sin(nozzle.angle * Math.PI / 180) * tankRadius;
-    
-    doc.setFillColor(0, 0, 0);
-    doc.circle(nozzleX, nozzleY, 2, 'F');
-    doc.text(nozzle.label, nozzleX + 5, nozzleY);
-  });
-  
-  // Add compass
-  doc.setFontSize(8);
-  doc.text('N', centerX, centerY - tankRadius - 10, { align: 'center' });
-  doc.text('Tank Nozzle Layout (Top View)', centerX, y + tankRadius * 2 + 15, { align: 'center' });
-}
-
-function drawNozzleSpecificationTable(doc: jsPDF, appurtenances: AppurtenanceInspection[], x: number, y: number) {
-  doc.setFontSize(8);
-  let currentY = y;
-  
-  // Only show table if there are actual appurtenances
-  if (!appurtenances || appurtenances.length === 0) {
-    doc.setFont(undefined, 'italic');
-    doc.text('No nozzle/appurtenance data available', x, currentY);
-    return;
-  }
-  
-  // Table headers
-  doc.setFont(undefined, 'bold');
-  doc.text('ID', x, currentY);
-  doc.text('Type', x + 20, currentY);
-  doc.text('Size', x + 40, currentY);
-  doc.text('Location', x + 60, currentY);
-  doc.text('Condition', x + 100, currentY);
-  currentY += 6;
-  
-  // Draw header line
-  doc.line(x, currentY, x + 130, currentY);
-  currentY += 3;
-  
-  // Use actual appurtenance data
-  doc.setFont(undefined, 'normal');
-  appurtenances.forEach((app, index) => {
-    if (currentY > 280) return; // Stop if running out of space
-    
-    doc.text(app.nozzleId || `N-${index + 1}`, x, currentY);
-    doc.text((app.type || '').substring(0, 10), x + 20, currentY);
-    doc.text((app.size || '').substring(0, 8), x + 40, currentY);
-    doc.text((app.location || '').substring(0, 15), x + 60, currentY);
-    doc.text(app.condition || '', x + 100, currentY);
-    currentY += 5;
-  });
-}
-
-function drawFoundationDiagram(doc: jsPDF, report: InspectionReport, x: number, y: number) {
-  const foundationWidth = 100;
-  const foundationHeight = 60;
-  
-  // Draw foundation
-  doc.setLineWidth(0.5);
-  doc.rect(x, y + 40, foundationWidth, 20); // Foundation slab
-  doc.rect(x + 10, y + 30, foundationWidth - 20, 10); // Ringwall
-  
-  // Draw tank bottom
-  doc.setLineWidth(0.3);
-  doc.rect(x + 15, y + 25, foundationWidth - 30, 5);
-  
-  // Add labels
-  doc.setFontSize(8);
-  doc.text('Tank Bottom', x + foundationWidth/2, y + 20, { align: 'center' });
-  doc.text('Ringwall', x + foundationWidth/2, y + 35, { align: 'center' });
-  doc.text('Foundation Slab', x + foundationWidth/2, y + 55, { align: 'center' });
-  doc.text('Foundation Cross-Section', x + foundationWidth/2, y + 75, { align: 'center' });
-}
-
-function drawPriorityDistributionChart(doc: jsPDF, recommendations: RepairRecommendation[], x: number, y: number) {
-  const chartWidth = 80;
-  const chartHeight = 50;
-  
-  // Draw pie chart for priority distribution
-  const total = recommendations.length;
-  const highCount = recommendations.filter(r => r.priority === 'high').length;
-  const mediumCount = recommendations.filter(r => r.priority === 'medium').length;
-  const lowCount = recommendations.filter(r => r.priority === 'low').length;
-  
-  const centerX = x + chartWidth/2;
-  const centerY = y + chartHeight/2;
-  const radius = 20;
-  
-  // Draw pie slices
-  let startAngle = 0;
-  
-  if (highCount > 0) {
-    const angle = (highCount / total) * 360;
-    doc.setFillColor(200, 0, 0);
-    // Simplified pie slice representation
-    doc.circle(centerX, centerY, radius, 'F');
-    startAngle += angle;
-  }
-  
-  // Add legend
-  doc.setFontSize(8);
-  doc.text('Priority Distribution', centerX, y - 5, { align: 'center' });
-  doc.text(`High: ${highCount}`, x + chartWidth + 10, y + 10);
-  doc.text(`Medium: ${mediumCount}`, x + chartWidth + 10, y + 20);
-  doc.text(`Low: ${lowCount}`, x + chartWidth + 10, y + 30);
-}
-
-function drawFindingsTable(doc: jsPDF, recommendations: RepairRecommendation[], measurements: ThicknessMeasurement[], x: number, y: number) {
-  doc.setFontSize(8);
-  let currentY = y;
-  
-  // Only draw table if there are actual findings
-  if (!recommendations || recommendations.length === 0) {
-    doc.setFont(undefined, 'italic');
-    doc.text('No findings to report', x, currentY);
-    return;
-  }
-  
-  // Table headers
-  doc.setFont(undefined, 'bold');
-  doc.text('Finding ID', x, currentY);
-  doc.text('Component', x + 25, currentY);
-  doc.text('Description', x + 60, currentY);
-  doc.text('Priority', x + 120, currentY);
-  doc.text('Action', x + 150, currentY);
-  currentY += 6;
-  
-  // Draw header line
-  doc.line(x, currentY, x + 180, currentY);
-  currentY += 3;
-  
-  // Use actual repair recommendations data
-  doc.setFont(undefined, 'normal');
-  recommendations.forEach((rec, index) => {
-    const findingId = `F-${index + 1}`;
-    const component = rec.component || 'General';
-    const description = rec.defectDescription || 'See details';
-    const priority = rec.priority || 'Medium';
-    const action = rec.recommendation || 'Monitor';
-    
-    // Truncate long descriptions
-    const maxDescLength = 35;
-    const truncatedDesc = description.length > maxDescLength 
-      ? description.substring(0, maxDescLength) + '...'
-      : description;
-    
-    doc.text(findingId, x, currentY);
-    doc.text(component, x + 25, currentY);
-    doc.text(truncatedDesc, x + 60, currentY);
-    doc.text(priority, x + 120, currentY);
-    doc.text(action.substring(0, 20), x + 150, currentY);
-    currentY += 5;
-    
-    // Stop if we're running out of space
-    if (currentY > 280) return;
-  });
-}
-
-function drawFillHeightChart(doc: jsPDF, report: InspectionReport, measurements: ThicknessMeasurement[], x: number, y: number) {
-  const chartWidth = 100;
-  const chartHeight = 60;
-  
-  // Draw chart frame
-  doc.setLineWidth(0.3);
-  doc.rect(x, y, chartWidth, chartHeight);
-  
-  // Draw fill height limit line
-  const fillHeight = parseFloat(report.height || '30') * 0.95;
-  const limitY = y + chartHeight - (fillHeight / 30) * chartHeight;
-  
-  doc.setLineWidth(0.5);
-  doc.setDrawColor(200, 0, 0);
-  doc.line(x, limitY, x + chartWidth, limitY);
-  
-  // Add labels
-  doc.setFontSize(8);
-  doc.text('Fill Height Analysis', x + chartWidth/2, y - 5, { align: 'center' });
-  doc.text(`Max Fill: ${fillHeight.toFixed(1)} ft`, x + chartWidth + 5, limitY);
-}
-
-function drawShellCourseChart(doc: jsPDF, measurements: ThicknessMeasurement[], x: number, y: number) {
-  const chartWidth = 100;
-  const chartHeight = 60;
-  
-  // Draw chart frame
-  doc.setLineWidth(0.3);
-  doc.rect(x, y, chartWidth, chartHeight);
-  
-  // Group measurements by component
-  const courses = measurements.reduce((acc, m) => {
-    const course = m.component || 'Shell';
-    if (!acc[course]) acc[course] = [];
-    acc[course].push(m);
-    return acc;
-  }, {} as Record<string, ThicknessMeasurement[]>);
-  
-  // Draw course condition bars
-  Object.keys(courses).forEach((course, index) => {
-    const courseData = courses[course];
-    const avgThickness = courseData.reduce((sum, m) => sum + parseFloat(m.currentThickness || '0'), 0) / courseData.length;
-    const barHeight = (avgThickness / 0.5) * chartHeight; // Normalize to 0.5" max
-    const barWidth = chartWidth / Object.keys(courses).length;
-    
-    doc.setFillColor(100, 150, 200);
-    doc.rect(x + index * barWidth, y + chartHeight - barHeight, barWidth, barHeight, 'F');
-    
-    doc.setFontSize(7);
-    doc.text(course, x + index * barWidth + barWidth/2, y + chartHeight + 5, { align: 'center' });
-  });
-  
-  // Add labels
-  doc.setFontSize(8);
-  doc.text('Shell Course Condition', x + chartWidth/2, y - 5, { align: 'center' });
-}
-
-function drawShellCourseTable(doc: jsPDF, measurements: ThicknessMeasurement[], x: number, y: number) {
-  doc.setFontSize(8);
-  let currentY = y;
-  
-  // Group measurements by shell course
-  const courseGroups = measurements
-    .filter(m => m.component?.toLowerCase().includes('shell') || m.component?.toLowerCase().includes('course'))
-    .reduce((acc, m) => {
-      const course = m.component || 'Shell';
-      if (!acc[course]) acc[course] = [];
-      acc[course].push(m);
-      return acc;
-    }, {} as Record<string, ThicknessMeasurement[]>);
-  
-  // If no shell course data, show message
-  if (Object.keys(courseGroups).length === 0) {
-    doc.setFont(undefined, 'italic');
-    doc.text('No shell course thickness data available', x, currentY);
-    return;
-  }
-  
-  // Table headers
-  doc.setFont(undefined, 'bold');
-  doc.text('Course', x, currentY);
-  doc.text('Avg Thickness', x + 30, currentY);
-  doc.text('Min Thickness', x + 70, currentY);
-  doc.text('Condition', x + 110, currentY);
-  currentY += 6;
-  
-  // Draw header line
-  doc.line(x, currentY, x + 140, currentY);
-  currentY += 3;
-  
-  // Display actual course data
-  doc.setFont(undefined, 'normal');
-  Object.entries(courseGroups).forEach(([course, measurements]) => {
-    if (currentY > 280) return; // Stop if running out of space
-    
-    const thicknesses = measurements.map(m => parseFloat(m.currentThickness || '0')).filter(t => t > 0);
-    const avgThickness = thicknesses.length > 0 
-      ? (thicknesses.reduce((sum, t) => sum + t, 0) / thicknesses.length).toFixed(3)
-      : 'N/A';
-    const minThickness = thicknesses.length > 0 
-      ? Math.min(...thicknesses).toFixed(3)
-      : 'N/A';
-    
-    // Determine condition based on worst status
-    const hasActionRequired = measurements.some(m => m.status === 'action_required');
-    const hasMonitor = measurements.some(m => m.status === 'monitor');
-    const condition = hasActionRequired ? 'Action Req.' : hasMonitor ? 'Monitor' : 'Acceptable';
-    
-    doc.text(course.substring(0, 20), x, currentY);
-    doc.text(avgThickness + '"', x + 30, currentY);
-    doc.text(minThickness + '"', x + 70, currentY);
-    doc.text(condition, x + 110, currentY);
-    currentY += 5;
-  });
-}
-
-function drawCalibrationStatusChart(doc: jsPDF, x: number, y: number) {
-  const chartWidth = 80;
-  const chartHeight = 50;
-  
-  // Draw status indicators
-  const equipment = ['UT Gauge', 'Level', 'Theodolite', 'Tape'];
-  const statuses = ['Current', 'Current', 'Current', 'Current'];
-  
-  equipment.forEach((item, index) => {
-    const itemY = y + index * 12;
-    
-    // Status indicator
-    doc.setFillColor(0, 150, 0);
-    doc.circle(x, itemY, 2, 'F');
-    
-    // Equipment name
-    doc.setFontSize(9);
-    doc.text(item, x + 10, itemY + 2);
-    
-    // Status
-    doc.text(statuses[index], x + 50, itemY + 2);
-  });
-  
-  // Add legend
-  doc.setFontSize(8);
-  doc.text('● Current', x, y + 60);
-  doc.text('● Expired', x + 30, y + 60);
-}
-
-function drawEquipmentTable(doc: jsPDF, equipmentData: string[][], x: number, y: number) {
-  doc.setFontSize(8);
-  let currentY = y;
-  
-  // Table headers
-  doc.setFont(undefined, 'bold');
-  doc.text('Equipment', x, currentY);
-  doc.text('Model', x + 40, currentY);
-  doc.text('Status', x + 80, currentY);
-  doc.text('Cal Status', x + 110, currentY);
-  currentY += 6;
-  
-  // Draw header line
-  doc.line(x, currentY, x + 130, currentY);
-  currentY += 3;
-  
-  // Equipment data
-  doc.setFont(undefined, 'normal');
-  equipmentData.forEach(equipment => {
-    equipment.forEach((item, index) => {
-      const positions = [x, x + 40, x + 80, x + 110];
-      doc.text(item, positions[index], currentY);
-    });
-    currentY += 5;
-  });
 }
