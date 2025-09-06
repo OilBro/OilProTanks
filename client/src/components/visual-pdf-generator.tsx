@@ -226,9 +226,19 @@ function generateExecutiveSummaryWithCalculations(
   yPos += 15;
   
   // Calculate key metrics from actual data
-  const shellMeasurements = measurements.filter(m => m.component === 'shell');
-  const bottomMeasurements = measurements.filter(m => m.component === 'bottom');
-  const roofMeasurements = measurements.filter(m => m.component === 'roof');
+  const shellMeasurements = measurements.filter(m => 
+    m.component?.toLowerCase().includes('shell') || 
+    m.component?.toLowerCase().includes('course')
+  );
+  const bottomMeasurements = measurements.filter(m => 
+    m.component?.toLowerCase().includes('bottom') || 
+    m.component?.toLowerCase().includes('floor') ||
+    m.component?.toLowerCase().includes('annular')
+  );
+  const roofMeasurements = measurements.filter(m => 
+    m.component?.toLowerCase().includes('roof') || 
+    m.component?.toLowerCase().includes('deck')
+  );
   
   // Calculate minimum remaining life
   let minRemainingLife = 999;
@@ -426,11 +436,16 @@ function generateAPI653Calculations(doc: jsPDF, report: InspectionReport, measur
   yPos += 10;
   
   // Calculate for each shell course
-  const shellMeasurements = measurements.filter(m => m.component === 'shell');
+  const shellMeasurements = measurements.filter(m => 
+    m.component?.toLowerCase().includes('shell') || 
+    m.component?.toLowerCase().includes('course')
+  );
   const courses = new Map<string, ThicknessMeasurement[]>();
   
   shellMeasurements.forEach(m => {
-    const course = m.location?.split('-')[0] || 'Unknown';
+    // Extract course number from component name like "Shell Course 1 (Bottom)"
+    const courseMatch = m.component?.match(/Course\s+(\d+)/i);
+    const course = courseMatch ? `Course ${courseMatch[1]}` : m.component || 'Unknown';
     if (!courses.has(course)) {
       courses.set(course, []);
     }
@@ -452,8 +467,10 @@ function generateAPI653Calculations(doc: jsPDF, report: InspectionReport, measur
   doc.setFont('helvetica', 'normal');
   
   // Calculate for each course
-  let courseNum = 1;
   Array.from(courses.entries()).slice(0, 8).forEach(([course, courseMeasurements]) => {
+    // Extract course number from course name
+    const courseNumMatch = course.match(/\d+/);
+    const courseNum = courseNumMatch ? parseInt(courseNumMatch[0]) : 1;
     const fillHeight = height - (courseNum - 1) * 8; // Assume 8ft courses
     const tMin = calculateMinimumRequiredThickness(
       courseNum,
@@ -483,8 +500,6 @@ function generateAPI653Calculations(doc: jsPDF, report: InspectionReport, measur
     doc.text(minCurrent < 999 ? margin.toFixed(3) : 'N/A', 140, yPos);
     doc.text(status, 165, yPos);
     yPos += 6;
-    
-    courseNum++;
   });
   
   // Corrosion rate calculations
@@ -529,12 +544,29 @@ function generateComprehensiveThicknessMeasurements(
   let pagesAdded = 0;
   
   // Group measurements by component
-  const components = ['shell', 'bottom', 'roof', 'nozzles'];
+  const componentGroups = [
+    { name: 'shell', filter: (m: ThicknessMeasurement) => 
+      m.component?.toLowerCase().includes('shell') || 
+      m.component?.toLowerCase().includes('course')
+    },
+    { name: 'bottom', filter: (m: ThicknessMeasurement) => 
+      m.component?.toLowerCase().includes('bottom') || 
+      m.component?.toLowerCase().includes('floor') ||
+      m.component?.toLowerCase().includes('annular')
+    },
+    { name: 'roof', filter: (m: ThicknessMeasurement) => 
+      m.component?.toLowerCase().includes('roof') || 
+      m.component?.toLowerCase().includes('deck')
+    },
+    { name: 'nozzles', filter: (m: ThicknessMeasurement) => 
+      m.component?.toLowerCase().includes('nozzle') || 
+      m.component?.toLowerCase().includes('flange') ||
+      m.component?.toLowerCase().includes('manway')
+    }
+  ];
   
-  components.forEach(component => {
-    const compMeasurements = measurements.filter(m => 
-      m.component?.toLowerCase() === component
-    );
+  componentGroups.forEach(({ name: component, filter }) => {
+    const compMeasurements = measurements.filter(filter);
     
     if (compMeasurements.length > 0) {
       doc.addPage();
@@ -678,7 +710,26 @@ function generateCorrosionRateAnalysis(doc: jsPDF, measurements: ThicknessMeasur
   yPos += 15;
   
   // Calculate statistics by component
-  const components = ['shell', 'bottom', 'roof', 'nozzles'];
+  const componentFilters = [
+    { name: 'Shell', filter: (m: ThicknessMeasurement) => 
+      m.component?.toLowerCase().includes('shell') || 
+      m.component?.toLowerCase().includes('course')
+    },
+    { name: 'Bottom', filter: (m: ThicknessMeasurement) => 
+      m.component?.toLowerCase().includes('bottom') || 
+      m.component?.toLowerCase().includes('floor') ||
+      m.component?.toLowerCase().includes('annular')
+    },
+    { name: 'Roof', filter: (m: ThicknessMeasurement) => 
+      m.component?.toLowerCase().includes('roof') || 
+      m.component?.toLowerCase().includes('deck')
+    },
+    { name: 'Nozzles', filter: (m: ThicknessMeasurement) => 
+      m.component?.toLowerCase().includes('nozzle') || 
+      m.component?.toLowerCase().includes('flange') ||
+      m.component?.toLowerCase().includes('manway')
+    }
+  ];
   
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
@@ -699,10 +750,8 @@ function generateCorrosionRateAnalysis(doc: jsPDF, measurements: ThicknessMeasur
   
   doc.setFont('helvetica', 'normal');
   
-  components.forEach(component => {
-    const compMeasurements = measurements.filter(m => 
-      m.component?.toLowerCase() === component
-    );
+  componentFilters.forEach(({ name: component, filter }) => {
+    const compMeasurements = measurements.filter(filter);
     
     if (compMeasurements.length > 0) {
       const rates = compMeasurements
@@ -718,7 +767,7 @@ function generateCorrosionRateAnalysis(doc: jsPDF, measurements: ThicknessMeasur
         .filter(rl => !isNaN(rl) && rl < 999);
       const minLife = remLives.length > 0 ? Math.min(...remLives) : 999;
       
-      doc.text(component.charAt(0).toUpperCase() + component.slice(1), 25, yPos);
+      doc.text(component, 25, yPos);
       doc.text(compMeasurements.length.toString(), 65, yPos);
       doc.text(avgRate.toFixed(3), 95, yPos);
       doc.text(maxRate.toFixed(3), 125, yPos);
