@@ -43,7 +43,7 @@ import {
   type InsertAiGuidanceTemplate
 } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
   // Users
@@ -339,31 +339,31 @@ export class MemStorage implements IStorage {
   async createThicknessMeasurement(measurement: InsertThicknessMeasurement): Promise<ThicknessMeasurement> {
     const id = this.currentMeasurementId++;
     const now = new Date().toISOString();
-    const newMeasurement: ThicknessMeasurement = { 
+    const newMeasurement = {
       id,
-      reportId: measurement.reportId,
-      component: measurement.component,
+      reportId: measurement.reportId ?? null,
+      component: measurement.component ?? null,
       measurementType: measurement.measurementType || 'shell',
-      location: measurement.location,
-      elevation: measurement.elevation || null,
-      gridReference: measurement.gridReference || null,
-      plateNumber: measurement.plateNumber || null,
-      annularRingPosition: measurement.annularRingPosition || null,
-      criticalZoneType: measurement.criticalZoneType || null,
-      repadNumber: measurement.repadNumber || null,
-      repadType: measurement.repadType || null,
-      repadThickness: measurement.repadThickness || null,
-      nozzleId: measurement.nozzleId || null,
-      nozzleSize: measurement.nozzleSize || null,
-      flangeClass: measurement.flangeClass || null,
-      flangeType: measurement.flangeType || null,
-      originalThickness: measurement.originalThickness || null,
-      currentThickness: measurement.currentThickness || null,
-      corrosionRate: measurement.corrosionRate || null,
-      remainingLife: measurement.remainingLife || null,
+      location: measurement.location ?? null,
+      elevation: measurement.elevation ?? null,
+      gridReference: measurement.gridReference ?? null,
+      plateNumber: measurement.plateNumber ?? null,
+      annularRingPosition: measurement.annularRingPosition ?? null,
+      criticalZoneType: measurement.criticalZoneType ?? null,
+      repadNumber: measurement.repadNumber ?? null,
+      repadType: measurement.repadType ?? null,
+      repadThickness: measurement.repadThickness ?? null,
+      nozzleId: measurement.nozzleId ?? null,
+      nozzleSize: measurement.nozzleSize ?? null,
+      flangeClass: measurement.flangeClass ?? null,
+      flangeType: measurement.flangeType ?? null,
+      originalThickness: measurement.originalThickness ?? null,
+      currentThickness: measurement.currentThickness ?? null,
+      corrosionRate: measurement.corrosionRate ?? null,
+      remainingLife: measurement.remainingLife ?? null,
       status: measurement.status || 'acceptable',
-      createdAt: now 
-    };
+      createdAt: now
+    } as ThicknessMeasurement;
     this.thicknessMeasurements.set(id, newMeasurement);
     return newMeasurement;
   }
@@ -391,12 +391,12 @@ export class MemStorage implements IStorage {
 
   async createInspectionChecklist(checklist: InsertInspectionChecklist): Promise<InspectionChecklist> {
     const id = this.currentChecklistId++;
-    const newChecklist: InspectionChecklist = { 
-      ...checklist, 
+    const newChecklist = {
+      ...checklist,
       checked: checklist.checked || false,
       notes: checklist.notes || null,
-      id 
-    };
+      id
+    } as InspectionChecklist;
     this.inspectionChecklists.set(id, newChecklist);
     return newChecklist;
   }
@@ -423,11 +423,11 @@ export class MemStorage implements IStorage {
   async createReportTemplate(template: InsertReportTemplate): Promise<ReportTemplate> {
     const id = this.currentTemplateId++;
     const now = new Date().toISOString();
-    const newTemplate: ReportTemplate = { 
-      ...template, 
-      id, 
-      createdAt: now 
-    };
+    const newTemplate = {
+      ...template,
+      id,
+      createdAt: now
+    } as ReportTemplate;
     this.reportTemplates.set(id, newTemplate);
     return newTemplate;
   }
@@ -439,11 +439,11 @@ export class MemStorage implements IStorage {
 
   async createAppurtenanceInspection(inspection: InsertAppurtenanceInspection): Promise<AppurtenanceInspection> {
     const id = this.currentAppurtenanceId++;
-    const newInspection: AppurtenanceInspection = { 
-      ...inspection, 
+    const newInspection = {
+      ...inspection,
       id,
       createdAt: new Date().toISOString()
-    };
+    } as AppurtenanceInspection;
     this.appurtenanceInspections.set(id, newInspection);
     return newInspection;
   }
@@ -455,11 +455,11 @@ export class MemStorage implements IStorage {
 
   async createReportAttachment(attachment: InsertReportAttachment): Promise<ReportAttachment> {
     const id = this.currentAttachmentId++;
-    const newAttachment: ReportAttachment = { 
-      ...attachment, 
+    const newAttachment = {
+      ...attachment,
       id,
       uploadedAt: new Date().toISOString()
-    };
+    } as ReportAttachment;
     this.reportAttachments.set(id, newAttachment);
     return newAttachment;
   }
@@ -471,11 +471,11 @@ export class MemStorage implements IStorage {
 
   async createRepairRecommendation(recommendation: InsertRepairRecommendation): Promise<RepairRecommendation> {
     const id = this.currentRecommendationId++;
-    const newRecommendation: RepairRecommendation = { 
-      ...recommendation, 
+    const newRecommendation = {
+      ...recommendation,
       id,
       createdAt: new Date().toISOString()
-    };
+    } as RepairRecommendation;
     this.repairRecommendations.set(id, newRecommendation);
     return newRecommendation;
   }
@@ -487,11 +487,11 @@ export class MemStorage implements IStorage {
 
   async createVentingSystemInspection(inspection: InsertVentingSystemInspection): Promise<VentingSystemInspection> {
     const id = this.currentVentingId++;
-    const newInspection: VentingSystemInspection = { 
-      ...inspection, 
+    const newInspection = {
+      ...inspection,
       id,
       createdAt: new Date().toISOString()
-    };
+    } as VentingSystemInspection;
     this.ventingSystemInspections.set(id, newInspection);
     return newInspection;
   }
@@ -508,12 +508,12 @@ export class MemStorage implements IStorage {
 
   async createAdvancedSettlementSurvey(survey: InsertAdvancedSettlementSurvey): Promise<AdvancedSettlementSurvey> {
     const id = this.currentSettlementSurveyId++;
-    const newSurvey: AdvancedSettlementSurvey = { 
-      ...survey, 
+    const newSurvey = {
+      ...survey,
       id,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    };
+    } as AdvancedSettlementSurvey;
     this.advancedSettlementSurveys.set(id, newSurvey);
     return newSurvey;
   }
@@ -522,12 +522,12 @@ export class MemStorage implements IStorage {
     const existing = this.advancedSettlementSurveys.get(id);
     if (!existing) throw new Error('Survey not found');
     
-    const updated: AdvancedSettlementSurvey = {
+    const updated = {
       ...existing,
       ...survey,
       id,
       updatedAt: new Date().toISOString()
-    };
+    } as AdvancedSettlementSurvey;
     this.advancedSettlementSurveys.set(id, updated);
     return updated;
   }
@@ -539,11 +539,11 @@ export class MemStorage implements IStorage {
 
   async createAdvancedSettlementMeasurement(measurement: InsertAdvancedSettlementMeasurement): Promise<AdvancedSettlementMeasurement> {
     const id = this.currentSettlementMeasurementId++;
-    const newMeasurement: AdvancedSettlementMeasurement = { 
-      ...measurement, 
+    const newMeasurement = {
+      ...measurement,
       id,
       createdAt: new Date().toISOString()
-    };
+    } as AdvancedSettlementMeasurement;
     this.advancedSettlementMeasurements.set(id, newMeasurement);
     return newMeasurement;
   }
@@ -575,13 +575,58 @@ export class MemStorage implements IStorage {
 
   async createEdgeSettlement(settlement: InsertEdgeSettlement): Promise<EdgeSettlement> {
     const id = this.currentEdgeSettlementId++;
-    const newSettlement: EdgeSettlement = { 
-      ...settlement, 
+    const newSettlement = {
+      ...settlement,
       id,
       createdAt: new Date().toISOString()
-    };
+    } as EdgeSettlement;
     this.edgeSettlements.set(id, newSettlement);
     return newSettlement;
+  }
+
+  private initializeAiGuidance() {
+    // Initialize AI guidance templates
+    const templates: Omit<AiGuidanceTemplate, "id" | "createdAt">[] = [
+      {
+        category: "thickness",
+        section: "shell",
+        triggerKeywords: ["shell", "thickness", "minimum", "tmin"],
+        guidanceText: "Shell minimum thickness per API 653 Section 4.3.2",
+        api653References: ["4.3.2", "4.3.3", "Table 4.1"],
+        relatedCalculations: ["tmin", "corrosion_rate", "remaining_life"],
+        warningThresholds: { criticalThickness: 0.1, warningThickness: 0.15 },
+        isActive: true,
+      },
+      {
+        category: "settlement",
+        section: "foundation",
+        triggerKeywords: ["settlement", "cosine", "foundation", "tilt"],
+        guidanceText: "Settlement analysis per API 653 Annex B",
+        api653References: ["B.2.2.4", "B.3.2.1", "B.3.4"],
+        relatedCalculations: ["cosine_fit", "out_of_plane", "edge_settlement"],
+        warningThresholds: { maxSettlement: 6, rSquaredMin: 0.9 },
+        isActive: true,
+      },
+      {
+        category: "safety",
+        section: "general",
+        triggerKeywords: ["safety", "confined", "space", "gas", "test"],
+        guidanceText: "Safety procedures for tank inspection",
+        api653References: ["1.4", "12.2"],
+        relatedCalculations: [],
+        warningThresholds: {},
+        isActive: true,
+      },
+    ];
+
+    // Store templates in memory for MemStorage
+    templates.forEach((template, index) => {
+      this.aiGuidanceTemplates.set(index + 1, {
+        ...template,
+        id: index + 1,
+        createdAt: new Date(),
+      } as AiGuidanceTemplate);
+    });
   }
 }
 
@@ -643,7 +688,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteInspectionReport(id: number): Promise<boolean> {
     const result = await db.delete(inspectionReports).where(eq(inspectionReports.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getThicknessMeasurements(reportId: number): Promise<ThicknessMeasurement[]> {
@@ -676,7 +721,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteThicknessMeasurement(id: number): Promise<boolean> {
     const result = await db.delete(thicknessMeasurements).where(eq(thicknessMeasurements.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getInspectionChecklists(reportId: number): Promise<InspectionChecklist[]> {
@@ -890,15 +935,19 @@ export class DatabaseStorage implements IStorage {
     const [conversation] = await db
       .select()
       .from(aiConversations)
-      .where(eq(aiConversations.reportId, reportId))
-      .where(eq(aiConversations.sessionId, sessionId));
+      .where(
+        and(
+          eq(aiConversations.reportId, reportId),
+          eq(aiConversations.sessionId, sessionId),
+        ),
+      );
     return conversation || undefined;
   }
 
   async saveAiConversation(conversation: InsertAiConversation): Promise<AiConversation> {
     const [saved] = await db
       .insert(aiConversations)
-      .values(conversation)
+      .values(conversation as any)
       .returning();
     return saved;
   }
@@ -1056,51 +1105,6 @@ What specific aspect of your inspection would you like help with?`;
     }
     
     return response;
-  }
-
-  private initializeAiGuidance() {
-    // Initialize AI guidance templates
-    const templates: Omit<AiGuidanceTemplate, 'id' | 'createdAt'>[] = [
-      {
-        category: 'thickness',
-        section: 'shell',
-        triggerKeywords: ['shell', 'thickness', 'minimum', 'tmin'],
-        guidanceText: 'Shell minimum thickness per API 653 Section 4.3.2',
-        api653References: ['4.3.2', '4.3.3', 'Table 4.1'],
-        relatedCalculations: ['tmin', 'corrosion_rate', 'remaining_life'],
-        warningThresholds: { criticalThickness: 0.100, warningThickness: 0.150 },
-        isActive: true
-      },
-      {
-        category: 'settlement',
-        section: 'foundation',
-        triggerKeywords: ['settlement', 'cosine', 'foundation', 'tilt'],
-        guidanceText: 'Settlement analysis per API 653 Annex B',
-        api653References: ['B.2.2.4', 'B.3.2.1', 'B.3.4'],
-        relatedCalculations: ['cosine_fit', 'out_of_plane', 'edge_settlement'],
-        warningThresholds: { maxSettlement: 6, rSquaredMin: 0.90 },
-        isActive: true
-      },
-      {
-        category: 'safety',
-        section: 'general',
-        triggerKeywords: ['safety', 'confined', 'space', 'gas', 'test'],
-        guidanceText: 'Safety procedures for tank inspection',
-        api653References: ['1.4', '12.2'],
-        relatedCalculations: [],
-        warningThresholds: {},
-        isActive: true
-      }
-    ];
-    
-    // Store templates in memory for MemStorage
-    templates.forEach((template, index) => {
-      this.aiGuidanceTemplates.set(index + 1, {
-        ...template,
-        id: index + 1,
-        createdAt: new Date()
-      } as AiGuidanceTemplate);
-    });
   }
 }
 
