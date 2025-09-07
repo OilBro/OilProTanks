@@ -191,7 +191,7 @@ function generateComprehensiveCoverPage(doc: jsPDF, report: InspectionReport, co
   yPos = 220;
   doc.setFontSize(12);
   doc.setFont('helvetica', 'bold');
-  doc.text(companyHeader.name.toUpperCase(), 105, yPos, { align: 'center' });
+  doc.text((companyHeader.name || 'OILPRO CONSULTING').toUpperCase(), 105, yPos, { align: 'center' });
   yPos += 6;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
@@ -577,7 +577,7 @@ function generateComprehensiveThicknessMeasurements(
       // Header
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.text(`${component.toUpperCase()} THICKNESS MEASUREMENTS`, 105, yPos, { align: 'center' });
+      doc.text(`${(component || 'COMPONENT').toUpperCase()} THICKNESS MEASUREMENTS`, 105, yPos, { align: 'center' });
       yPos += 15;
       
       doc.setFontSize(10);
@@ -617,7 +617,7 @@ function generateComprehensiveThicknessMeasurements(
           // Repeat headers
           doc.setFontSize(14);
           doc.setFont('helvetica', 'bold');
-          doc.text(`${component.toUpperCase()} MEASUREMENTS (Continued)`, 105, yPos, { align: 'center' });
+          doc.text(`${(component || 'COMPONENT').toUpperCase()} MEASUREMENTS (Continued)`, 105, yPos, { align: 'center' });
           yPos += 15;
           
           // Repeat table headers

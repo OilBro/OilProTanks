@@ -35,10 +35,10 @@ export function generatePDF(data: ReportData): void {
   doc.setFontSize(10);
   doc.text(`Report No: ${report.reportNumber}`, 20, yPosition + 8);
   doc.text(`Tank ID: ${report.tankId}`, 20, yPosition + 16);
-  doc.text(`Service: ${report.service.toUpperCase()}`, 20, yPosition + 24);
+  doc.text(`Service: ${(report.service || 'N/A').toUpperCase()}`, 20, yPosition + 24);
   doc.text(`Date: ${report.inspectionDate}`, 120, yPosition + 8);
   doc.text(`Inspector: ${report.inspector}`, 120, yPosition + 16);
-  doc.text(`Status: ${report.status.toUpperCase()}`, 120, yPosition + 24);
+  doc.text(`Status: ${(report.status || 'N/A').toUpperCase()}`, 120, yPosition + 24);
   yPosition += 40;
 
   // Tank Specifications
