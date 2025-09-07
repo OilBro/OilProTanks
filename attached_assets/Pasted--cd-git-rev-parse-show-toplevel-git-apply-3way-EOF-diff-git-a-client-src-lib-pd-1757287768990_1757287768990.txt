@@ -1,0 +1,623 @@
+ (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
+diff --git a/client/src/lib/pdf-report-generator.ts b/client/src/lib/pdf-report-generator.ts
+index 70c160d1646fc17da14a89b0b16aee32bab8c7f2..8b96abc7adedbb88bc47ce5f024261d50d28fe98 100644
+--- a/client/src/lib/pdf-report-generator.ts
++++ b/client/src/lib/pdf-report-generator.ts
+@@ -1,31 +1,30 @@
+ import jsPDF from 'jspdf';
+-import 'jspdf-autotable';
++import autoTable from 'jspdf-autotable';
+ 
+ declare module 'jspdf' {
+   interface jsPDF {
+-    autoTable: (options: any) => jsPDF;
+     lastAutoTable: {
+       finalY: number;
+     };
+   }
+ }
+ 
+ interface ReportData {
+   // Basic Information
+   reportNumber: string;
+   tankId: string;
+   facilityName: string;
+   location: string;
+   inspectionDate: string;
+   inspector: string;
+   reviewedBy?: string;
+   
+   // Tank Details
+   tankDetails: {
+     diameter: number;
+     height: number;
+     capacity: number;
+     product: string;
+     yearBuilt: number;
+     lastInspection?: string;
+     designCode: string;
+@@ -313,89 +312,89 @@ export class ProfessionalReportGenerator {
+     });
+     
+     this.pdf.addPage();
+   }
+   
+   private createTankInformation(data: ReportData) {
+     this.currentY = 30;
+     this.addSectionHeader('TANK INFORMATION');
+     
+     // Tank Details Table
+     const tankInfo = [
+       ['Parameter', 'Value'],
+       ['Tank ID', data.tankId],
+       ['Facility', data.facilityName || 'N/A'],
+       ['Location', data.location || 'N/A'],
+       ['Diameter', `${data.tankDetails.diameter} ft`],
+       ['Height', `${data.tankDetails.height} ft`],
+       ['Capacity', `${data.tankDetails.capacity} bbls`],
+       ['Product', data.tankDetails.product],
+       ['Year Built', data.tankDetails.yearBuilt.toString()],
+       ['Design Code', data.tankDetails.designCode],
+       ['Material', data.tankDetails.material],
+       ['Last Internal Inspection', data.tankDetails.lastInspection || 'N/A']
+     ];
+     
+-    this.pdf.autoTable({
++    autoTable(this.pdf, {
+       head: [tankInfo[0]],
+       body: tankInfo.slice(1),
+       startY: this.currentY,
+       theme: 'grid',
+       headStyles: {
+         fillColor: this.primaryColor,
+         fontSize: 11,
+         fontStyle: 'bold'
+       },
+       bodyStyles: {
+         fontSize: 10
+       },
+       columnStyles: {
+         0: { cellWidth: 60, fontStyle: 'bold' },
+         1: { cellWidth: 'auto' }
+       }
+     });
+     
+     this.pdf.addPage();
+   }
+   
+   private createShellCalculationsSection(data: ReportData) {
+     this.currentY = 30;
+     this.addSectionHeader('SHELL THICKNESS CALCULATIONS');
+     
+     // Shell Courses Table
+     const tableData = data.shellData.courses.map(course => [
+       course.courseNumber.toString(),
+       course.height.toFixed(2),
+       course.nominalThickness.toFixed(3),
+       course.measuredThickness.toFixed(3),
+       course.requiredThickness.toFixed(3),
+       course.corrosionRate.toFixed(1),
+       course.remainingLife > 100 ? '>100' : course.remainingLife.toFixed(1),
+       course.status
+     ]);
+     
+-    this.pdf.autoTable({
++    autoTable(this.pdf, {
+       head: [['Course', 'Height (ft)', 'Nominal (in)', 'Measured (in)', 'Required (in)', 'CR (mpy)', 'RL (yrs)', 'Status']],
+       body: tableData,
+       startY: this.currentY,
+       theme: 'striped',
+       headStyles: {
+         fillColor: this.primaryColor,
+         fontSize: 10,
+         fontStyle: 'bold'
+       },
+       bodyStyles: {
+         fontSize: 9
+       },
+       columnStyles: {
+         7: {
+           cellWidth: 25,
+           halign: 'center'
+         }
+       },
+       didDrawCell: (data: any) => {
+         // Color code status column
+         if (data.column.index === 7 && data.row.section === 'body') {
+           const status = data.cell.raw;
+           if (status === 'ACCEPTABLE') {
+             this.pdf.setTextColor(...this.accentColor);
+           } else if (status === 'MONITOR') {
+@@ -421,165 +420,165 @@ export class ProfessionalReportGenerator {
+     const govCourse = data.shellData.courses.find(c => c.courseNumber === data.shellData.governingCourse);
+     if (govCourse) {
+       this.pdf.setFont('helvetica', 'normal');
+       this.pdf.setFontSize(10);
+       this.pdf.text(`Minimum Remaining Life: ${govCourse.remainingLife.toFixed(1)} years`, this.margin + 5, this.currentY + 18);
+       this.pdf.text(`Maximum Corrosion Rate: ${govCourse.corrosionRate.toFixed(1)} mpy`, this.margin + 5, this.currentY + 25);
+     }
+     
+     this.pdf.addPage();
+   }
+   
+   private createBottomAssessmentSection(data: ReportData) {
+     this.currentY = 30;
+     this.addSectionHeader('BOTTOM ASSESSMENT');
+     
+     const bottomInfo = [
+       ['Parameter', 'Value', 'Status'],
+       ['Nominal Thickness', `${data.bottomData.nominalThickness.toFixed(3)}"`, '-'],
+       ['Minimum Measured', `${data.bottomData.minMeasured.toFixed(3)}"`, data.bottomData.minMeasured < data.bottomData.requiredThickness ? 'CRITICAL' : 'OK'],
+       ['Required Thickness', `${data.bottomData.requiredThickness.toFixed(3)}"`, '-'],
+       ['Corrosion Rate', `${data.bottomData.corrosionRate.toFixed(1)} mpy`, data.bottomData.corrosionRate > 5 ? 'HIGH' : 'NORMAL'],
+       ['Remaining Life', `${data.bottomData.remainingLife.toFixed(1)} years`, data.bottomData.remainingLife < 5 ? 'CRITICAL' : data.bottomData.remainingLife < 10 ? 'MONITOR' : 'OK'],
+       ['Next MRI Date', data.bottomData.mriDate || 'TBD', '-']
+     ];
+     
+-    this.pdf.autoTable({
++    autoTable(this.pdf, {
+       head: [bottomInfo[0]],
+       body: bottomInfo.slice(1),
+       startY: this.currentY,
+       theme: 'grid',
+       headStyles: {
+         fillColor: this.primaryColor,
+         fontSize: 11,
+         fontStyle: 'bold'
+       },
+       bodyStyles: {
+         fontSize: 10
+       },
+       didDrawCell: (data: any) => {
+         // Color code status column
+         if (data.column.index === 2 && data.row.section === 'body') {
+           const status = data.cell.raw;
+           if (status === 'OK') {
+             this.pdf.setTextColor(...this.accentColor);
+           } else if (status === 'MONITOR' || status === 'HIGH') {
+             this.pdf.setTextColor(255, 159, 64);
+           } else if (status === 'CRITICAL') {
+             this.pdf.setTextColor(...this.secondaryColor);
+           }
+         }
+       }
+     });
+     
+     this.pdf.addPage();
+   }
+   
+   private createSettlementSection(settlementData: any) {
+     this.currentY = 30;
+     this.addSectionHeader('SETTLEMENT ANALYSIS');
+     
+     // Settlement Summary
+     const summaryData = [
+       ['Parameter', 'Value', 'Limit', 'Status'],
+       ['Peak-to-Peak Settlement', `${(settlementData.amplitude * 2).toFixed(3)} ft`, `${settlementData.allowableSettlement.toFixed(3)} ft`, settlementData.acceptance],
+       ['Cosine Amplitude', `${settlementData.amplitude.toFixed(4)} ft`, '-', '-'],
+       ['Phase Angle', `${settlementData.phase.toFixed(1)}°`, '-', '-'],
+       ['R² Value', settlementData.rSquared.toFixed(4), '≥ 0.90', settlementData.rSquared >= 0.9 ? 'OK' : 'WARNING'],
+       ['Max Out-of-Plane', `${settlementData.maxSettlement.toFixed(4)} ft`, '-', '-']
+     ];
+     
+-    this.pdf.autoTable({
++    autoTable(this.pdf, {
+       head: [summaryData[0]],
+       body: summaryData.slice(1),
+       startY: this.currentY,
+       theme: 'grid',
+       headStyles: {
+         fillColor: this.primaryColor,
+         fontSize: 11,
+         fontStyle: 'bold'
+       },
+       bodyStyles: {
+         fontSize: 10
+       }
+     });
+     
+     // Measurement Points Table (if space permits)
+     if (settlementData.measurements && settlementData.measurements.length > 0) {
+       this.currentY = this.pdf.lastAutoTable.finalY + 15;
+       this.pdf.setFont('helvetica', 'bold');
+       this.pdf.setFontSize(12);
+       this.pdf.text('Measurement Points', this.margin, this.currentY);
+       this.currentY += 5;
+       
+       const measurementData = settlementData.measurements.map((m: any) => [
+         m.point.toString(),
+         `${m.angle.toFixed(0)}°`,
+         m.elevation.toFixed(4),
+         m.cosineFit ? m.cosineFit.toFixed(4) : '-',
+         m.cosineFit ? (m.elevation - m.cosineFit).toFixed(4) : '-'
+       ]);
+       
+-      this.pdf.autoTable({
++      autoTable(this.pdf, {
+         head: [['Point', 'Angle', 'Measured (ft)', 'Cosine Fit (ft)', 'Deviation (ft)']],
+         body: measurementData,
+         startY: this.currentY,
+         theme: 'striped',
+         headStyles: {
+           fillColor: this.primaryColor,
+           fontSize: 10,
+           fontStyle: 'bold'
+         },
+         bodyStyles: {
+           fontSize: 9
+         }
+       });
+     }
+     
+     this.pdf.addPage();
+   }
+   
+   private createCMLSection(cmlData: any[]) {
+     this.currentY = 30;
+     this.addSectionHeader('CML DATA ANALYSIS');
+     
+     // Sort CML data by remaining life (ascending)
+     const sortedCML = [...cmlData].sort((a, b) => a.remainingLife - b.remainingLife);
+     
+     // Show top 10 critical CMLs
+     const criticalCMLs = sortedCML.slice(0, 10).map(cml => [
+       cml.cmlId,
+       cml.component,
+       cml.location,
+       cml.currentReading.toFixed(3),
+       cml.tMin.toFixed(3),
+       cml.corrosionRate.toFixed(1),
+       cml.remainingLife > 100 ? '>100' : cml.remainingLife.toFixed(1),
+       cml.status
+     ]);
+     
+-    this.pdf.autoTable({
++    autoTable(this.pdf, {
+       head: [['CML ID', 'Component', 'Location', 'Current (in)', 't-min (in)', 'CR (mpy)', 'RL (yrs)', 'Status']],
+       body: criticalCMLs,
+       startY: this.currentY,
+       theme: 'striped',
+       headStyles: {
+         fillColor: this.primaryColor,
+         fontSize: 9,
+         fontStyle: 'bold'
+       },
+       bodyStyles: {
+         fontSize: 8
+       },
+       columnStyles: {
+         0: { cellWidth: 20 },
+         1: { cellWidth: 25 },
+         2: { cellWidth: 35 },
+         7: { cellWidth: 20, halign: 'center' }
+       }
+     });
+     
+     // CML Summary Statistics
+     this.currentY = this.pdf.lastAutoTable.finalY + 10;
+     const criticalCount = cmlData.filter(c => c.status === 'critical').length;
+     const warningCount = cmlData.filter(c => c.status === 'action_required' || c.status === 'monitor').length;
+     const avgCorrosionRate = cmlData.reduce((sum, c) => sum + c.corrosionRate, 0) / cmlData.length;
+diff --git a/package-lock.json b/package-lock.json
+index 92c2ae79a293034c78aa4836377bde737d99e7df..5a4c09dffa89e444729cf4a9f0126036dc45fd64 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -46,51 +46,52 @@
+         "@types/cors": "^2.8.19",
+         "@types/multer": "^1.4.13",
+         "@uppy/aws-s3": "^4.3.2",
+         "@uppy/core": "^4.5.3",
+         "@uppy/dashboard": "^4.4.3",
+         "@uppy/drag-drop": "^4.2.2",
+         "@uppy/file-input": "^4.2.2",
+         "@uppy/progress-bar": "^4.3.2",
+         "@uppy/react": "^4.5.2",
+         "archiver": "^7.0.1",
+         "class-variance-authority": "^0.7.1",
+         "clsx": "^2.1.1",
+         "cmdk": "^1.1.1",
+         "connect-pg-simple": "^10.0.0",
+         "cors": "^2.8.5",
+         "date-fns": "^3.6.0",
+         "drizzle-orm": "^0.39.1",
+         "drizzle-zod": "^0.7.0",
+         "embla-carousel-react": "^8.6.0",
+         "express": "^4.21.2",
+         "express-session": "^1.18.1",
+         "form-data": "^4.0.3",
+         "framer-motion": "^11.13.1",
+         "google-auth-library": "^10.3.0",
+         "input-otp": "^1.4.2",
+-        "jspdf": "^3.0.1",
++        "jspdf": "^2.5.1",
++        "jspdf-autotable": "^3.8.4",
+         "lucide-react": "^0.453.0",
+         "memorystore": "^1.6.7",
+         "multer": "^2.0.1",
+         "nanoid": "^5.1.5",
+         "next-themes": "^0.4.6",
+         "node-poppler": "^8.0.2",
+         "openai": "^5.12.2",
+         "passport": "^0.7.0",
+         "passport-local": "^1.0.0",
+         "pdf-parse": "^1.1.1",
+         "pdf2pic": "^3.2.0",
+         "react": "^18.3.1",
+         "react-day-picker": "^8.10.1",
+         "react-dom": "^18.3.1",
+         "react-hook-form": "^7.55.0",
+         "react-icons": "^5.4.0",
+         "react-resizable-panels": "^2.1.7",
+         "recharts": "^2.15.4",
+         "tailwind-merge": "^2.6.0",
+         "tailwindcss-animate": "^1.0.7",
+         "tw-animate-css": "^1.2.5",
+         "vaul": "^1.1.2",
+         "wouter": "^3.3.5",
+         "ws": "^8.18.0",
+         "xlsx": "^0.18.5",
+@@ -3890,57 +3891,50 @@
+       "resolved": "https://registry.npmjs.org/@types/send/-/send-0.17.4.tgz",
+       "integrity": "sha512-x2EM6TJOybec7c52BX0ZspPodMsQUd5L6PRwOunVyVUhXiBSKf3AezDL8Dgvgt5o0UfKNfuA0eMLr2wLT4AiBA==",
+       "license": "MIT",
+       "dependencies": {
+         "@types/mime": "^1",
+         "@types/node": "*"
+       }
+     },
+     "node_modules/@types/serve-static": {
+       "version": "1.15.7",
+       "resolved": "https://registry.npmjs.org/@types/serve-static/-/serve-static-1.15.7.tgz",
+       "integrity": "sha512-W8Ym+h8nhuRwaKPaDw34QUkwsGi6Rc4yYqvKFo5rm2FUEhCFbzVWrxXUxuKK8TASjWsysJY0nsmNCGhCOIsrOw==",
+       "license": "MIT",
+       "dependencies": {
+         "@types/http-errors": "*",
+         "@types/node": "*",
+         "@types/send": "*"
+       }
+     },
+     "node_modules/@types/tough-cookie": {
+       "version": "4.0.5",
+       "resolved": "https://registry.npmjs.org/@types/tough-cookie/-/tough-cookie-4.0.5.tgz",
+       "integrity": "sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==",
+       "license": "MIT"
+     },
+-    "node_modules/@types/trusted-types": {
+-      "version": "2.0.7",
+-      "resolved": "https://registry.npmjs.org/@types/trusted-types/-/trusted-types-2.0.7.tgz",
+-      "integrity": "sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==",
+-      "license": "MIT",
+-      "optional": true
+-    },
+     "node_modules/@types/ws": {
+       "version": "8.5.13",
+       "resolved": "https://registry.npmjs.org/@types/ws/-/ws-8.5.13.tgz",
+       "integrity": "sha512-osM/gWBTPKgHV8XkTunnegTRIsvF6owmf5w+JtAfOw472dptdm0dlGv4xCt6GwQRcC2XVOvvRE/0bAoQcL2QkA==",
+       "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "@types/node": "*"
+       }
+     },
+     "node_modules/@uppy/audio": {
+       "version": "2.2.2",
+       "resolved": "https://registry.npmjs.org/@uppy/audio/-/audio-2.2.2.tgz",
+       "integrity": "sha512-63pwCo+JbJyxB1V/YK59cMSMFi8+g9Mfew6awfJFeu4tAK0HHfZtUk5+fUdZJRdCf4eIwBAiwixBL8Q4BOes+Q==",
+       "license": "MIT",
+       "dependencies": {
+         "@uppy/utils": "^6.2.2",
+         "preact": "^10.5.13"
+       },
+       "peerDependencies": {
+         "@uppy/core": "^4.5.2"
+       }
+     },
+     "node_modules/@uppy/aws-s3": {
+       "version": "4.3.2",
+@@ -5633,58 +5627,55 @@
+       "resolved": "https://registry.npmjs.org/detect-node-es/-/detect-node-es-1.1.0.tgz",
+       "integrity": "sha512-ypdmJU/TbBby2Dxibuv7ZLW3Bs1QEmM7nHjEANfohJLvE0XVujisn1qPJcZxg+qDucsr+bP6fLD1rPS3AhJ7EQ=="
+     },
+     "node_modules/didyoumean": {
+       "version": "1.2.2",
+       "resolved": "https://registry.npmjs.org/didyoumean/-/didyoumean-1.2.2.tgz",
+       "integrity": "sha512-gxtyfqMg7GKyhQmb056K7M3xszy/myH8w+B4RT+QXBQsvAOdc3XymqDDPHx1BgPgsdAA5SIifona89YtRATDzw==",
+       "license": "Apache-2.0"
+     },
+     "node_modules/dlv": {
+       "version": "1.1.3",
+       "resolved": "https://registry.npmjs.org/dlv/-/dlv-1.1.3.tgz",
+       "integrity": "sha512-+HlytyjlPKnIG8XuRG8WvmBP8xs8P71y+SKKS6ZXWoEgLuePxtDoUEiH7WkdePWrQ5JBpE6aoVqfZfJUQkjXwA==",
+       "license": "MIT"
+     },
+     "node_modules/dom-helpers": {
+       "version": "5.2.1",
+       "resolved": "https://registry.npmjs.org/dom-helpers/-/dom-helpers-5.2.1.tgz",
+       "integrity": "sha512-nRCa7CK3VTrM2NmGkIy4cbK7IZlgBE/PYMn55rrXefr5xXDP0LdtfPnblFDoVdcAfslJ7or6iqAUnx0CCGIWQA==",
+       "dependencies": {
+         "@babel/runtime": "^7.8.7",
+         "csstype": "^3.0.2"
+       }
+     },
+     "node_modules/dompurify": {
+-      "version": "3.2.6",
+-      "resolved": "https://registry.npmjs.org/dompurify/-/dompurify-3.2.6.tgz",
+-      "integrity": "sha512-/2GogDQlohXPZe6D6NOgQvXLPSYBqIWMnZ8zzOhn09REE4eyAzb+Hed3jhoM9OkuaJ8P6ZGTTVWQKAi8ieIzfQ==",
++      "version": "2.5.8",
++      "resolved": "https://registry.npmjs.org/dompurify/-/dompurify-2.5.8.tgz",
++      "integrity": "sha512-o1vSNgrmYMQObbSSvF/1brBYEQPHhV1+gsmrusO7/GXtp1T9rCS8cXFqVxK/9crT1jA6Ccv+5MTSjBNqr7Sovw==",
+       "license": "(MPL-2.0 OR Apache-2.0)",
+-      "optional": true,
+-      "optionalDependencies": {
+-        "@types/trusted-types": "^2.0.7"
+-      }
++      "optional": true
+     },
+     "node_modules/drizzle-kit": {
+       "version": "0.30.4",
+       "resolved": "https://registry.npmjs.org/drizzle-kit/-/drizzle-kit-0.30.4.tgz",
+       "integrity": "sha512-B2oJN5UkvwwNHscPWXDG5KqAixu7AUzZ3qbe++KU9SsQ+cZWR4DXEPYcvWplyFAno0dhRJECNEhNxiDmFaPGyQ==",
+       "dev": true,
+       "license": "MIT",
+       "dependencies": {
+         "@drizzle-team/brocli": "^0.10.2",
+         "@esbuild-kit/esm-loader": "^2.5.5",
+         "esbuild": "^0.19.7",
+         "esbuild-register": "^3.5.0"
+       },
+       "bin": {
+         "drizzle-kit": "bin.cjs"
+       }
+     },
+     "node_modules/drizzle-kit/node_modules/@esbuild/aix-ppc64": {
+       "version": "0.19.12",
+       "resolved": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.19.12.tgz",
+       "integrity": "sha512-bmoCYyWdEL3wDQIVbcyzRyeKLgk2WtWLTWz1ZIAZF/EGbNOwSA6ew3PftJ1PqMiOOGu0OyFMzG53L0zqIpPeNA==",
+       "cpu": [
+         "ppc64"
+       ],
+       "dev": true,
+@@ -7630,67 +7621,76 @@
+       }
+     },
+     "node_modules/json-bigint": {
+       "version": "1.0.0",
+       "resolved": "https://registry.npmjs.org/json-bigint/-/json-bigint-1.0.0.tgz",
+       "integrity": "sha512-SiPv/8VpZuWbvLSMtTDU8hEfrZWg/mH/nV/b4o0CYbSxu1UIQPLdwKOCIyLQX+VIPO5vrLX3i8qtqFyhdPSUSQ==",
+       "license": "MIT",
+       "dependencies": {
+         "bignumber.js": "^9.0.0"
+       }
+     },
+     "node_modules/json5": {
+       "version": "2.2.3",
+       "resolved": "https://registry.npmjs.org/json5/-/json5-2.2.3.tgz",
+       "integrity": "sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg==",
+       "dev": true,
+       "license": "MIT",
+       "bin": {
+         "json5": "lib/cli.js"
+       },
+       "engines": {
+         "node": ">=6"
+       }
+     },
+     "node_modules/jspdf": {
+-      "version": "3.0.1",
+-      "resolved": "https://registry.npmjs.org/jspdf/-/jspdf-3.0.1.tgz",
+-      "integrity": "sha512-qaGIxqxetdoNnFQQXxTKUD9/Z7AloLaw94fFsOiJMxbfYdBbrBuhWmbzI8TVjrw7s3jBY1PFHofBKMV/wZPapg==",
++      "version": "2.5.2",
++      "resolved": "https://registry.npmjs.org/jspdf/-/jspdf-2.5.2.tgz",
++      "integrity": "sha512-myeX9c+p7znDWPk0eTrujCzNjT+CXdXyk7YmJq5nD5V7uLLKmSXnlQ/Jn/kuo3X09Op70Apm0rQSnFWyGK8uEQ==",
+       "license": "MIT",
+       "dependencies": {
+-        "@babel/runtime": "^7.26.7",
++        "@babel/runtime": "^7.23.2",
+         "atob": "^2.1.2",
+         "btoa": "^1.2.1",
+         "fflate": "^0.8.1"
+       },
+       "optionalDependencies": {
+-        "canvg": "^3.0.11",
++        "canvg": "^3.0.6",
+         "core-js": "^3.6.0",
+-        "dompurify": "^3.2.4",
++        "dompurify": "^2.5.4",
+         "html2canvas": "^1.0.0-rc.5"
+       }
+     },
++    "node_modules/jspdf-autotable": {
++      "version": "3.8.4",
++      "resolved": "https://registry.npmjs.org/jspdf-autotable/-/jspdf-autotable-3.8.4.tgz",
++      "integrity": "sha512-rSffGoBsJYX83iTRv8Ft7FhqfgEL2nLpGAIiqruEQQ3e4r0qdLFbPUB7N9HAle0I3XgpisvyW751VHCqKUVOgQ==",
++      "license": "MIT",
++      "peerDependencies": {
++        "jspdf": "^2.5.1"
++      }
++    },
+     "node_modules/jwa": {
+       "version": "2.0.1",
+       "resolved": "https://registry.npmjs.org/jwa/-/jwa-2.0.1.tgz",
+       "integrity": "sha512-hRF04fqJIP8Abbkq5NKGN0Bbr3JxlQ+qhZufXVr0DvujKy93ZCbXZMHDL4EOtodSbCWxOqR8MS1tXA5hwqCXDg==",
+       "license": "MIT",
+       "dependencies": {
+         "buffer-equal-constant-time": "^1.0.1",
+         "ecdsa-sig-formatter": "1.0.11",
+         "safe-buffer": "^5.0.1"
+       }
+     },
+     "node_modules/jws": {
+       "version": "4.0.0",
+       "resolved": "https://registry.npmjs.org/jws/-/jws-4.0.0.tgz",
+       "integrity": "sha512-KDncfTmOZoOMTFG4mBlG0qUIOlc03fmzH+ru6RgYVZhPkyiy/92Owlt/8UEN+a4TXR1FQetfIpJE8ApdvdVxTg==",
+       "license": "MIT",
+       "dependencies": {
+         "jwa": "^2.0.0",
+         "safe-buffer": "^5.0.1"
+       }
+     },
+     "node_modules/lazystream": {
+       "version": "1.0.1",
+       "resolved": "https://registry.npmjs.org/lazystream/-/lazystream-1.0.1.tgz",
+       "integrity": "sha512-b94GiNHQNy6JNTrt5w6zNyffMrNkXZb3KTkCZJb2V1xaEGCk093vkZ2jk3tpaeP33/OiXC+WvK9AxUebnf5nbw==",
+diff --git a/package.json b/package.json
+index 0ebb060facd9f3d7b82c3cd682963a655843cd75..1057ec6e7153caa2bd0502026a8a8077c451819e 100644
+--- a/package.json
++++ b/package.json
+@@ -48,51 +48,52 @@
+     "@types/cors": "^2.8.19",
+     "@types/multer": "^1.4.13",
+     "@uppy/aws-s3": "^4.3.2",
+     "@uppy/core": "^4.5.3",
+     "@uppy/dashboard": "^4.4.3",
+     "@uppy/drag-drop": "^4.2.2",
+     "@uppy/file-input": "^4.2.2",
+     "@uppy/progress-bar": "^4.3.2",
+     "@uppy/react": "^4.5.2",
+     "archiver": "^7.0.1",
+     "class-variance-authority": "^0.7.1",
+     "clsx": "^2.1.1",
+     "cmdk": "^1.1.1",
+     "connect-pg-simple": "^10.0.0",
+     "cors": "^2.8.5",
+     "date-fns": "^3.6.0",
+     "drizzle-orm": "^0.39.1",
+     "drizzle-zod": "^0.7.0",
+     "embla-carousel-react": "^8.6.0",
+     "express": "^4.21.2",
+     "express-session": "^1.18.1",
+     "form-data": "^4.0.3",
+     "framer-motion": "^11.13.1",
+     "google-auth-library": "^10.3.0",
+     "input-otp": "^1.4.2",
+-    "jspdf": "^3.0.1",
++    "jspdf": "^2.5.1",
++    "jspdf-autotable": "^3.8.4",
+     "lucide-react": "^0.453.0",
+     "memorystore": "^1.6.7",
+     "multer": "^2.0.1",
+     "nanoid": "^5.1.5",
+     "next-themes": "^0.4.6",
+     "node-poppler": "^8.0.2",
+     "openai": "^5.12.2",
+     "passport": "^0.7.0",
+     "passport-local": "^1.0.0",
+     "pdf-parse": "^1.1.1",
+     "pdf2pic": "^3.2.0",
+     "react": "^18.3.1",
+     "react-day-picker": "^8.10.1",
+     "react-dom": "^18.3.1",
+     "react-hook-form": "^7.55.0",
+     "react-icons": "^5.4.0",
+     "react-resizable-panels": "^2.1.7",
+     "recharts": "^2.15.4",
+     "tailwind-merge": "^2.6.0",
+     "tailwindcss-animate": "^1.0.7",
+     "tw-animate-css": "^1.2.5",
+     "vaul": "^1.1.2",
+     "wouter": "^3.3.5",
+     "ws": "^8.18.0",
+     "xlsx": "^0.18.5",
+ 
+EOF
+)

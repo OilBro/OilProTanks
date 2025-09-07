@@ -1,9 +1,8 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 declare module 'jspdf' {
   interface jsPDF {
-    autoTable: (options: any) => jsPDF;
     lastAutoTable: {
       finalY: number;
     };
@@ -335,7 +334,7 @@ export class ProfessionalReportGenerator {
       ['Last Internal Inspection', data.tankDetails.lastInspection || 'N/A']
     ];
     
-    this.pdf.autoTable({
+    autoTable(this.pdf, {
       head: [tankInfo[0]],
       body: tankInfo.slice(1),
       startY: this.currentY,
@@ -373,7 +372,7 @@ export class ProfessionalReportGenerator {
       course.status
     ]);
     
-    this.pdf.autoTable({
+    autoTable(this.pdf, {
       head: [['Course', 'Height (ft)', 'Nominal (in)', 'Measured (in)', 'Required (in)', 'CR (mpy)', 'RL (yrs)', 'Status']],
       body: tableData,
       startY: this.currentY,
@@ -443,7 +442,7 @@ export class ProfessionalReportGenerator {
       ['Next MRI Date', data.bottomData.mriDate || 'TBD', '-']
     ];
     
-    this.pdf.autoTable({
+    autoTable(this.pdf, {
       head: [bottomInfo[0]],
       body: bottomInfo.slice(1),
       startY: this.currentY,
@@ -488,7 +487,7 @@ export class ProfessionalReportGenerator {
       ['Max Out-of-Plane', `${settlementData.maxSettlement.toFixed(4)} ft`, '-', '-']
     ];
     
-    this.pdf.autoTable({
+    autoTable(this.pdf, {
       head: [summaryData[0]],
       body: summaryData.slice(1),
       startY: this.currentY,
@@ -519,7 +518,7 @@ export class ProfessionalReportGenerator {
         m.cosineFit ? (m.elevation - m.cosineFit).toFixed(4) : '-'
       ]);
       
-      this.pdf.autoTable({
+      autoTable(this.pdf, {
         head: [['Point', 'Angle', 'Measured (ft)', 'Cosine Fit (ft)', 'Deviation (ft)']],
         body: measurementData,
         startY: this.currentY,
@@ -557,7 +556,7 @@ export class ProfessionalReportGenerator {
       cml.status
     ]);
     
-    this.pdf.autoTable({
+    autoTable(this.pdf, {
       head: [['CML ID', 'Component', 'Location', 'Current (in)', 't-min (in)', 'CR (mpy)', 'RL (yrs)', 'Status']],
       body: criticalCMLs,
       startY: this.currentY,
