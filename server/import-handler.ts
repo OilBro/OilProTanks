@@ -284,7 +284,6 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
       
       // Check each potential thickness field
       for (const key of Object.keys(rowObj)) {
-$/))) {
         const value = rowObj[key];
         const keyLower = key.toLowerCase();
 
@@ -541,7 +540,6 @@ $/))) {
 }
 
 // Enhanced checklist extraction function
-}
 function extractChecklistFromWorkbook(workbook: XLSX.WorkBook): any[] {
   const checklistItems: any[] = [];
   const checklistPatterns = [
