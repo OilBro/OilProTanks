@@ -263,8 +263,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (recommendations) updateData.recommendations = recommendations;
           if (notes) updateData.notes = notes;
           
-          // Note: We might need to add these fields to the schema if they don't exist
-          console.log('Special fields to update:', updateData);
+          // Update the report with the additional fields
+          try {
+            await storage.updateInspectionReport(createdReport.id, updateData);
+            console.log('Updated report with findings and additional fields');
+          } catch (updateError) {
+            console.error('Failed to update report with findings:', updateError);
+          }
         }
         
         res.json({
@@ -287,11 +292,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (validationError) {
         console.error('Report creation failed:', validationError);
         
-        // Return the error but still show the extracted data
+        // Enhanced error handling with cleanup
+        let errorMessage = "Failed to create report from imported data.";
+        let errorDetails = {};
+        
+        if (validationError instanceof Error) {
+          errorMessage = validationError.message;
+          
+          // Parse validation errors for better user feedback
+          if (validationError.message.includes('tankId')) {
+            errorMessage = "Invalid Tank ID. Please ensure the Tank ID is properly specified in the Excel file.";
+          } else if (validationError.message.includes('service')) {
+            errorMessage = "Invalid service type. Please check the product/service field in the Excel file.";
+          } else if (validationError.message.includes('inspectionDate')) {
+            errorMessage = "Invalid inspection date format. Please use YYYY-MM-DD format.";
+          }
+          
+          // Extract validation details if available
+          if ((validationError as any).issues) {
+            errorDetails = {
+              validationIssues: (validationError as any).issues.map((issue: any) => ({
+                field: issue.path.join('.'),
+                message: issue.message,
+                received: issue.received
+              }))
+            };
+          }
+        }
+        
+        // Return the error but still show the extracted data for user review
         res.status(400).json({
           success: false,
-          message: "Failed to create report from imported data. Please review and correct the data.",
+          message: errorMessage,
           error: validationError instanceof Error ? validationError.message : 'Validation failed',
+          errorDetails,
           importedData: result.importedData,
           thicknessMeasurements: result.thicknessMeasurements,
           checklistItems: result.checklistItems,
@@ -301,16 +335,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
             confidence: result.aiAnalysis.confidence,
             detectedColumns: (result.aiAnalysis as any).detectedColumns || [],
             mappingSuggestions: result.aiAnalysis.mappingSuggestions
-          }
+          },
+          suggestions: [
+            "Review the Tank ID field - it should be a valid identifier",
+            "Check the service/product type - use standard values like 'crude_oil', 'diesel', etc.",
+            "Verify date formats are YYYY-MM-DD",
+            "Ensure numeric fields (diameter, height) contain valid numbers"
+          ]
         });
       }
 
     } catch (error) {
       console.error('Excel import error:', error);
       console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      
+      // Enhanced error categorization
+      let errorMessage = "Failed to process Excel file";
+      let errorCategory = "unknown";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('ENOENT') || error.message.includes('file not found')) {
+          errorMessage = "File not found or corrupted during upload";
+          errorCategory = "file_error";
+        } else if (error.message.includes('Invalid file format') || error.message.includes('XLSX')) {
+          errorMessage = "Invalid Excel file format. Please upload a valid .xlsx, .xls, or .xlsm file";
+          errorCategory = "format_error";
+        } else if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
+          errorMessage = "File processing timed out. Please try with a smaller file";
+          errorCategory = "timeout_error";
+        } else if (error.message.includes('memory') || error.message.includes('heap')) {
+          errorMessage = "File too large to process. Please reduce file size and try again";
+          errorCategory = "memory_error";
+        } else {
+          errorMessage = error.message;
+          errorCategory = "processing_error";
+        }
+      }
+      
       res.status(500).json({ 
-        message: "Failed to process Excel file", 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        message: errorMessage,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        errorCategory,
+        timestamp: new Date().toISOString(),
+        suggestions: [
+          "Ensure the file is a valid Excel format (.xlsx, .xls, .xlsm)",
+          "Check that the file is not corrupted",
+          "Verify the file contains tank inspection data",
+          "Try uploading a smaller file if the current one is very large"
+        ]
       });
     }
   });
@@ -526,20 +598,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const componentLower = req.body.component.toLowerCase().trim();
         console.log('Auto-detecting measurement type for component:', componentLower);
         
-        if (componentLower === "bottom plate" || componentLower.includes("bottom plate")) {
+        // Enhanced pattern matching for measurement types
+        if (componentLower.includes("bottom") || componentLower.includes("floor") || componentLower.includes("plate")) {
           measurementType = "bottom_plate";
-        } else if (componentLower === "critical zone" || componentLower.includes("critical zone")) {
+        } else if (componentLower.includes("critical") || componentLower.includes("zone")) {
           measurementType = "critical_zone";
-        } else if (componentLower.includes("roof")) {
+        } else if (componentLower.includes("roof") || componentLower.includes("top")) {
           measurementType = "roof";
-        } else if (componentLower.includes("nozzle")) {
+        } else if (componentLower.includes("nozzle") || componentLower.includes("outlet") || componentLower.includes("inlet")) {
           measurementType = "nozzle";
-        } else if (componentLower.includes("internal annular")) {
+        } else if (componentLower.includes("annular") || componentLower.includes("ring")) {
           measurementType = "internal_annular";
-        } else if (componentLower.includes("external repad")) {
+        } else if (componentLower.includes("repad") || componentLower.includes("reinforcement")) {
           measurementType = "external_repad";
-        } else if (componentLower.includes("chime")) {
+        } else if (componentLower.includes("chime") || componentLower.includes("angle")) {
           measurementType = "chime";
+        } else if (componentLower.includes("appurtenance") || componentLower.includes("fitting")) {
+          measurementType = "nozzle"; // Default appurtenances to nozzle type
+        } else if (componentLower.includes("shell") || componentLower.includes("course")) {
+          measurementType = "shell";
         }
       }
       
@@ -580,6 +657,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           minimumRequired = 0.1; // API 653 minimum for bottom plates
         } else if (measurementType === 'roof') {
           minimumRequired = 0.09; // API 653 minimum for roof plates  
+        } else if (measurementType === 'critical_zone') {
+          // Critical zones typically use shell minimum requirements
+          minimumRequired = 0.1;
+        } else if (measurementType === 'internal_annular') {
+          minimumRequired = 0.1; // Same as bottom plate
+        } else if (measurementType === 'nozzle') {
+          minimumRequired = 0.125; // Typical nozzle minimum
+        } else if (measurementType === 'external_repad') {
+          minimumRequired = 0.1; // Repad minimum
+        } else if (measurementType === 'chime') {
+          minimumRequired = 0.1; // Chime minimum
         }
         
         // Calculate remaining life
@@ -711,6 +799,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             parseFloat(report.height),
             0.85
           );
+        } else if (measurementType === 'bottom_plate') {
+          minimumRequired = 0.1; // API 653 minimum for bottom plates
+        } else if (measurementType === 'roof') {
+          minimumRequired = 0.09; // API 653 minimum for roof plates  
+        } else if (measurementType === 'critical_zone') {
+          minimumRequired = 0.1; // Critical zones
+        } else if (measurementType === 'internal_annular') {
+          minimumRequired = 0.1; // Same as bottom plate
+        } else if (measurementType === 'nozzle') {
+          minimumRequired = 0.125; // Typical nozzle minimum
+        } else if (measurementType === 'external_repad') {
+          minimumRequired = 0.1; // Repad minimum
+        } else if (measurementType === 'chime') {
+          minimumRequired = 0.1; // Chime minimum
         }
         
         // Calculate remaining life
