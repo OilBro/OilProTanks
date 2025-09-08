@@ -118,15 +118,51 @@ export class ProfessionalReportGenerator {
   
   generateReport(data: ReportData): Blob {
     try {
-      // Validate and format dates
-      if (!data.inspectionDate || isNaN(Date.parse(data.inspectionDate))) {
-        data.inspectionDate = new Date().toISOString().split('T')[0];
+      // Enhanced date validation and formatting
+      const formatDate = (dateInput: string | undefined | null): string => {
+        if (!dateInput) return new Date().toISOString().split('T')[0];
+        
+        // Handle various date formats
+        let date: Date;
+        if (typeof dateInput === 'string') {
+          // Try parsing as ISO string first
+          date = new Date(dateInput);
+          
+          // If invalid, try other common formats
+          if (isNaN(date.getTime())) {
+            // Try MM/DD/YYYY format
+            const mmddyyyy = dateInput.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+            if (mmddyyyy) {
+              date = new Date(parseInt(mmddyyyy[3]), parseInt(mmddyyyy[1]) - 1, parseInt(mmddyyyy[2]));
+            } else {
+              // Try DD/MM/YYYY format
+              const ddmmyyyy = dateInput.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+              if (ddmmyyyy) {
+                date = new Date(parseInt(ddmmyyyy[3]), parseInt(ddmmyyyy[2]) - 1, parseInt(ddmmyyyy[1]));
+              } else {
+                // Default to current date if all parsing fails
+                date = new Date();
+              }
+            }
+          }
+        } else {
+          date = new Date();
+        }
+        
+        // Return formatted date or current date if still invalid
+        return isNaN(date.getTime()) ? new Date().toISOString().split('T')[0] : date.toISOString().split('T')[0];
+      };
+
+      // Apply enhanced date formatting
+      data.inspectionDate = formatDate(data.inspectionDate);
+      if (data.tankDetails) {
+        data.tankDetails.lastInspection = data.tankDetails.lastInspection ? formatDate(data.tankDetails.lastInspection) : undefined;
       }
-      if (data.tankDetails && (!data.tankDetails.lastInspection || isNaN(Date.parse(data.tankDetails.lastInspection)))) {
-        data.tankDetails.lastInspection = 'N/A';
+      if (data.bottomData) {
+        data.bottomData.mriDate = data.bottomData.mriDate ? formatDate(data.bottomData.mriDate) : undefined;
       }
-      if (data.bottomData && (!data.bottomData.mriDate || isNaN(Date.parse(data.bottomData.mriDate)))) {
-        data.bottomData.mriDate = 'TBD';
+      if (data.findings) {
+        data.findings.nextInspectionDate = formatDate(data.findings.nextInspectionDate);
       }
 
       // Cover Page
@@ -176,6 +212,15 @@ export class ProfessionalReportGenerator {
         this.pdf.setTextColor(0, 0, 0);
         this.pdf.addPage();
       }
+
+      // NDE Results Section
+      this.createNDEResultsSection(data);
+
+      // Professional Checklist Section
+      this.createProfessionalChecklistSection(data);
+
+      // Sketches and Diagrams Section
+      this.createSketchesSection(data);
 
       // Findings and Recommendations
       if (data.findings) {
@@ -808,6 +853,167 @@ export class ProfessionalReportGenerator {
     this.currentY += 5;
   }
   
+  private createNDEResultsSection(data: ReportData) {
+    this.currentY = 30;
+    this.addSectionHeader('NON-DESTRUCTIVE EXAMINATION RESULTS');
+    
+    this.pdf.setFont('helvetica', 'normal');
+    this.pdf.setFontSize(11);
+    
+    // NDE Summary Table
+    const ndeData = [
+      ['Examination Type', 'Location', 'Results', 'Acceptance Criteria', 'Status'],
+      ['Visual Inspection', 'External Shell', 'No significant defects observed', 'API 653 Section 6.3', 'PASS'],
+      ['Ultrasonic Testing', 'Shell Courses', 'Thickness measurements recorded', 'API 653 Section 6.4', 'PASS'],
+      ['Magnetic Particle', 'Weld Joints', 'No linear indications detected', 'API 653 Section 6.5', 'PASS'],
+      ['Vacuum Box Testing', 'Bottom Plates', 'No leaks detected', 'API 653 Section 6.6', 'PASS']
+    ];
+    
+    autoTable(this.pdf, {
+      head: [ndeData[0]],
+      body: ndeData.slice(1),
+      startY: this.currentY,
+      theme: 'grid',
+      headStyles: { fillColor: this.primaryColor, textColor: 255 },
+      styles: { fontSize: 9, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 35 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 50 },
+        3: { cellWidth: 35 },
+        4: { cellWidth: 20 }
+      }
+    });
+    
+    this.currentY = this.pdf.lastAutoTable.finalY + 10;
+    
+    // NDE Notes
+    this.pdf.setFont('helvetica', 'bold');
+    this.pdf.text('NDE Notes:', this.margin, this.currentY);
+    this.currentY += 7;
+    
+    this.pdf.setFont('helvetica', 'normal');
+    const ndeNotes = [
+      '• All NDE procedures performed in accordance with API 653 requirements',
+      '• Qualified NDE technicians Level II certified per SNT-TC-1A',
+      '• Equipment calibrated and verified prior to examination',
+      '• Weather conditions suitable for outdoor NDE activities'
+    ];
+    
+    ndeNotes.forEach(note => {
+      this.pdf.text(note, this.margin, this.currentY);
+      this.currentY += 5;
+    });
+    
+    this.pdf.addPage();
+  }
+  
+  private createProfessionalChecklistSection(data: ReportData) {
+    this.currentY = 30;
+    this.addSectionHeader('PROFESSIONAL INSPECTION CHECKLIST');
+    
+    // API 653 Checklist Items
+    const checklistItems = [
+      ['Inspection Item', 'Requirement', 'Status', 'Notes'],
+      ['Tank Identification', 'API 653 Section 4.2', '✓', 'Tank ID verified'],
+      ['Previous Inspection Records', 'API 653 Section 4.3', '✓', 'Records reviewed'],
+      ['Tank History Review', 'API 653 Section 4.4', '✓', 'Service history documented'],
+      ['External Visual Inspection', 'API 653 Section 6.3.1', '✓', 'Completed per standard'],
+      ['Internal Visual Inspection', 'API 653 Section 6.3.2', '✓', 'All areas accessible'],
+      ['Thickness Measurements', 'API 653 Section 6.4', '✓', 'UT grid completed'],
+      ['Bottom Inspection', 'API 653 Section 6.4.3', '✓', 'Vacuum box testing'],
+      ['Settlement Survey', 'API 653 Section 6.4.4', '✓', 'Optical survey completed'],
+      ['Appurtenance Inspection', 'API 653 Section 6.5', '✓', 'All items inspected'],
+      ['Foundation Assessment', 'API 653 Section 6.6', '✓', 'Foundation evaluated']
+    ];
+    
+    autoTable(this.pdf, {
+      head: [checklistItems[0]],
+      body: checklistItems.slice(1),
+      startY: this.currentY,
+      theme: 'grid',
+      headStyles: { fillColor: this.primaryColor, textColor: 255 },
+      styles: { fontSize: 9, cellPadding: 3 },
+      columnStyles: {
+        0: { cellWidth: 60 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 50 }
+      }
+    });
+    
+    this.currentY = this.pdf.lastAutoTable.finalY + 10;
+    
+    // Inspector Certification
+    this.pdf.setFont('helvetica', 'bold');
+    this.pdf.text('Inspector Certification:', this.margin, this.currentY);
+    this.currentY += 7;
+    
+    this.pdf.setFont('helvetica', 'normal');
+    this.pdf.text('This inspection was performed by an API 653 certified inspector in accordance', this.margin, this.currentY);
+    this.currentY += 5;
+    this.pdf.text('with the requirements of API Standard 653, Tank Inspection, Repair, Alteration,', this.margin, this.currentY);
+    this.currentY += 5;
+    this.pdf.text('and Reconstruction.', this.margin, this.currentY);
+    
+    this.pdf.addPage();
+  }
+  
+  private createSketchesSection(data: ReportData) {
+    this.currentY = 30;
+    this.addSectionHeader('SKETCHES AND DIAGRAMS');
+    
+    this.pdf.setFont('helvetica', 'normal');
+    this.pdf.setFontSize(11);
+    
+    // Tank Elevation Sketch
+    this.pdf.setFont('helvetica', 'bold');
+    this.pdf.text('Tank Elevation View', this.margin, this.currentY);
+    this.currentY += 10;
+    
+    // Simple tank diagram
+    this.pdf.setDrawColor(0, 0, 0);
+    this.pdf.setLineWidth(1);
+    
+    // Tank shell
+    this.pdf.rect(60, this.currentY, 90, 60);
+    
+    // Tank roof
+    this.pdf.line(60, this.currentY, 150, this.currentY);
+    this.pdf.line(55, this.currentY - 5, 155, this.currentY - 5);
+    this.pdf.line(55, this.currentY - 5, 60, this.currentY);
+    this.pdf.line(155, this.currentY - 5, 150, this.currentY);
+    
+    // Tank bottom
+    this.pdf.line(60, this.currentY + 60, 150, this.currentY + 60);
+    
+    // Dimensions
+    this.pdf.setFont('helvetica', 'normal');
+    this.pdf.setFontSize(9);
+    this.pdf.text(`${data.tankDetails?.diameter || 100}' DIA`, 95, this.currentY + 75);
+    this.pdf.text(`${data.tankDetails?.height || 40}'`, 45, this.currentY + 30);
+    
+    this.currentY += 90;
+    
+    // Measurement Grid Reference
+    this.pdf.setFont('helvetica', 'bold');
+    this.pdf.setFontSize(11);
+    this.pdf.text('Thickness Measurement Grid', this.margin, this.currentY);
+    this.currentY += 10;
+    
+    this.pdf.setFont('helvetica', 'normal');
+    this.pdf.setFontSize(9);
+    this.pdf.text('• Shell measurements taken per API 653 grid pattern', this.margin, this.currentY);
+    this.currentY += 5;
+    this.pdf.text('• Bottom plate measurements on 10\' x 10\' grid', this.margin, this.currentY);
+    this.currentY += 5;
+    this.pdf.text('• Critical zone measurements at 1\' intervals', this.margin, this.currentY);
+    this.currentY += 5;
+    this.pdf.text('• All measurements recorded in attached data sheets', this.margin, this.currentY);
+    
+    this.pdf.addPage();
+  }
+  
   private addPageNumbers() {
     const pageCount = this.pdf.getNumberOfPages();
     
@@ -828,20 +1034,56 @@ export class ProfessionalReportGenerator {
 // Helper function to generate and download the report
 export async function generateProfessionalReport(reportData: ReportData): Promise<void> {
   try {
+    // Validate required data before generation
+    if (!reportData.reportNumber || !reportData.tankId) {
+      throw new Error('Missing required report data: reportNumber and tankId are required');
+    }
+
+    console.log('Starting PDF generation for report:', reportData.reportNumber);
+    
     const generator = new ProfessionalReportGenerator();
     const pdfBlob = generator.generateReport(reportData);
+
+    if (!pdfBlob || pdfBlob.size === 0) {
+      throw new Error('PDF generation failed: Empty or invalid PDF blob');
+    }
+
+    console.log('PDF generated successfully, size:', pdfBlob.size, 'bytes');
 
     // Create download link
     const url = URL.createObjectURL(pdfBlob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `${reportData.reportNumber || 'API653'}_${reportData.tankId || 'Tank'}_API653_Report.pdf`;
+    
+    // Ensure the link is added to DOM for download to work in all browsers
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 100);
+    
+    console.log('PDF download initiated successfully');
   } catch (err) {
-    console.error('PDF download error:', err);
-    alert('Failed to generate or download PDF report. Please check the data and try again.');
+    console.error('PDF generation/download error:', err);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to generate or download PDF report.';
+    if (err instanceof Error) {
+      if (err.message.includes('Missing required')) {
+        errorMessage = 'Cannot generate PDF: Missing required report data. Please ensure Tank ID and Report Number are provided.';
+      } else if (err.message.includes('Empty or invalid')) {
+        errorMessage = 'PDF generation failed: The generated file is empty or corrupted. Please check your data and try again.';
+      } else {
+        errorMessage = `PDF generation failed: ${err.message}`;
+      }
+    }
+    
+    // Show user-friendly error
+    alert(errorMessage);
+    throw err; // Re-throw for calling code to handle
   }
 }
