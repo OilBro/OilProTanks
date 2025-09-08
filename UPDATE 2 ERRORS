@@ -1,0 +1,736 @@
+diff --git a/server/storage.ts b/server/storage.ts
+index 5a2c64c39db527674a0ef3adc73cc2c6949fe571..2730098ae2555d062f4af2fc6cd1c73b28717067 100644
+--- a/server/storage.ts
++++ b/server/storage.ts
+@@ -21,51 +21,51 @@ import {
+   type InsertThicknessMeasurement,
+   type InspectionChecklist,
+   type InsertInspectionChecklist,
+   type ReportTemplate,
+   type InsertReportTemplate,
+   type AppurtenanceInspection,
+   type InsertAppurtenanceInspection,
+   type ReportAttachment,
+   type InsertReportAttachment,
+   type RepairRecommendation,
+   type InsertRepairRecommendation,
+   type VentingSystemInspection,
+   type InsertVentingSystemInspection,
+   type AdvancedSettlementSurvey,
+   type InsertAdvancedSettlementSurvey,
+   type AdvancedSettlementMeasurement,
+   type InsertAdvancedSettlementMeasurement,
+   type EdgeSettlement,
+   type InsertEdgeSettlement,
+   type AiConversation,
+   type InsertAiConversation,
+   type AiGuidanceTemplate,
+   type InsertAiGuidanceTemplate
+ } from "@shared/schema";
+ import { db } from "./db";
+-import { eq } from "drizzle-orm";
++import { eq, and } from "drizzle-orm";
+ 
+ export interface IStorage {
+   // Users
+   getUser(id: number): Promise<User | undefined>;
+   getUserByUsername(username: string): Promise<User | undefined>;
+   createUser(user: InsertUser): Promise<User>;
+   
+   // Inspection Reports
+   getInspectionReports(): Promise<InspectionReport[]>;
+   getInspectionReport(id: number): Promise<InspectionReport | undefined>;
+   createInspectionReport(report: InsertInspectionReport): Promise<InspectionReport>;
+   updateInspectionReport(id: number, report: Partial<InsertInspectionReport>): Promise<InspectionReport>;
+   deleteInspectionReport(id: number): Promise<boolean>;
+   
+   // Thickness Measurements
+   getThicknessMeasurements(reportId: number): Promise<ThicknessMeasurement[]>;
+   createThicknessMeasurement(measurement: InsertThicknessMeasurement): Promise<ThicknessMeasurement>;
+   updateThicknessMeasurement(id: number, measurement: Partial<InsertThicknessMeasurement>): Promise<ThicknessMeasurement>;
+   deleteThicknessMeasurement(id: number): Promise<boolean>;
+   
+   // Inspection Checklists
+   getInspectionChecklists(reportId: number): Promise<InspectionChecklist[]>;
+   createInspectionChecklist(checklist: InsertInspectionChecklist): Promise<InspectionChecklist>;
+   updateInspectionChecklist(id: number, checklist: Partial<InsertInspectionChecklist>): Promise<InspectionChecklist>;
+   
+@@ -317,294 +317,339 @@ export class MemStorage implements IStorage {
+       throw new Error(`Report with id ${id} not found`);
+     }
+     const updated: InspectionReport = { 
+       ...existing, 
+       ...report, 
+       updatedAt: new Date().toISOString() 
+     };
+     this.inspectionReports.set(id, updated);
+     return updated;
+   }
+ 
+   async deleteInspectionReport(id: number): Promise<boolean> {
+     return this.inspectionReports.delete(id);
+   }
+ 
+   // Thickness Measurements
+   async getThicknessMeasurements(reportId: number): Promise<ThicknessMeasurement[]> {
+     return Array.from(this.thicknessMeasurements.values()).filter(
+       measurement => measurement.reportId === reportId
+     );
+   }
+ 
+   async createThicknessMeasurement(measurement: InsertThicknessMeasurement): Promise<ThicknessMeasurement> {
+     const id = this.currentMeasurementId++;
+     const now = new Date().toISOString();
+-    const newMeasurement: ThicknessMeasurement = { 
++    const newMeasurement = {
+       id,
+-      reportId: measurement.reportId,
+-      component: measurement.component,
++      reportId: measurement.reportId ?? null,
++      component: measurement.component ?? null,
+       measurementType: measurement.measurementType || 'shell',
+-      location: measurement.location,
+-      elevation: measurement.elevation || null,
+-      gridReference: measurement.gridReference || null,
+-      plateNumber: measurement.plateNumber || null,
+-      annularRingPosition: measurement.annularRingPosition || null,
+-      criticalZoneType: measurement.criticalZoneType || null,
+-      repadNumber: measurement.repadNumber || null,
+-      repadType: measurement.repadType || null,
+-      repadThickness: measurement.repadThickness || null,
+-      nozzleId: measurement.nozzleId || null,
+-      nozzleSize: measurement.nozzleSize || null,
+-      flangeClass: measurement.flangeClass || null,
+-      flangeType: measurement.flangeType || null,
+-      originalThickness: measurement.originalThickness || null,
+-      currentThickness: measurement.currentThickness || null,
+-      corrosionRate: measurement.corrosionRate || null,
+-      remainingLife: measurement.remainingLife || null,
++      location: measurement.location ?? null,
++      elevation: measurement.elevation ?? null,
++      gridReference: measurement.gridReference ?? null,
++      plateNumber: measurement.plateNumber ?? null,
++      annularRingPosition: measurement.annularRingPosition ?? null,
++      criticalZoneType: measurement.criticalZoneType ?? null,
++      repadNumber: measurement.repadNumber ?? null,
++      repadType: measurement.repadType ?? null,
++      repadThickness: measurement.repadThickness ?? null,
++      nozzleId: measurement.nozzleId ?? null,
++      nozzleSize: measurement.nozzleSize ?? null,
++      flangeClass: measurement.flangeClass ?? null,
++      flangeType: measurement.flangeType ?? null,
++      originalThickness: measurement.originalThickness ?? null,
++      currentThickness: measurement.currentThickness ?? null,
++      corrosionRate: measurement.corrosionRate ?? null,
++      remainingLife: measurement.remainingLife ?? null,
+       status: measurement.status || 'acceptable',
+-      createdAt: now 
+-    };
++      createdAt: now
++    } as ThicknessMeasurement;
+     this.thicknessMeasurements.set(id, newMeasurement);
+     return newMeasurement;
+   }
+ 
+   async updateThicknessMeasurement(id: number, measurement: Partial<InsertThicknessMeasurement>): Promise<ThicknessMeasurement> {
+     const existing = this.thicknessMeasurements.get(id);
+     if (!existing) {
+       throw new Error(`Measurement with id ${id} not found`);
+     }
+     const updated: ThicknessMeasurement = { ...existing, ...measurement };
+     this.thicknessMeasurements.set(id, updated);
+     return updated;
+   }
+ 
+   async deleteThicknessMeasurement(id: number): Promise<boolean> {
+     return this.thicknessMeasurements.delete(id);
+   }
+ 
+   // Inspection Checklists
+   async getInspectionChecklists(reportId: number): Promise<InspectionChecklist[]> {
+     return Array.from(this.inspectionChecklists.values()).filter(
+       checklist => checklist.reportId === reportId
+     );
+   }
+ 
+   async createInspectionChecklist(checklist: InsertInspectionChecklist): Promise<InspectionChecklist> {
+     const id = this.currentChecklistId++;
+-    const newChecklist: InspectionChecklist = { 
+-      ...checklist, 
++    const newChecklist = {
++      ...checklist,
+       checked: checklist.checked || false,
+       notes: checklist.notes || null,
+-      id 
+-    };
++      id
++    } as InspectionChecklist;
+     this.inspectionChecklists.set(id, newChecklist);
+     return newChecklist;
+   }
+ 
+   async updateInspectionChecklist(id: number, checklist: Partial<InsertInspectionChecklist>): Promise<InspectionChecklist> {
+     const existing = this.inspectionChecklists.get(id);
+     if (!existing) {
+       throw new Error(`Checklist item with id ${id} not found`);
+     }
+     const updated: InspectionChecklist = { ...existing, ...checklist };
+     this.inspectionChecklists.set(id, updated);
+     return updated;
+   }
+ 
+   // Report Templates
+   async getReportTemplates(): Promise<ReportTemplate[]> {
+     return Array.from(this.reportTemplates.values());
+   }
+ 
+   async getReportTemplate(id: number): Promise<ReportTemplate | undefined> {
+     return this.reportTemplates.get(id);
+   }
+ 
+   async createReportTemplate(template: InsertReportTemplate): Promise<ReportTemplate> {
+     const id = this.currentTemplateId++;
+     const now = new Date().toISOString();
+-    const newTemplate: ReportTemplate = { 
+-      ...template, 
+-      id, 
+-      createdAt: now 
+-    };
++    const newTemplate = {
++      ...template,
++      id,
++      createdAt: now
++    } as ReportTemplate;
+     this.reportTemplates.set(id, newTemplate);
+     return newTemplate;
+   }
+ 
+   async getAppurtenanceInspections(reportId: number): Promise<AppurtenanceInspection[]> {
+     return Array.from(this.appurtenanceInspections.values())
+       .filter(inspection => inspection.reportId === reportId);
+   }
+ 
+   async createAppurtenanceInspection(inspection: InsertAppurtenanceInspection): Promise<AppurtenanceInspection> {
+     const id = this.currentAppurtenanceId++;
+-    const newInspection: AppurtenanceInspection = { 
+-      ...inspection, 
++    const newInspection = {
++      ...inspection,
+       id,
+       createdAt: new Date().toISOString()
+-    };
++    } as AppurtenanceInspection;
+     this.appurtenanceInspections.set(id, newInspection);
+     return newInspection;
+   }
+ 
+   async getReportAttachments(reportId: number): Promise<ReportAttachment[]> {
+     return Array.from(this.reportAttachments.values())
+       .filter(attachment => attachment.reportId === reportId);
+   }
+ 
+   async createReportAttachment(attachment: InsertReportAttachment): Promise<ReportAttachment> {
+     const id = this.currentAttachmentId++;
+-    const newAttachment: ReportAttachment = { 
+-      ...attachment, 
++    const newAttachment = {
++      ...attachment,
+       id,
+       uploadedAt: new Date().toISOString()
+-    };
++    } as ReportAttachment;
+     this.reportAttachments.set(id, newAttachment);
+     return newAttachment;
+   }
+ 
+   async getRepairRecommendations(reportId: number): Promise<RepairRecommendation[]> {
+     return Array.from(this.repairRecommendations.values())
+       .filter(recommendation => recommendation.reportId === reportId);
+   }
+ 
+   async createRepairRecommendation(recommendation: InsertRepairRecommendation): Promise<RepairRecommendation> {
+     const id = this.currentRecommendationId++;
+-    const newRecommendation: RepairRecommendation = { 
+-      ...recommendation, 
++    const newRecommendation = {
++      ...recommendation,
+       id,
+       createdAt: new Date().toISOString()
+-    };
++    } as RepairRecommendation;
+     this.repairRecommendations.set(id, newRecommendation);
+     return newRecommendation;
+   }
+ 
+   async getVentingSystemInspections(reportId: number): Promise<VentingSystemInspection[]> {
+     return Array.from(this.ventingSystemInspections.values())
+       .filter(inspection => inspection.reportId === reportId);
+   }
+ 
+   async createVentingSystemInspection(inspection: InsertVentingSystemInspection): Promise<VentingSystemInspection> {
+     const id = this.currentVentingId++;
+-    const newInspection: VentingSystemInspection = { 
+-      ...inspection, 
++    const newInspection = {
++      ...inspection,
+       id,
+       createdAt: new Date().toISOString()
+-    };
++    } as VentingSystemInspection;
+     this.ventingSystemInspections.set(id, newInspection);
+     return newInspection;
+   }
+ 
+   // Advanced Settlement Survey implementations
+   async getAdvancedSettlementSurveys(reportId: number): Promise<AdvancedSettlementSurvey[]> {
+     return Array.from(this.advancedSettlementSurveys.values())
+       .filter(survey => survey.reportId === reportId);
+   }
+ 
+   async getAdvancedSettlementSurvey(id: number): Promise<AdvancedSettlementSurvey | undefined> {
+     return this.advancedSettlementSurveys.get(id);
+   }
+ 
+   async createAdvancedSettlementSurvey(survey: InsertAdvancedSettlementSurvey): Promise<AdvancedSettlementSurvey> {
+     const id = this.currentSettlementSurveyId++;
+-    const newSurvey: AdvancedSettlementSurvey = { 
+-      ...survey, 
++    const newSurvey = {
++      ...survey,
+       id,
+       createdAt: new Date().toISOString(),
+       updatedAt: new Date().toISOString()
+-    };
++    } as AdvancedSettlementSurvey;
+     this.advancedSettlementSurveys.set(id, newSurvey);
+     return newSurvey;
+   }
+ 
+   async updateAdvancedSettlementSurvey(id: number, survey: Partial<InsertAdvancedSettlementSurvey>): Promise<AdvancedSettlementSurvey> {
+     const existing = this.advancedSettlementSurveys.get(id);
+     if (!existing) throw new Error('Survey not found');
+     
+-    const updated: AdvancedSettlementSurvey = {
++    const updated = {
+       ...existing,
+       ...survey,
+       id,
+       updatedAt: new Date().toISOString()
+-    };
++    } as AdvancedSettlementSurvey;
+     this.advancedSettlementSurveys.set(id, updated);
+     return updated;
+   }
+ 
+   async getAdvancedSettlementMeasurements(surveyId: number): Promise<AdvancedSettlementMeasurement[]> {
+     return Array.from(this.advancedSettlementMeasurements.values())
+       .filter(measurement => measurement.surveyId === surveyId);
+   }
+ 
+   async createAdvancedSettlementMeasurement(measurement: InsertAdvancedSettlementMeasurement): Promise<AdvancedSettlementMeasurement> {
+     const id = this.currentSettlementMeasurementId++;
+-    const newMeasurement: AdvancedSettlementMeasurement = { 
+-      ...measurement, 
++    const newMeasurement = {
++      ...measurement,
+       id,
+       createdAt: new Date().toISOString()
+-    };
++    } as AdvancedSettlementMeasurement;
+     this.advancedSettlementMeasurements.set(id, newMeasurement);
+     return newMeasurement;
+   }
+ 
+   async createBulkAdvancedSettlementMeasurements(measurements: InsertAdvancedSettlementMeasurement[]): Promise<AdvancedSettlementMeasurement[]> {
+     return Promise.all(measurements.map(m => this.createAdvancedSettlementMeasurement(m)));
+   }
+ 
+   async updateAdvancedSettlementMeasurement(id: number, data: Partial<InsertAdvancedSettlementMeasurement>): Promise<AdvancedSettlementMeasurement> {
+     const existing = this.advancedSettlementMeasurements.get(id);
+     if (!existing) {
+       throw new Error(`Measurement with id ${id} not found`);
+     }
+     const updated = { ...existing, ...data };
+     this.advancedSettlementMeasurements.set(id, updated);
+     return updated;
+   }
+ 
+   async deleteAdvancedSettlementMeasurements(surveyId: number): Promise<void> {
+     const keysToDelete = Array.from(this.advancedSettlementMeasurements.keys())
+       .filter(key => this.advancedSettlementMeasurements.get(key)?.surveyId === surveyId);
+     keysToDelete.forEach(key => this.advancedSettlementMeasurements.delete(key));
+   }
+ 
+   async getEdgeSettlements(surveyId: number): Promise<EdgeSettlement[]> {
+     return Array.from(this.edgeSettlements.values())
+       .filter(settlement => settlement.surveyId === surveyId);
+   }
+ 
+   async createEdgeSettlement(settlement: InsertEdgeSettlement): Promise<EdgeSettlement> {
+     const id = this.currentEdgeSettlementId++;
+-    const newSettlement: EdgeSettlement = { 
+-      ...settlement, 
++    const newSettlement = {
++      ...settlement,
+       id,
+       createdAt: new Date().toISOString()
+-    };
++    } as EdgeSettlement;
+     this.edgeSettlements.set(id, newSettlement);
+     return newSettlement;
+   }
++
++  private initializeAiGuidance() {
++    // Initialize AI guidance templates
++    const templates: Omit<AiGuidanceTemplate, "id" | "createdAt">[] = [
++      {
++        category: "thickness",
++        section: "shell",
++        triggerKeywords: ["shell", "thickness", "minimum", "tmin"],
++        guidanceText: "Shell minimum thickness per API 653 Section 4.3.2",
++        api653References: ["4.3.2", "4.3.3", "Table 4.1"],
++        relatedCalculations: ["tmin", "corrosion_rate", "remaining_life"],
++        warningThresholds: { criticalThickness: 0.1, warningThickness: 0.15 },
++        isActive: true,
++      },
++      {
++        category: "settlement",
++        section: "foundation",
++        triggerKeywords: ["settlement", "cosine", "foundation", "tilt"],
++        guidanceText: "Settlement analysis per API 653 Annex B",
++        api653References: ["B.2.2.4", "B.3.2.1", "B.3.4"],
++        relatedCalculations: ["cosine_fit", "out_of_plane", "edge_settlement"],
++        warningThresholds: { maxSettlement: 6, rSquaredMin: 0.9 },
++        isActive: true,
++      },
++      {
++        category: "safety",
++        section: "general",
++        triggerKeywords: ["safety", "confined", "space", "gas", "test"],
++        guidanceText: "Safety procedures for tank inspection",
++        api653References: ["1.4", "12.2"],
++        relatedCalculations: [],
++        warningThresholds: {},
++        isActive: true,
++      },
++    ];
++
++    // Store templates in memory for MemStorage
++    templates.forEach((template, index) => {
++      this.aiGuidanceTemplates.set(index + 1, {
++        ...template,
++        id: index + 1,
++        createdAt: new Date(),
++      } as AiGuidanceTemplate);
++    });
++  }
+ }
+ 
+ export class DatabaseStorage implements IStorage {
+   async getUser(id: number): Promise<User | undefined> {
+     const [user] = await db.select().from(users).where(eq(users.id, id));
+     return user || undefined;
+   }
+ 
+   async getUserByUsername(username: string): Promise<User | undefined> {
+     const [user] = await db.select().from(users).where(eq(users.username, username));
+     return user || undefined;
+   }
+ 
+   async createUser(insertUser: InsertUser): Promise<User> {
+     const [user] = await db
+       .insert(users)
+       .values(insertUser)
+       .returning();
+     return user;
+   }
+ 
+   async getInspectionReports(): Promise<InspectionReport[]> {
+     return await db.select().from(inspectionReports).orderBy(inspectionReports.updatedAt);
+   }
+ 
+@@ -621,84 +666,84 @@ export class DatabaseStorage implements IStorage {
+         ...report,
+         createdAt: now,
+         updatedAt: now
+       })
+       .returning();
+     return newReport;
+   }
+ 
+   async updateInspectionReport(id: number, report: Partial<InsertInspectionReport>): Promise<InspectionReport> {
+     const [updated] = await db
+       .update(inspectionReports)
+       .set({
+         ...report,
+         updatedAt: new Date().toISOString()
+       })
+       .where(eq(inspectionReports.id, id))
+       .returning();
+     if (!updated) {
+       throw new Error(`Report with id ${id} not found`);
+     }
+     return updated;
+   }
+ 
+   async deleteInspectionReport(id: number): Promise<boolean> {
+     const result = await db.delete(inspectionReports).where(eq(inspectionReports.id, id));
+-    return result.rowCount > 0;
++    return (result.rowCount ?? 0) > 0;
+   }
+ 
+   async getThicknessMeasurements(reportId: number): Promise<ThicknessMeasurement[]> {
+     return await db.select().from(thicknessMeasurements).where(eq(thicknessMeasurements.reportId, reportId));
+   }
+ 
+   async createThicknessMeasurement(measurement: InsertThicknessMeasurement): Promise<ThicknessMeasurement> {
+     const now = new Date().toISOString();
+     const [newMeasurement] = await db
+       .insert(thicknessMeasurements)
+       .values({
+         ...measurement,
+         createdAt: now
+       })
+       .returning();
+     return newMeasurement;
+   }
+ 
+   async updateThicknessMeasurement(id: number, measurement: Partial<InsertThicknessMeasurement>): Promise<ThicknessMeasurement> {
+     const [updated] = await db
+       .update(thicknessMeasurements)
+       .set(measurement)
+       .where(eq(thicknessMeasurements.id, id))
+       .returning();
+     if (!updated) {
+       throw new Error(`Measurement with id ${id} not found`);
+     }
+     return updated;
+   }
+ 
+   async deleteThicknessMeasurement(id: number): Promise<boolean> {
+     const result = await db.delete(thicknessMeasurements).where(eq(thicknessMeasurements.id, id));
+-    return result.rowCount > 0;
++    return (result.rowCount ?? 0) > 0;
+   }
+ 
+   async getInspectionChecklists(reportId: number): Promise<InspectionChecklist[]> {
+     return await db.select().from(inspectionChecklists).where(eq(inspectionChecklists.reportId, reportId));
+   }
+ 
+   async createInspectionChecklist(checklist: InsertInspectionChecklist): Promise<InspectionChecklist> {
+     const [newChecklist] = await db
+       .insert(inspectionChecklists)
+       .values(checklist)
+       .returning();
+     return newChecklist;
+   }
+ 
+   async updateInspectionChecklist(id: number, checklist: Partial<InsertInspectionChecklist>): Promise<InspectionChecklist> {
+     const [updated] = await db
+       .update(inspectionChecklists)
+       .set(checklist)
+       .where(eq(inspectionChecklists.id, id))
+       .returning();
+     if (!updated) {
+       throw new Error(`Checklist item with id ${id} not found`);
+     }
+     return updated;
+   }
+@@ -868,59 +913,63 @@ export class DatabaseStorage implements IStorage {
+         createdAt: new Date().toISOString()
+       })
+       .returning();
+     return newSettlement;
+   }
+ 
+   // AI Assistant Methods
+   async getAiGuidanceTemplates(filters: { section?: string; category?: string }): Promise<AiGuidanceTemplate[]> {
+     let query = db.select().from(aiGuidanceTemplates);
+     
+     // Apply filters if provided
+     if (filters.section) {
+       query = query.where(eq(aiGuidanceTemplates.section, filters.section)) as any;
+     }
+     if (filters.category) {
+       query = query.where(eq(aiGuidanceTemplates.category, filters.category)) as any;
+     }
+     
+     return await query;
+   }
+ 
+   async getAiConversation(reportId: number, sessionId: string): Promise<AiConversation | undefined> {
+     const [conversation] = await db
+       .select()
+       .from(aiConversations)
+-      .where(eq(aiConversations.reportId, reportId))
+-      .where(eq(aiConversations.sessionId, sessionId));
++      .where(
++        and(
++          eq(aiConversations.reportId, reportId),
++          eq(aiConversations.sessionId, sessionId),
++        ),
++      );
+     return conversation || undefined;
+   }
+ 
+   async saveAiConversation(conversation: InsertAiConversation): Promise<AiConversation> {
+     const [saved] = await db
+       .insert(aiConversations)
+-      .values(conversation)
++      .values(conversation as any)
+       .returning();
+     return saved;
+   }
+ 
+   async processAiChat(params: {
+     message: string;
+     reportId?: number;
+     sessionId: string;
+     context?: any;
+     conversationHistory?: any[];
+   }): Promise<{ content: string; metadata?: any }> {
+     // This is a simplified implementation. In production, you would integrate with an AI service
+     // like OpenAI API or Claude API using the API keys from environment variables
+     
+     const message = params.message.toLowerCase();
+     let response = { content: '', metadata: {} as any };
+     
+     // API 653 guidance responses based on keywords
+     if (message.includes('thickness') || message.includes('minimum')) {
+       response.content = `According to API 653 Section 4.3, the minimum acceptable thickness depends on several factors:
+ 
+ 1. **Shell Minimum Thickness (tmin)**: Calculated using the formula from API 653 Section 4.3.2
+    - tmin = 2.6(H-1)DG/SE for tanks up to 200 ft diameter
+    - Where: H = height to inspection point, D = diameter, G = specific gravity, S = allowable stress, E = joint efficiency
+ 
+@@ -1035,75 +1084,30 @@ Document all findings per API 653 Section 12.`;
+ - Weather conditions (lightning, wind)
+ 
+ **Emergency Procedures**:
+ - Rescue plan for confined space
+ - Fire watch for hot work
+ - Communication system established
+ 
+ Always follow site-specific safety procedures and JSA requirements.`;
+       response.metadata = { 
+         warningLevel: 'critical'
+       };
+     } else {
+       response.content = `I can help you with API 653 tank inspection guidance. Here are some areas I can assist with:
+ 
+ • **Thickness Calculations**: Minimum thickness requirements, corrosion rates, remaining life
+ • **Settlement Analysis**: Cosine fit procedures, acceptance criteria, measurement techniques
+ • **Inspection Methods**: UT, MFL, visual inspection requirements and intervals
+ • **Safety Procedures**: Confined space, gas testing, PPE requirements
+ • **API 653 Standards**: Code interpretations, calculation methods, acceptance criteria
+ 
+ What specific aspect of your inspection would you like help with?`;
+     }
+     
+     return response;
+   }
+-
+-  private initializeAiGuidance() {
+-    // Initialize AI guidance templates
+-    const templates: Omit<AiGuidanceTemplate, 'id' | 'createdAt'>[] = [
+-      {
+-        category: 'thickness',
+-        section: 'shell',
+-        triggerKeywords: ['shell', 'thickness', 'minimum', 'tmin'],
+-        guidanceText: 'Shell minimum thickness per API 653 Section 4.3.2',
+-        api653References: ['4.3.2', '4.3.3', 'Table 4.1'],
+-        relatedCalculations: ['tmin', 'corrosion_rate', 'remaining_life'],
+-        warningThresholds: { criticalThickness: 0.100, warningThickness: 0.150 },
+-        isActive: true
+-      },
+-      {
+-        category: 'settlement',
+-        section: 'foundation',
+-        triggerKeywords: ['settlement', 'cosine', 'foundation', 'tilt'],
+-        guidanceText: 'Settlement analysis per API 653 Annex B',
+-        api653References: ['B.2.2.4', 'B.3.2.1', 'B.3.4'],
+-        relatedCalculations: ['cosine_fit', 'out_of_plane', 'edge_settlement'],
+-        warningThresholds: { maxSettlement: 6, rSquaredMin: 0.90 },
+-        isActive: true
+-      },
+-      {
+-        category: 'safety',
+-        section: 'general',
+-        triggerKeywords: ['safety', 'confined', 'space', 'gas', 'test'],
+-        guidanceText: 'Safety procedures for tank inspection',
+-        api653References: ['1.4', '12.2'],
+-        relatedCalculations: [],
+-        warningThresholds: {},
+-        isActive: true
+-      }
+-    ];
+-    
+-    // Store templates in memory for MemStorage
+-    templates.forEach((template, index) => {
+-      this.aiGuidanceTemplates.set(index + 1, {
+-        ...template,
+-        id: index + 1,
+-        createdAt: new Date()
+-      } as AiGuidanceTemplate);
+-    });
+-  }
+ }
+ 
+ export const storage = process.env.DATABASE_URL
+   ? new DatabaseStorage()
+   : new MemStorage();
+diff --git a/server/vite.ts b/server/vite.ts
+index 95395a0cf4d14020edd7155297743375c61aebbd..7e68b969b96b201c5986bd68c7e84f5c3729c8a3 100644
+--- a/server/vite.ts
++++ b/server/vite.ts
+@@ -1,48 +1,48 @@
+ import express, { type Express } from "express";
+ import fs from "fs";
+ import path from "path";
+-import { createServer as createViteServer, createLogger } from "vite";
++import { createServer as createViteServer, createLogger, type ServerOptions } from "vite";
+ import { type Server } from "http";
+ import viteConfig from "../vite.config";
+ import { nanoid } from "nanoid";
+ 
+ const viteLogger = createLogger();
+ 
+ export function log(message: string, source = "express") {
+   const formattedTime = new Date().toLocaleTimeString("en-US", {
+     hour: "numeric",
+     minute: "2-digit",
+     second: "2-digit",
+     hour12: true,
+   });
+ 
+   console.log(`${formattedTime} [${source}] ${message}`);
+ }
+ 
+ export async function setupVite(app: Express, server: Server) {
+-  const serverOptions = {
++  const serverOptions: ServerOptions = {
+     middlewareMode: true,
+     hmr: { server },
+     allowedHosts: true,
+   };
+ 
+   const vite = await createViteServer({
+     ...viteConfig,
+     configFile: false,
+     customLogger: {
+       ...viteLogger,
+       error: (msg, options) => {
+         viteLogger.error(msg, options);
+         process.exit(1);
+       },
+     },
+     server: serverOptions,
+     appType: "custom",
+   });
+ 
+   app.use(vite.middlewares);
+   app.use("*", async (req, res, next) => {
+     const url = req.originalUrl;
+ 
+     try {
+       const clientTemplate = path.resolve(
