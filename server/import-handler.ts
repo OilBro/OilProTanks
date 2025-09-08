@@ -168,13 +168,64 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     console.log('This means your OpenRouter AI is not working properly!');
     console.log('Falling back to standard parsing from all sheets...');
     
-    // Process ALL sheets for additional data
+    // Process ALL sheets for additional data and multi-tank detection
+    const allSheetData: { [sheetName: string]: any[] } = {};
+    const potentialTanks: { [tankId: string]: any } = {};
+    
     for (const sheetName of workbook.SheetNames) {
       const sheetWorksheet = workbook.Sheets[sheetName];
       const sheetData = XLSX.utils.sheet_to_json(sheetWorksheet, { defval: '', raw: false });
       
       if (sheetData.length === 0) continue;
       console.log(`Standard parsing sheet "${sheetName}" with ${sheetData.length} rows`);
+      
+      allSheetData[sheetName] = sheetData;
+      
+      // Check if this sheet represents a different tank
+      let sheetTankId = null;
+      for (const row of sheetData) {
+        const rowObj = row as any;
+        
+        // Look for Tank ID in this sheet
+        const tankIdPatterns = [
+          'Tank ID', 'Tank Id', 'TankID', 'Tank Number', 'Tank No', 'Tank #', 'Tank No.', 
+          'Vessel ID', 'Equipment ID', 'Equip ID', 'EQUIP ID', 'Unit ID', 'Asset ID'
+        ];
+        
+        for (const pattern of tankIdPatterns) {
+          const value = rowObj[pattern];
+          if (value && String(value).trim()) {
+            sheetTankId = String(value).trim();
+            break;
+          }
+        }
+        
+        if (sheetTankId) {
+          if (!potentialTanks[sheetTankId]) {
+            potentialTanks[sheetTankId] = { sheetName, data: [] };
+          }
+          potentialTanks[sheetTankId].data.push(rowObj);
+          break;
+        }
+      }
+      
+      // If no specific tank ID found, check if sheet name suggests a tank
+      if (!sheetTankId) {
+        const tankNamePatterns = [
+          /tank[_\s-]*([a-zA-Z0-9]+)/i,
+          /([a-zA-Z0-9]+)[_\s-]*tank/i,
+          /^([a-zA-Z0-9]+)$/
+        ];
+        
+        for (const pattern of tankNamePatterns) {
+          const match = sheetName.match(pattern);
+          if (match && match[1]) {
+            sheetTankId = match[1].toUpperCase();
+            console.log(`Detected tank ID from sheet name: "${sheetTankId}"`);
+            break;
+          }
+        }
+      }
       
       // Process thickness measurements from this sheet
       for (const row of sheetData) {
@@ -199,7 +250,9 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
                 component: 'Shell',
                 measurementType: 'shell',
                 originalThickness: rowObj['Original'] || rowObj['Nominal'] || null,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                sourceSheet: sheetName,
+                sourceTankId: sheetTankId
               };
               
               thicknessMeasurements.push(measurement);
@@ -208,6 +261,14 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
           }
         }
       }
+    }
+    
+    // Log multi-tank detection results
+    const tankCount = Object.keys(potentialTanks).length;
+    if (tankCount > 1) {
+      console.log(`=== MULTI-TANK WORKBOOK DETECTED ===`);
+      console.log(`Found ${tankCount} potential tanks:`, Object.keys(potentialTanks));
+      console.log('Note: Currently processing as single tank. Multi-tank import may need separate handling.');
     }
     
     // Process first sheet for main report data
@@ -442,13 +503,124 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
   
   // Ensure essential fields have default values if missing
   if (!importedData.tankId) {
-    importedData.tankId = fileName.replace(/\.(xlsx|xls|xlsm)$/i, '') || 'IMPORTED-TANK';
+    // Try to extract Tank ID from the data first, then fall back to filename
+    let extractedTankId = null;
+    
+    // Look for Tank ID in the data with enhanced patterns
+    const tankIdPatterns = [
+      'Tank ID', 'Tank Id', 'TankID', 'Tank Number', 'Tank No', 'Tank #', 'Tank No.', 
+      'Vessel ID', 'Equipment ID', 'Equip ID', 'EQUIP ID', 'Unit ID', 'Asset ID', 
+      'Equipment No.', 'Unit Number', 'Asset Number', 'Tank', 'Unit', 'Equipment'
+    ];
+    
+    // Search through all data rows for Tank ID
+    for (const row of data) {
+      const rowObj = row as any;
+      for (const pattern of tankIdPatterns) {
+        const value = rowObj[pattern];
+        if (value && String(value).trim() && String(value).trim() !== '') {
+          extractedTankId = String(value).trim();
+          console.log(`Found Tank ID in data: "${extractedTankId}" from field "${pattern}"`);
+          break;
+        }
+      }
+      if (extractedTankId) break;
+    }
+    
+    // If no Tank ID found in data, try to extract from filename intelligently
+    if (!extractedTankId) {
+      const cleanFileName = fileName.replace(/\.(xlsx|xls|xlsm)$/i, '');
+      
+      // Try to extract tank-like patterns from filename
+      const tankPatterns = [
+        /tank[_\s-]*([a-zA-Z0-9]+)/i,
+        /([a-zA-Z0-9]+)[_\s-]*tank/i,
+        /^([a-zA-Z0-9]+)[_\s-]/,
+        /[_\s-]([a-zA-Z0-9]+)$/,
+        /^([a-zA-Z0-9]+)$/
+      ];
+      
+      for (const pattern of tankPatterns) {
+        const match = cleanFileName.match(pattern);
+        if (match && match[1] && match[1].length > 0) {
+          extractedTankId = match[1].toUpperCase();
+          console.log(`Extracted Tank ID from filename: "${extractedTankId}"`);
+          break;
+        }
+      }
+    }
+    
+    importedData.tankId = extractedTankId || fileName.replace(/\.(xlsx|xls|xlsm)$/i, '') || 'IMPORTED-TANK';
+    console.log(`Final Tank ID: "${importedData.tankId}"`);
   }
   if (!importedData.inspector) {
     importedData.inspector = 'Imported';
   }
   if (!importedData.service) {
-    importedData.service = 'crude oil';
+    // Standardize service type mapping
+    const serviceMapping: { [key: string]: string } = {
+      'crude': 'crude_oil',
+      'crude oil': 'crude_oil',
+      'crude_oil': 'crude_oil',
+      'diesel': 'diesel',
+      'gasoline': 'gasoline',
+      'gas': 'gasoline',
+      'petrol': 'gasoline',
+      'fuel': 'diesel',
+      'heating oil': 'heating_oil',
+      'jet fuel': 'jet_fuel',
+      'kerosene': 'kerosene',
+      'water': 'water',
+      'chemical': 'chemical',
+      'other': 'other'
+    };
+    
+    // Try to detect service from other fields
+    let detectedService = 'crude_oil'; // Default
+    
+    // Check product field or other related fields
+    const productFields = ['product', 'contents', 'service', 'stored product', 'material'];
+    for (const row of data) {
+      const rowObj = row as any;
+      for (const field of productFields) {
+        const value = rowObj[field];
+        if (value && String(value).trim()) {
+          const normalizedValue = String(value).toLowerCase().trim();
+          for (const [key, standardValue] of Object.entries(serviceMapping)) {
+            if (normalizedValue.includes(key)) {
+              detectedService = standardValue;
+              console.log(`Detected service type: "${detectedService}" from "${value}"`);
+              break;
+            }
+          }
+          if (detectedService !== 'crude_oil') break;
+        }
+      }
+      if (detectedService !== 'crude_oil') break;
+    }
+    
+    importedData.service = detectedService;
+  } else {
+    // Standardize existing service value
+    const normalizedService = String(importedData.service).toLowerCase().trim();
+    const serviceMapping: { [key: string]: string } = {
+      'crude': 'crude_oil',
+      'crude oil': 'crude_oil',
+      'crude_oil': 'crude_oil',
+      'diesel': 'diesel',
+      'gasoline': 'gasoline',
+      'gas': 'gasoline',
+      'petrol': 'gasoline',
+      'fuel': 'diesel',
+      'heating oil': 'heating_oil',
+      'jet fuel': 'jet_fuel',
+      'kerosene': 'kerosene',
+      'water': 'water',
+      'chemical': 'chemical',
+      'other': 'other'
+    };
+    
+    importedData.service = serviceMapping[normalizedService] || normalizedService;
   }
   if (!importedData.inspectionDate) {
     importedData.inspectionDate = new Date().toISOString().split('T')[0];
