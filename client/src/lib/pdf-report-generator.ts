@@ -117,46 +117,102 @@ export class ProfessionalReportGenerator {
   }
   
   generateReport(data: ReportData): Blob {
-    // Cover Page
-    this.createCoverPage(data);
-    
-    // Table of Contents
-    this.createTableOfContents();
-    
-    // Executive Summary
-    this.createExecutiveSummary(data);
-    
-    // Tank Information
-    this.createTankInformation(data);
-    
-    // Shell Calculations Section
-    this.createShellCalculationsSection(data);
-    
-    // Bottom Assessment Section
-    this.createBottomAssessmentSection(data);
-    
-    // Settlement Analysis Section
-    if (data.settlementData) {
-      this.createSettlementSection(data.settlementData);
+    try {
+      // Validate and format dates
+      if (!data.inspectionDate || isNaN(Date.parse(data.inspectionDate))) {
+        data.inspectionDate = new Date().toISOString().split('T')[0];
+      }
+      if (data.tankDetails && (!data.tankDetails.lastInspection || isNaN(Date.parse(data.tankDetails.lastInspection)))) {
+        data.tankDetails.lastInspection = 'N/A';
+      }
+      if (data.bottomData && (!data.bottomData.mriDate || isNaN(Date.parse(data.bottomData.mriDate)))) {
+        data.bottomData.mriDate = 'TBD';
+      }
+
+      // Cover Page
+      this.createCoverPage(data);
+
+      // Table of Contents
+      this.createTableOfContents();
+
+      // Executive Summary
+      this.createExecutiveSummary(data);
+
+      // Tank Information
+      this.createTankInformation(data);
+
+      // Shell Calculations Section
+      this.createShellCalculationsSection(data);
+
+      // Bottom Assessment Section
+      this.createBottomAssessmentSection(data);
+
+      // Settlement Analysis Section
+      if (data.settlementData) {
+        this.createSettlementSection(data.settlementData);
+      } else {
+        // Placeholder for missing settlement data
+        this.currentY = 30;
+        this.addSectionHeader('SETTLEMENT ANALYSIS');
+        this.pdf.setFont('helvetica', 'italic');
+        this.pdf.setFontSize(11);
+        this.pdf.setTextColor(220, 38, 38);
+        this.pdf.text('No settlement data available for this report.', this.margin, this.currentY);
+        this.pdf.setTextColor(0, 0, 0);
+        this.pdf.addPage();
+      }
+
+      // CML Analysis Section
+      if (data.cmlData && data.cmlData.length > 0) {
+        this.createCMLSection(data.cmlData);
+      } else {
+        // Placeholder for missing CML data
+        this.currentY = 30;
+        this.addSectionHeader('CML DATA ANALYSIS');
+        this.pdf.setFont('helvetica', 'italic');
+        this.pdf.setFontSize(11);
+        this.pdf.setTextColor(220, 38, 38);
+        this.pdf.text('No CML data available for this report.', this.margin, this.currentY);
+        this.pdf.setTextColor(0, 0, 0);
+        this.pdf.addPage();
+      }
+
+      // Findings and Recommendations
+      if (data.findings) {
+        this.createFindingsSection(data.findings);
+      } else {
+        // Placeholder for missing findings
+        this.currentY = 30;
+        this.addSectionHeader('FINDINGS & RECOMMENDATIONS');
+        this.pdf.setFont('helvetica', 'italic');
+        this.pdf.setFontSize(11);
+        this.pdf.setTextColor(220, 38, 38);
+        this.pdf.text('No findings or recommendations available for this report.', this.margin, this.currentY);
+        this.pdf.setTextColor(0, 0, 0);
+        this.pdf.addPage();
+      }
+
+      // Appendices
+      this.createAppendices(data);
+
+      // Add page numbers
+      this.addPageNumbers();
+
+      return this.pdf.output('blob');
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      // Return a blank PDF with error message
+      this.pdf.addPage();
+      this.pdf.setFont('helvetica', 'bold');
+      this.pdf.setFontSize(16);
+      this.pdf.setTextColor(220, 38, 38);
+      this.pdf.text('PDF Generation Failed', this.pageWidth / 2, 50, { align: 'center' });
+      this.pdf.setFont('helvetica', 'normal');
+      this.pdf.setFontSize(12);
+      this.pdf.text(String(err), this.margin, 70);
+      this.pdf.setTextColor(0, 0, 0);
+      return this.pdf.output('blob');
     }
-    
-    // CML Analysis Section
-    if (data.cmlData && data.cmlData.length > 0) {
-      this.createCMLSection(data.cmlData);
-    }
-    
-    // Findings and Recommendations
-    if (data.findings) {
-      this.createFindingsSection(data.findings);
-    }
-    
-    // Appendices
-    this.createAppendices(data);
-    
-    // Add page numbers
-    this.addPageNumbers();
-    
-    return this.pdf.output('blob');
   }
   
   private createCoverPage(data: ReportData) {
@@ -771,16 +827,21 @@ export class ProfessionalReportGenerator {
 
 // Helper function to generate and download the report
 export async function generateProfessionalReport(reportData: ReportData): Promise<void> {
-  const generator = new ProfessionalReportGenerator();
-  const pdfBlob = generator.generateReport(reportData);
-  
-  // Create download link
-  const url = URL.createObjectURL(pdfBlob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${reportData.reportNumber}_${reportData.tankId}_API653_Report.pdf`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  try {
+    const generator = new ProfessionalReportGenerator();
+    const pdfBlob = generator.generateReport(reportData);
+
+    // Create download link
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${reportData.reportNumber || 'API653'}_${reportData.tankId || 'Tank'}_API653_Report.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('PDF download error:', err);
+    alert('Failed to generate or download PDF report. Please check the data and try again.');
+  }
 }

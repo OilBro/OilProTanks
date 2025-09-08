@@ -284,17 +284,20 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
       
       // Check each potential thickness field
       for (const key of Object.keys(rowObj)) {
+$/))) {
         const value = rowObj[key];
         const keyLower = key.toLowerCase();
-        
+
         // Check if this is a thickness value
         if (value && !isNaN(parseFloat(value))) {
           const numValue = parseFloat(value);
-          
+
           // Typical thickness range for steel tanks (0.1 to 2 inches)
           if (numValue > 0.05 && numValue < 3) {
             let isThickness = false;
-            
+            let component = 'Shell';
+            let measurementType = 'shell';
+
             // Check if column name indicates thickness
             for (const field of thicknessFields) {
               if (keyLower.includes(field.toLowerCase())) {
@@ -302,32 +305,105 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
                 break;
               }
             }
-            
+
+            // Detect component type from column name
+            if (keyLower.includes('bottom')) {
+              component = 'Bottom Plate';
+              measurementType = 'bottom';
+              isThickness = true;
+            } else if (keyLower.includes('critical')) {
+              component = 'Critical Zone';
+              measurementType = 'critical';
+              isThickness = true;
+            } else if (keyLower.includes('appurtenance')) {
+              component = 'Appurtenance';
+              measurementType = 'appurtenance';
+              isThickness = true;
+            } else if (keyLower.includes('roof')) {
+              component = 'Roof';
+              measurementType = 'roof';
+              isThickness = true;
+            }
+
             // Also check for patterns like "Course 1: 0.375" or numeric columns
             if (!isThickness && (keyLower.includes('course') || keyLower.match(/^\d+$/))) {
               isThickness = true;
             }
-            
+
             if (isThickness) {
               const measurement = {
                 location: findFieldValue(rowObj, locationFields) || key || `Point ${thicknessMeasurements.length + 1}`,
                 elevation: rowObj['Elevation'] || rowObj['Course'] || '0',
                 currentThickness: numValue,
-                component: 'Shell',
-                measurementType: 'shell',
+                component,
+                measurementType,
                 originalThickness: rowObj['Original Thickness'] || rowObj['Nominal Thickness'] || '0.375',
                 createdAt: new Date().toISOString()
               };
-              
+
               // Check if this measurement already exists
-              const exists = thicknessMeasurements.some(m => 
-                m.location === measurement.location && 
-                Math.abs(m.currentThickness - measurement.currentThickness) < 0.001
+              const exists = thicknessMeasurements.some(m =>
+                m.location === measurement.location &&
+                Math.abs(m.currentThickness - measurement.currentThickness) < 0.001 &&
+                m.component === measurement.component
               );
-              
+
               if (!exists) {
-                thicknessMeasurements.push(measurement);
-                console.log(`Found thickness measurement: ${measurement.location} = ${measurement.currentThickness}`);
+                // Calculate corrosion rate, remaining life, and status
+                const originalThicknessNum = typeof measurement.originalThickness === 'number' ? measurement.originalThickness : parseFloat(measurement.originalThickness) || 0;
+                const currentThicknessNum = typeof measurement.currentThickness === 'number' ? measurement.currentThickness : parseFloat(measurement.currentThickness) || 0;
+                // Estimate age from inspection date if available
+                let ageInYears = 1;
+                if (importedData.inspectionDate && importedData.lastInspection) {
+                  const last = new Date(importedData.lastInspection);
+                  const current = new Date(importedData.inspectionDate);
+                  if (!isNaN(last.getTime()) && !isNaN(current.getTime())) {
+                    ageInYears = Math.max(1, (current.getTime() - last.getTime()) / (1000 * 60 * 60 * 24 * 365));
+                  }
+                }
+                // Minimum required thickness (default to 0.1 if not available)
+                let minimumRequired = 0.1;
+                if (measurement.component === 'Shell' && importedData.diameter) {
+                  try {
+                    const { calculateMinimumRequiredThickness } = require('./api653-calculations');
+                    minimumRequired = calculateMinimumRequiredThickness(
+                      1,
+                      parseFloat(importedData.diameter) || 10,
+                      1,
+                      parseFloat(importedData.height) || 10
+                    );
+                  } catch {}
+                }
+                // Calculate corrosion rate
+                let corrosionRate = 0, corrosionRateMPY = 0;
+                try {
+                  const { calculateCorrosionRate } = require('./api653-calculations');
+                  const rates = calculateCorrosionRate(originalThicknessNum, currentThicknessNum, ageInYears);
+                  corrosionRate = rates.rateInchesPerYear;
+                  corrosionRateMPY = rates.rateMPY;
+                } catch {}
+                // Calculate remaining life
+                let remainingLife = 999;
+                try {
+                  const { calculateRemainingLife } = require('./api653-calculations');
+                  remainingLife = calculateRemainingLife(currentThicknessNum, minimumRequired, corrosionRate);
+                } catch {}
+                // Determine status
+                let status = 'acceptable';
+                try {
+                  const { determineInspectionStatus } = require('./api653-calculations');
+                  status = determineInspectionStatus(remainingLife, currentThicknessNum, minimumRequired);
+                } catch {}
+                const measurementWithCalc = {
+                  ...measurement,
+                  thicknessLoss: originalThicknessNum - currentThicknessNum,
+                  corrosionRate,
+                  corrosionRateMPY,
+                  remainingLife,
+                  status
+                };
+                thicknessMeasurements.push(measurementWithCalc);
+                console.log(`Found thickness measurement: [${measurement.component}] ${measurement.location} = ${measurement.currentThickness} | corrosionRate=${corrosionRate}, remainingLife=${remainingLife}, status=${status}`);
               }
             }
           }
@@ -465,6 +541,7 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
 }
 
 // Enhanced checklist extraction function
+}
 function extractChecklistFromWorkbook(workbook: XLSX.WorkBook): any[] {
   const checklistItems: any[] = [];
   const checklistPatterns = [
@@ -665,6 +742,6 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
   } catch (error) {
     console.error('PDF import error:', error);
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-    throw error;
-  }
+  throw error;
+}
 }
