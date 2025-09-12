@@ -46,7 +46,8 @@ export function generateVisualPDF(data: VisualReportData): void {
     appurtenanceInspections = [], 
     repairRecommendations = [], 
     ventingInspections = [], 
-    attachments = []
+    attachments = [],
+    settlementSurvey = null
   } = data;
 
   let totalPages = 15; // Estimate total pages
@@ -131,6 +132,15 @@ export function generateVisualPDF(data: VisualReportData): void {
   addProfessionalHeader();
   generateRecommendations(doc, report, repairRecommendations);
   addProfessionalFooter(currentPage);
+
+  // SETTLEMENT ANALYSIS (if available)
+  if (settlementSurvey && (settlementSurvey.amplitude || settlementSurvey.maxSettlement)) {
+    doc.addPage();
+    currentPage++;
+    addProfessionalHeader();
+    generateSettlementAnalysis(doc, settlementSurvey);
+    addProfessionalFooter(currentPage);
+  }
 
   // CERTIFICATION
   doc.addPage();
@@ -968,4 +978,105 @@ function generateCertificationPage(doc: jsPDF, report: InspectionReport) {
   doc.text(`Inspector: ${report.inspector || 'Not specified'}`, 30, yPos);
   yPos += 8;
   doc.text(`Certification: ${report.inspectorCertification || 'Not specified'}`, 30, yPos);
+}
+
+// Generate settlement analysis section
+function generateSettlementAnalysis(doc: jsPDF, settlementData: any) {
+  let yPos = 30;
+  
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SETTLEMENT ANALYSIS', 105, yPos, { align: 'center' });
+  yPos += 15;
+  
+  // Settlement Summary
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Settlement Summary', 20, yPos);
+  yPos += 10;
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  
+  const summaryItems = [
+    ['Peak-to-Peak Settlement', settlementData.amplitude ? `${(settlementData.amplitude * 2).toFixed(3)} ft` : 'N/A'],
+    ['Cosine Amplitude', settlementData.amplitude ? `${settlementData.amplitude.toFixed(4)} ft` : 'N/A'],
+    ['Phase Angle', settlementData.phase ? `${settlementData.phase.toFixed(1)}°` : 'N/A'],
+    ['R² Value', settlementData.rSquared ? settlementData.rSquared.toFixed(4) : 'N/A'],
+    ['Max Out-of-Plane', settlementData.maxSettlement ? `${settlementData.maxSettlement.toFixed(4)} ft` : 'N/A'],
+    ['Acceptance Status', settlementData.acceptance || 'PENDING']
+  ];
+  
+  summaryItems.forEach(item => {
+    doc.text(`${item[0]}: ${item[1]}`, 25, yPos);
+    yPos += 8;
+  });
+  
+  // Add compliance status
+  yPos += 10;
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('API 653 Compliance', 20, yPos);
+  yPos += 10;
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  
+  if (settlementData.rSquared && settlementData.rSquared >= 0.9) {
+    doc.text('✓ R² value meets API 653 Annex B requirement (≥ 0.90)', 25, yPos);
+  } else {
+    doc.text('⚠ R² value below API 653 requirement (< 0.90)', 25, yPos);
+  }
+  yPos += 8;
+  
+  if (settlementData.acceptance === 'ACCEPTABLE') {
+    doc.text('✓ Settlement within allowable limits', 25, yPos);
+  } else if (settlementData.acceptance === 'WARNING') {
+    doc.text('⚠ Settlement approaching limits - monitoring required', 25, yPos);
+  } else if (settlementData.acceptance === 'CRITICAL') {
+    doc.text('✗ Settlement exceeds allowable limits - action required', 25, yPos);
+  }
+  
+  // Add measurement points if available
+  if (settlementData.measurements && settlementData.measurements.length > 0) {
+    yPos += 15;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Measurement Points', 20, yPos);
+    yPos += 10;
+    
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    
+    // Table headers
+    const headers = ['Point', 'Angle (°)', 'Measured (ft)', 'Cosine Fit (ft)', 'Deviation (ft)'];
+    let xPos = 20;
+    headers.forEach(header => {
+      doc.text(header, xPos, yPos);
+      xPos += 35;
+    });
+    yPos += 5;
+    
+    // Table data (first 10 points to fit on page)
+    const pointsToShow = settlementData.measurements.slice(0, 10);
+    pointsToShow.forEach((m: any) => {
+      xPos = 20;
+      doc.text(m.point.toString(), xPos, yPos);
+      xPos += 35;
+      doc.text(`${m.angle.toFixed(0)}`, xPos, yPos);
+      xPos += 35;
+      doc.text(m.elevation.toFixed(4), xPos, yPos);
+      xPos += 35;
+      doc.text(m.cosineFit ? m.cosineFit.toFixed(4) : '-', xPos, yPos);
+      xPos += 35;
+      doc.text(m.cosineFit ? (m.elevation - m.cosineFit).toFixed(4) : '-', xPos, yPos);
+      yPos += 6;
+    });
+    
+    if (settlementData.measurements.length > 10) {
+      yPos += 5;
+      doc.setFont('helvetica', 'italic');
+      doc.text(`... and ${settlementData.measurements.length - 10} more measurement points`, 25, yPos);
+    }
+  }
 }
