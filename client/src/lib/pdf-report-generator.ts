@@ -1,6 +1,15 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+import {
+  generateShellLayoutDiagram,
+  generatePlateLayoutDiagram,
+  generateSettlementGraph,
+  generateInspectionLegend
+} from './tank-diagram-generator';
+
+import { generateAppurtenanceInspections, generateInspectionChecklists } from '../components/professional-pdf-generator';
+
 declare module 'jspdf' {
   interface jsPDF {
     lastAutoTable: {
@@ -116,205 +125,120 @@ export class ProfessionalReportGenerator {
     });
   }
   
-  generateReport(data: ReportData): Blob {
-    try {
-      // Enhanced date validation and formatting
-      const formatDate = (dateInput: string | undefined | null): string => {
-        if (!dateInput) return new Date().toISOString().split('T')[0];
-        
-        // Handle various date formats
-        let date: Date;
-        if (typeof dateInput === 'string') {
-          // Try parsing as ISO string first
-          date = new Date(dateInput);
-          
-          // If invalid, try other common formats
-          if (isNaN(date.getTime())) {
-            // Try MM/DD/YYYY format
-            const mmddyyyy = dateInput.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-            if (mmddyyyy) {
-              date = new Date(parseInt(mmddyyyy[3]), parseInt(mmddyyyy[1]) - 1, parseInt(mmddyyyy[2]));
-            } else {
-              // Try DD/MM/YYYY format
-              const ddmmyyyy = dateInput.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-              if (ddmmyyyy) {
-                date = new Date(parseInt(ddmmyyyy[3]), parseInt(ddmmyyyy[2]) - 1, parseInt(ddmmyyyy[1]));
-              } else {
-                // Default to current date if all parsing fails
-                date = new Date();
-              }
-            }
-          }
-        } else {
-          date = new Date();
+  generate(data: ReportData): Blob {
+    this.pdf = new jsPDF();
+    this.currentY = 30;
+    this.addCoverPage(data);
+
+    // Tank Details
+    this.addSectionHeader('TANK DETAILS');
+    this.createTankDetailsSection(data.tankDetails);
+
+    // Shell Thickness
+    this.addSectionHeader('SHELL THICKNESS');
+    this.createShellThicknessSection(data.shellData);
+
+    // Bottom Plate
+    this.addSectionHeader('BOTTOM PLATE');
+    this.createBottomPlateSection(data.bottomData);
+
+    // Settlement Graph (Cosine)
+    if (data.settlementData) {
+      this.addSectionHeader('SETTLEMENT');
+      this.createSettlementSection(data.settlementData);
+      generateSettlementGraph(
+        this.pdf,
+        30,
+        this.currentY + 10,
+        150,
+        60,
+        data.settlementData.measurements.map(m => ({
+          point: m.point,
+          elevation: m.elevation,
+          cosineValue: m.cosineFit
+        }))
+      );
+      this.currentY += 80;
+    }
+
+    // CML Measurements
+    if (data.cmlData) {
+      this.addSectionHeader('CML MEASUREMENTS');
+      this.createCMLSection(data.cmlData);
+    }
+
+    // Appurtenances
+    if (data.appurtenances) {
+      this.addSectionHeader('APPURTENANCES');
+      this.createAppurtenancesSection(data.appurtenances);
+      generateAppurtenanceInspections(this.pdf, data.appurtenances, this.currentY + 10);
+      this.currentY += 80;
+    }
+
+    // Vents
+    if (data.vents) {
+      this.addSectionHeader('VENTS');
+      this.createVentsSection(data.vents);
+    }
+
+    // Inspection Checklist
+    if (data.checklist) {
+      this.addSectionHeader('INSPECTION CHECKLIST');
+      this.createChecklistSection(data.checklist);
+      generateInspectionChecklists(this.pdf, data.checklist, this.currentY + 10);
+      this.currentY += 80;
+    }
+
+    // Findings & Recommendations
+    if (data.findings) {
+      this.addSectionHeader('FINDINGS & RECOMMENDATIONS');
+      this.createFindingsSection(data.findings);
+    }
+
+    // Sketches and Diagrams
+    this.createSketchesSection(data);
+    if (data.tankDetails) {
+      generateShellLayoutDiagram(
+        this.pdf,
+        30,
+        this.currentY + 10,
+        150,
+        60,
+        {
+          shellCourses: data.shellData.courses.map(c => ({
+            courseNumber: c.courseNumber,
+            height: c.height,
+            nominalThickness: c.nominalThickness,
+            measurements: [{ x: 0.5, thickness: c.measuredThickness }]
+          })),
+          diameter: data.tankDetails.diameter,
+          height: data.tankDetails.height
         }
-        
-        // Return formatted date or current date if still invalid
-        return isNaN(date.getTime()) ? new Date().toISOString().split('T')[0] : date.toISOString().split('T')[0];
-      };
-
-      // Apply enhanced date formatting
-      data.inspectionDate = formatDate(data.inspectionDate);
-      if (data.tankDetails) {
-        data.tankDetails.lastInspection = data.tankDetails.lastInspection ? formatDate(data.tankDetails.lastInspection) : undefined;
-      }
-      if (data.bottomData) {
-        data.bottomData.mriDate = data.bottomData.mriDate ? formatDate(data.bottomData.mriDate) : undefined;
-      }
-      if (data.findings) {
-        data.findings.nextInspectionDate = formatDate(data.findings.nextInspectionDate);
-      }
-
-      // Cover Page
-      this.createCoverPage(data);
-
-      // Table of Contents
-      this.createTableOfContents();
-
-      // Executive Summary
-      this.createExecutiveSummary(data);
-
-      // Tank Information
-      this.createTankInformation(data);
-
-      // Shell Calculations Section
-      this.createShellCalculationsSection(data);
-
-      // Bottom Assessment Section
-      this.createBottomAssessmentSection(data);
-
-      // Settlement Analysis Section
-      if (data.settlementData) {
-        this.createSettlementSection(data.settlementData);
-      } else {
-        // Placeholder for missing settlement data
-        this.currentY = 30;
-        this.addSectionHeader('SETTLEMENT ANALYSIS');
-        this.pdf.setFont('helvetica', 'italic');
-        this.pdf.setFontSize(11);
-        this.pdf.setTextColor(220, 38, 38);
-        this.pdf.text('No settlement data available for this report.', this.margin, this.currentY);
-        this.pdf.setTextColor(0, 0, 0);
-        this.pdf.addPage();
-      }
-
-      // CML Analysis Section
-      if (data.cmlData && data.cmlData.length > 0) {
-        this.createCMLSection(data.cmlData);
-      } else {
-        // Placeholder for missing CML data
-        this.currentY = 30;
-        this.addSectionHeader('CML DATA ANALYSIS');
-        this.pdf.setFont('helvetica', 'italic');
-        this.pdf.setFontSize(11);
-        this.pdf.setTextColor(220, 38, 38);
-        this.pdf.text('No CML data available for this report.', this.margin, this.currentY);
-        this.pdf.setTextColor(0, 0, 0);
-        this.pdf.addPage();
-      }
-
-      // NDE Results Section
-      this.createNDEResultsSection(data);
-
-      // Professional Checklist Section
-      this.createProfessionalChecklistSection(data);
-
-      // Sketches and Diagrams Section
-      this.createSketchesSection(data);
-
-      // Findings and Recommendations
-      if (data.findings) {
-        this.createFindingsSection(data.findings);
-      } else {
-        // Placeholder for missing findings
-        this.currentY = 30;
-        this.addSectionHeader('FINDINGS & RECOMMENDATIONS');
-        this.pdf.setFont('helvetica', 'italic');
-        this.pdf.setFontSize(11);
-        this.pdf.setTextColor(220, 38, 38);
-        this.pdf.text('No findings or recommendations available for this report.', this.margin, this.currentY);
-        this.pdf.setTextColor(0, 0, 0);
-        this.pdf.addPage();
-      }
-
-      // Appendices
-      this.createAppendices(data);
-
-      // Add page numbers
-      this.addPageNumbers();
-
-      return this.pdf.output('blob');
-    } catch (err) {
-      console.error('PDF generation error:', err);
-      // Return a blank PDF with error message
-      this.pdf.addPage();
-      this.pdf.setFont('helvetica', 'bold');
-      this.pdf.setFontSize(16);
-      this.pdf.setTextColor(220, 38, 38);
-      this.pdf.text('PDF Generation Failed', this.pageWidth / 2, 50, { align: 'center' });
-      this.pdf.setFont('helvetica', 'normal');
-      this.pdf.setFontSize(12);
-      this.pdf.text(String(err), this.margin, 70);
-      this.pdf.setTextColor(0, 0, 0);
-      return this.pdf.output('blob');
+      );
+      this.currentY += 80;
     }
+    generatePlateLayoutDiagram(
+      this.pdf,
+      105,
+      this.currentY + 40,
+      30,
+      'roof',
+      []
+    );
+    generatePlateLayoutDiagram(
+      this.pdf,
+      105,
+      this.currentY + 80,
+      30,
+      'bottom',
+      []
+    );
+    generateInspectionLegend(this.pdf, 170, this.currentY + 10);
+    this.currentY += 120;
+
+  return this.pdf.output('blob');
   }
-  
-  private createCoverPage(data: ReportData) {
-    // Professional OilPro Header
-    this.pdf.setFillColor(...this.primaryColor);
-    this.pdf.rect(0, 0, this.pageWidth, 60, 'F');
-    
-    this.pdf.setTextColor(255, 255, 255);
-    this.pdf.setFontSize(32);
-    this.pdf.setFont('helvetica', 'bold');
-    this.pdf.text('OILPRO', this.pageWidth / 2, 25, { align: 'center' });
-    
-    this.pdf.setFontSize(18);
-    this.pdf.setFont('helvetica', 'normal');
-    this.pdf.text('CONSULTING', this.pageWidth / 2, 40, { align: 'center' });
-    
-    this.pdf.setFontSize(12);
-    this.pdf.text('Professional Tank Inspection Services', this.pageWidth / 2, 52, { align: 'center' });
-    
-    // Report Title
-    this.pdf.setTextColor(0, 0, 0);
-    this.pdf.setFontSize(28);
-    this.pdf.setFont('helvetica', 'bold');
-    this.pdf.text('API 653 INSPECTION REPORT', this.pageWidth / 2, 130, { align: 'center' });
-    
-    // Tank ID Box
-    this.pdf.setDrawColor(...this.primaryColor);
-    this.pdf.setLineWidth(2);
-    this.pdf.rect(40, 150, 130, 40);
-    
-    this.pdf.setFontSize(16);
-    this.pdf.text('Tank ID: ' + data.tankId, this.pageWidth / 2, 165, { align: 'center' });
-    this.pdf.setFontSize(14);
-    this.pdf.text('Report No: ' + data.reportNumber, this.pageWidth / 2, 175, { align: 'center' });
-    this.pdf.text('Date: ' + data.inspectionDate, this.pageWidth / 2, 185, { align: 'center' });
-    
-    // Inspector Information
-    this.pdf.setFontSize(12);
-    this.pdf.setFont('helvetica', 'normal');
-    this.pdf.text('Inspected By:', 40, 220);
-    this.pdf.setFont('helvetica', 'bold');
-    this.pdf.text(data.inspector, 70, 220);
-    
-    if (data.reviewedBy) {
-      this.pdf.setFont('helvetica', 'normal');
-      this.pdf.text('Reviewed By:', 40, 230);
-      this.pdf.setFont('helvetica', 'bold');
-      this.pdf.text(data.reviewedBy, 70, 230);
-    }
-    
-    // Footer
-    this.pdf.setFont('helvetica', 'italic');
-    this.pdf.setFontSize(10);
-    this.pdf.setTextColor(100, 100, 100);
-    this.pdf.text('This report complies with API 653 standards', this.pageWidth / 2, 270, { align: 'center' });
-    
-    this.pdf.addPage();
+  }
   }
   
   private createTableOfContents() {
@@ -1018,22 +942,6 @@ export class ProfessionalReportGenerator {
     
     this.pdf.addPage();
   }
-  
-  private addPageNumbers() {
-    const pageCount = this.pdf.getNumberOfPages();
-    
-    for (let i = 2; i <= pageCount; i++) {
-      this.pdf.setPage(i);
-      this.pdf.setFontSize(10);
-      this.pdf.setFont('helvetica', 'normal');
-      this.pdf.setTextColor(100, 100, 100);
-      this.pdf.text(`Page ${i - 1} of ${pageCount - 1}`, this.pageWidth - 30, this.pageHeight - 10);
-      
-      // Add footer line
-      this.pdf.setDrawColor(200, 200, 200);
-      this.pdf.line(this.margin, this.pageHeight - 15, this.pageWidth - this.margin, this.pageHeight - 15);
-    }
-  }
 }
 
 // Helper function to generate and download the report
@@ -1046,8 +954,8 @@ export async function generateProfessionalReport(reportData: ReportData): Promis
 
     console.log('Starting PDF generation for report:', reportData.reportNumber);
     
-    const generator = new ProfessionalReportGenerator();
-    const pdfBlob = generator.generateReport(reportData);
+  const generator = new ProfessionalReportGenerator();
+  const pdfBlob = generator.generate(reportData);
 
     if (!pdfBlob || pdfBlob.size === 0) {
       throw new Error('PDF generation failed: Empty or invalid PDF blob');
