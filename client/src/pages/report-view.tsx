@@ -97,14 +97,16 @@ export function ReportView() {
         appurtenancesResponse,
         repairsResponse,
         ventingResponse,
-        attachmentsResponse
+        attachmentsResponse,
+        settlementResponse
       ] = await Promise.all([
         fetch(`/api/reports/${report.id}/measurements`),
         fetch(`/api/reports/${report.id}/checklists`),
         fetch(`/api/reports/${report.id}/appurtenances`),
         fetch(`/api/reports/${report.id}/repairs`),
         fetch(`/api/reports/${report.id}/venting`),
-        fetch(`/api/reports/${report.id}/attachments`)
+        fetch(`/api/reports/${report.id}/attachments`),
+        fetch(`/api/reports/${report.id}/settlement-surveys`)
       ]);
       
       const [
@@ -113,14 +115,16 @@ export function ReportView() {
         loadedAppurtenances,
         loadedRepairs,
         loadedVenting,
-        loadedAttachments
+        loadedAttachments,
+        loadedSettlementSurveys
       ] = await Promise.all([
         measurementsResponse.json(),
         checklistsResponse.json(),
         appurtenancesResponse.json(),
         repairsResponse.json(),
         ventingResponse.json(),
-        attachmentsResponse.json()
+        attachmentsResponse.json(),
+        settlementResponse.json()
       ]);
       
       console.log('Loaded comprehensive data:');
@@ -130,6 +134,47 @@ export function ReportView() {
       console.log('- Repairs:', loadedRepairs?.length || 0);
       console.log('- Venting:', loadedVenting?.length || 0);
       console.log('- Attachments:', loadedAttachments?.length || 0);
+      console.log('- Settlement Surveys:', loadedSettlementSurveys?.length || 0);
+      
+      // Process settlement data if available
+      let settlementSurvey = null;
+      if (loadedSettlementSurveys && loadedSettlementSurveys.length > 0) {
+        const latestSettlement = loadedSettlementSurveys[0];
+        if (latestSettlement && latestSettlement.id) {
+          try {
+            const measurementResponse = await fetch(`/api/settlement-surveys/${latestSettlement.id}/measurements`);
+            const settlementMeasurements = await measurementResponse.json();
+            
+            settlementSurvey = {
+              measurements: settlementMeasurements.map((m: any) => ({
+                point: m.pointNumber || 0,
+                angle: parseFloat(m.angle) || 0,
+                elevation: parseFloat(m.measuredElevation) || 0,
+                cosineFit: parseFloat(m.cosineFitElevation) || undefined
+              })),
+              amplitude: parseFloat(latestSettlement.cosineAmplitude) || 0,
+              phase: parseFloat(latestSettlement.cosinePhase) || 0,
+              rSquared: parseFloat(latestSettlement.rSquared) || 0,
+              maxSettlement: parseFloat(latestSettlement.maxOutOfPlane) || 0,
+              allowableSettlement: parseFloat(latestSettlement.allowableSettlement) || 0.5,
+              acceptance: latestSettlement.settlementAcceptance || 'PENDING'
+            };
+            console.log('Settlement data processed:', settlementSurvey);
+          } catch (error) {
+            console.error('Failed to fetch settlement measurements:', error);
+            // Use basic settlement data without measurements
+            settlementSurvey = {
+              measurements: [],
+              amplitude: parseFloat(latestSettlement.cosineAmplitude) || 0,
+              phase: parseFloat(latestSettlement.cosinePhase) || 0,
+              rSquared: parseFloat(latestSettlement.rSquared) || 0,
+              maxSettlement: parseFloat(latestSettlement.maxOutOfPlane) || 0,
+              allowableSettlement: parseFloat(latestSettlement.allowableSettlement) || 0.5,
+              acceptance: latestSettlement.settlementAcceptance || 'PENDING'
+            };
+          }
+        }
+      }
       
       const reportData = {
         report,
@@ -138,7 +183,8 @@ export function ReportView() {
         appurtenanceInspections: loadedAppurtenances || [],
         repairRecommendations: loadedRepairs || [],
         ventingInspections: loadedVenting || [],
-        attachments: loadedAttachments || []
+        attachments: loadedAttachments || [],
+        settlementSurvey
       };
       
       // Generate the PDF
