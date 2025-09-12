@@ -78,7 +78,7 @@ export default function Dashboard() {
         description: error.message || "Failed to delete report",
         variant: "destructive",
       });
-    }
+  },
   });
 
   const handleQuickPDFGeneration = async (report: InspectionReport) => {
@@ -330,11 +330,11 @@ export default function Dashboard() {
 
   return (
     <div>
+      {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Inspection Reports</h2>
         <p className="text-gray-600">Manage your API 653 tank inspection reports</p>
       </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
@@ -350,7 +350,6 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-        
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -364,7 +363,6 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-        
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -378,7 +376,6 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-        
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center">
@@ -393,135 +390,130 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
-
       {/* Executive KPI Dashboard */}
       <div className="mb-8">
         <KPIDashboard showFullDashboard={true} />
       </div>
-
       {/* Reports Table */}
       <Card>
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <h3 className="text-lg font-medium text-gray-900">Recent Reports</h3>
           {reports.length > 0 && (
-            <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleExportAllCSV}
-                className="text-gray-600 hover:text-gray-800"
-              >
-                <FileDown className="mr-2 h-4 w-4" />
-                Export All as CSV
-              </Button>
-            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleExportAllCSV}
+              className="text-gray-600 hover:text-gray-800"
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              Export All as CSV
+            </Button>
           )}
         </div>
         <div className="overflow-x-auto">
-          {reports.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No reports yet</h3>
-              <p className="text-gray-500 mb-4">Create your first inspection report to get started.</p>
-              <Link href="/new-report">
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  Create Report
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report #</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tank ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Modified</th>
+                {/* Analysis Columns */}
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">NDE</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Settlement</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Checklist</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Appurtenances</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Vents</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Recommendations</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sketches</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {reports.length === 0 ? (
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tank ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Modified</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <td colSpan={15} className="px-6 py-8 text-center text-gray-500">No inspection reports found.</td>
                 </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {reports.map((report) => (
-                  <tr key={report.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {report.reportNumber}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {report.tankId}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">
-                      {report.service}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(report.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(report.updatedAt)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex space-x-2">
-                        <Link href={`/report/${report.id}`}>
-                          <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700" title="View Report Details">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                        <QuickPDFPreview 
-                          report={report}
-                          trigger={
-                            <Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700" title="Quick PDF Preview">
-                              <FileText className="h-4 w-4" />
+              ) : (
+                reports.map((report) => {
+                  const Dot = ({ present }: { present: boolean }) => (
+                    <span className={`inline-block w-3 h-3 rounded-full ${present ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  );
+                  // Section presence checks based on schema
+                  const hasNDE = typeof report.findings === 'string' && report.findings.trim().length > 0;
+                  const hasSettlement = typeof report.foundationSettlement === 'string' && report.foundationSettlement.trim().length > 0;
+                  const hasChecklist = typeof report.inspectionScope === 'string' && report.inspectionScope.trim().length > 0;
+                  const hasAppurtenances = typeof report.settlementLocation === 'string' && report.settlementLocation.trim().length > 0;
+                  const hasVents = typeof report.surveyMethod === 'string' && report.surveyMethod.trim().length > 0;
+                  const hasRecommendations = typeof report.recommendations === 'string' && report.recommendations.trim().length > 0;
+                  const hasSketches = false; // No sketches field in schema
+                  const hasDates = typeof report.inspectionDate === 'string' && report.inspectionDate.trim().length > 0;
+                  return (
+                    <tr key={report.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{report.reportNumber}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.tankId}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">{report.service}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(report.status ?? "")}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(report.updatedAt ?? "")}</td>
+                      {/* Analysis Dots */}
+                      <td className="px-2 py-4 text-center"><Dot present={hasNDE} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasSettlement} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasChecklist} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasAppurtenances} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasVents} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasRecommendations} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasSketches} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasDates} /></td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div className="flex space-x-2">
+                          <Link href={`/report/${report.id}`}>
+                            <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700" title="View Report Details">
+                              <Eye className="h-4 w-4" />
                             </Button>
-                          }
-                        />
-                        <Link href={`/edit-report/${report.id}`}>
-                          <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600" title="Edit Report">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-gray-400 hover:text-gray-600" 
-                              title="Export Options"
-                            >
-                              <MoreVertical className="h-4 w-4" />
+                          </Link>
+                          <QuickPDFPreview 
+                            report={report}
+                            trigger={<Button variant="ghost" size="sm" className="text-green-600 hover:text-green-700" title="Quick PDF Preview"><FileText className="h-4 w-4" /></Button>}
+                          />
+                          <Link href={`/edit-report/${report.id}`}>
+                            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600" title="Edit Report">
+                              <Edit className="h-4 w-4" />
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuLabel>Export Options</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleQuickPDFGeneration(report)}>
-                              <FileText className="mr-2 h-4 w-4" />
-                              Export as PDF
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleCSVExport(report)}>
-                              <FileDown className="mr-2 h-4 w-4" />
-                              Export as CSV
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-red-400 hover:text-red-600"
-                          onClick={() => setReportToDelete(report)}
-                          title="Delete Report"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                          </Link>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-600" title="Export Options">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuLabel>Export Options</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleQuickPDFGeneration(report)}>
+                                <FileText className="mr-2 h-4 w-4" />
+                                Export as PDF
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleCSVExport(report)}>
+                                <FileDown className="mr-2 h-4 w-4" />
+                                Export as CSV
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-600" onClick={() => setReportToDelete(report)} title="Delete Report">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
-      
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!reportToDelete} onOpenChange={() => setReportToDelete(null)}>
         <AlertDialogContent>
