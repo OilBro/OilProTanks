@@ -580,30 +580,33 @@ export class ProfessionalReportGenerator {
     this.currentY = 30;
     this.addSectionHeader('SETTLEMENT ANALYSIS');
     
-    // Settlement Summary
-    const summaryData = [
-      ['Parameter', 'Value', 'Limit', 'Status'],
-      ['Peak-to-Peak Settlement', `${(settlementData.amplitude * 2).toFixed(3)} ft`, `${settlementData.allowableSettlement.toFixed(3)} ft`, settlementData.acceptance],
-      ['Cosine Amplitude', `${settlementData.amplitude.toFixed(4)} ft`, '-', '-'],
-      ['Phase Angle', `${settlementData.phase.toFixed(1)}°`, '-', '-'],
-      ['R² Value', settlementData.rSquared.toFixed(4), '≥ 0.90', settlementData.rSquared >= 0.9 ? 'OK' : 'WARNING'],
-      ['Max Out-of-Plane', `${settlementData.maxSettlement.toFixed(4)} ft`, '-', '-']
-    ];
-    
-    autoTable(this.pdf, {
-      head: [summaryData[0]],
-      body: summaryData.slice(1),
-      startY: this.currentY,
-      theme: 'grid',
-      headStyles: {
-        fillColor: this.primaryColor,
-        fontSize: 11,
-        fontStyle: 'bold'
-      },
-      bodyStyles: {
-        fontSize: 10
-      }
-    });
+    if (settlementData && (settlementData.amplitude || settlementData.maxSettlement)) {
+      // Show available settlement data even without measurements
+      const summaryData = [
+        ['Parameter', 'Value', 'Status'],
+        ['Peak-to-Peak Settlement', settlementData.amplitude ? `${(settlementData.amplitude * 2).toFixed(3)} ft` : 'N/A', settlementData.acceptance || 'PENDING'],
+        ['Cosine Amplitude', settlementData.amplitude ? `${settlementData.amplitude.toFixed(4)} ft` : 'N/A', '-'],
+        ['Phase Angle', settlementData.phase ? `${settlementData.phase.toFixed(1)}°` : 'N/A', '-'],
+        ['R² Value', settlementData.rSquared ? settlementData.rSquared.toFixed(4) : 'N/A', settlementData.rSquared >= 0.9 ? 'OK' : 'WARNING'],
+        ['Max Out-of-Plane', settlementData.maxSettlement ? `${settlementData.maxSettlement.toFixed(4)} ft` : 'N/A', '-']
+      ];
+      
+      autoTable(this.pdf, {
+        head: [summaryData[0]],
+        body: summaryData.slice(1),
+        startY: this.currentY,
+        theme: 'grid',
+        headStyles: { fillColor: this.primaryColor, textColor: 255 },
+        styles: { fontSize: 10, cellPadding: 3 }
+      });
+    } else {
+      // No settlement data available
+      this.pdf.setFont('helvetica', 'italic');
+      this.pdf.setFontSize(10);
+      this.pdf.setTextColor(100, 100, 100);
+      this.pdf.text('No settlement analysis data available for this report.', this.margin, this.currentY + 10);
+      this.pdf.setTextColor(0, 0, 0);
+    }
     
     // Measurement Points Table (if space permits)
     if (settlementData.measurements && settlementData.measurements.length > 0) {
