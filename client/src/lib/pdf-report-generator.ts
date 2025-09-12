@@ -261,19 +261,21 @@ export class ProfessionalReportGenerator {
   }
   
   private createCoverPage(data: ReportData) {
-    // Background gradient effect (simulated with rectangles)
+    // Professional OilPro Header
     this.pdf.setFillColor(...this.primaryColor);
-    this.pdf.rect(0, 0, this.pageWidth, 100, 'F');
+    this.pdf.rect(0, 0, this.pageWidth, 60, 'F');
     
-    // Company Logo area (placeholder)
     this.pdf.setTextColor(255, 255, 255);
-    this.pdf.setFontSize(24);
+    this.pdf.setFontSize(32);
     this.pdf.setFont('helvetica', 'bold');
-    this.pdf.text('OILPRO TANKS', this.pageWidth / 2, 30, { align: 'center' });
+    this.pdf.text('OILPRO', this.pageWidth / 2, 25, { align: 'center' });
     
-    this.pdf.setFontSize(14);
+    this.pdf.setFontSize(18);
     this.pdf.setFont('helvetica', 'normal');
-    this.pdf.text('Professional Tank Inspection Services', this.pageWidth / 2, 40, { align: 'center' });
+    this.pdf.text('CONSULTING', this.pageWidth / 2, 40, { align: 'center' });
+    
+    this.pdf.setFontSize(12);
+    this.pdf.text('Professional Tank Inspection Services', this.pageWidth / 2, 52, { align: 'center' });
     
     // Report Title
     this.pdf.setTextColor(0, 0, 0);
