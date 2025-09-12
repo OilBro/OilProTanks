@@ -268,7 +268,29 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     if (tankCount > 1) {
       console.log(`=== MULTI-TANK WORKBOOK DETECTED ===`);
       console.log(`Found ${tankCount} potential tanks:`, Object.keys(potentialTanks));
-      console.log('Note: Currently processing as single tank. Multi-tank import may need separate handling.');
+      // Process each tank separately
+      const multiTankImports = [];
+      for (const [tankId, tankInfo] of Object.entries(potentialTanks)) {
+        const tankData = tankInfo.data;
+        let tankImportedData = { ...importedData, tankId };
+        // Map findings and other fields for each tank
+        for (const row of tankData) {
+          if (row['Findings'] && !tankImportedData.findings) {
+            tankImportedData.findings = row['Findings'];
+          }
+          if (row['Report Write Up'] && !tankImportedData.findings) {
+            tankImportedData.findings = row['Report Write Up'];
+          }
+        }
+        multiTankImports.push({ importedData: tankImportedData, thicknessMeasurements, checklistItems });
+      }
+      // Return multi-tank import result
+      return {
+        multiTankImports,
+        aiAnalysis,
+        totalRows: data.length,
+        preview: data.slice(0, 5)
+      };
     }
     
     // Process first sheet for main report data
