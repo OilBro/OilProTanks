@@ -369,11 +369,11 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
             // Detect component type from column name
             if (keyLower.includes('bottom')) {
               component = 'Bottom Plate';
-              measurementType = 'bottom';
+              measurementType = 'bottom_plate';
               isThickness = true;
             } else if (keyLower.includes('critical')) {
               component = 'Critical Zone';
-              measurementType = 'critical';
+              measurementType = 'critical_zone';
               isThickness = true;
             } else if (keyLower.includes('appurtenance')) {
               component = 'Appurtenance';
