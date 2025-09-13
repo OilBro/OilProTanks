@@ -289,6 +289,33 @@ export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
       yPosition += 10;
     }
 
+    // Cosine Curve Visual Section
+    doc.addPage();
+    yPosition = 20;
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('COSINE CURVE VISUAL', margin, yPosition);
+    yPosition += 15;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    // Draw axes
+    doc.line(margin, yPosition + 50, margin + 180, yPosition + 50); // X axis
+    doc.line(margin, yPosition + 10, margin, yPosition + 90); // Y axis
+    // Plot cosine curve
+    let prevX = margin;
+    let prevY = yPosition + 50 - 40 * Math.cos(0);
+    for (let deg = 0; deg <= 360; deg += 5) {
+      const rad = deg * Math.PI / 180;
+      const x = margin + (deg / 2);
+      const y = yPosition + 50 - 40 * Math.cos(rad);
+      doc.line(prevX, prevY, x, y);
+      prevX = x;
+      prevY = y;
+    }
+    doc.text('Y', margin - 5, yPosition + 10);
+    doc.text('X', margin + 180, yPosition + 55);
+    doc.text('Cosine Curve: y = cos(x)', margin, yPosition + 100);
+
     // Footer on all pages
     const pageCount = doc.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
