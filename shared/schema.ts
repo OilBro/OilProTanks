@@ -422,6 +422,14 @@ export const insertEdgeSettlementSchema = createInsertSchema(edgeSettlements).om
   createdAt: true,
 });
 
+// Export inferred types for advanced settlement domain
+export type AdvancedSettlementSurvey = typeof advancedSettlementSurveys.$inferSelect;
+export type InsertAdvancedSettlementSurvey = z.infer<typeof insertAdvancedSettlementSurveySchema>;
+export type AdvancedSettlementMeasurement = typeof advancedSettlementMeasurements.$inferSelect;
+export type InsertAdvancedSettlementMeasurement = z.infer<typeof insertAdvancedSettlementMeasurementSchema>;
+export type EdgeSettlement = typeof edgeSettlements.$inferSelect;
+export type InsertEdgeSettlement = z.infer<typeof insertEdgeSettlementSchema>;
+
 // Report Components (shell courses, plates, structural elements at higher abstraction than individual measurements)
 export const reportComponents = pgTable("report_components", {
   id: serial("id").primaryKey(),

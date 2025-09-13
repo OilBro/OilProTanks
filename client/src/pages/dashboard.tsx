@@ -3,129 +3,142 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { FileText, Clock, CheckCircle, AlertTriangle, Eye, Edit, Download, TrendingUp, Search, Trash2, FileDown, MoreVertical } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Link } from "wouter";
-import { generateEnhancedPDF } from "@/components/enhanced-pdf-generator";
-import { QuickPDFPreview } from "@/components/quick-pdf-preview";
-import { LoadingSpinner } from "@/components/loading-spinner";
-import { useToast } from "@/hooks/use-toast";
-import { KPIDashboard } from "@/components/kpi-dashboard";
-import { useState } from "react";
-import { queryClient } from "@/lib/queryClient";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { exportDetailedCSV, exportSummaryCSV } from "@/lib/csv-export";
-import type { InspectionReport, ThicknessMeasurement, InspectionChecklist } from "@shared/schema";
-
-interface DashboardStats {
-  totalReports: number;
-  inProgress: number;
-  completed: number;
-  requiresAction: number;
-}
-
-export default function Dashboard() {
-  const { toast } = useToast();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [reportToDelete, setReportToDelete] = useState<InspectionReport | null>(null);
-  
-  const { data: reports = [], isLoading: reportsLoading } = useQuery<InspectionReport[]>({
-    queryKey: ["/api/reports"],
-  });
-
-  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
-    queryKey: ["/api/reports/stats"],
-  });
-
-  const deleteReportMutation = useMutation({
-    mutationFn: async (reportId: number) => {
-      const response = await fetch(`/api/reports/${reportId}`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) {
-        throw new Error('Failed to delete report');
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Report Deleted",
-        description: "The inspection report has been deleted successfully.",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/reports/stats'] });
-      setReportToDelete(null);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete report",
-        variant: "destructive",
-      });
-  },
-  });
-
-  const handleQuickPDFGeneration = async (report: InspectionReport) => {
-    try {
-      toast({
-        title: "Generating PDF Report",
-        description: "Please wait while we compile your comprehensive inspection data...",
-      });
-
-      console.log('Dashboard PDF: Loading comprehensive data for report', report.id);
-
-      // Load all related data from API endpoints  
-      const [
-        measurementsResponse,
-        checklistsResponse,
-        appurtenancesResponse,
-        repairsResponse,
-        ventingResponse,
-        attachmentsResponse,
-        settlementResponse
-      ] = await Promise.all([
-        fetch(`/api/reports/${report.id}/measurements`),
-        fetch(`/api/reports/${report.id}/checklists`),
-        fetch(`/api/reports/${report.id}/appurtenances`),
-        fetch(`/api/reports/${report.id}/repairs`),
-        fetch(`/api/reports/${report.id}/venting`),
-        fetch(`/api/reports/${report.id}/attachments`),
-        fetch(`/api/reports/${report.id}/settlement-surveys`)
-      ]);
-
-      const [
-        measurements,
-        checklists,
-        appurtenances,
-        repairs,
-        venting,
-        attachments,
-        settlementSurveys
-      ] = await Promise.all([
-        measurementsResponse.json(),
-        checklistsResponse.json(),
-        appurtenancesResponse.json(),
-        repairsResponse.json(),
-        ventingResponse.json(),
-        attachmentsResponse.json(),
-        settlementResponse.json()
-      ]);
+  return (
+    <div>
+      {/* Header */}
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Inspection Reports</h2>
+        <p className="text-gray-600">Manage your API 653 tank inspection reports</p>
+      </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        ...existing code...
+      </div>
+      {/* Executive KPI Dashboard */}
+      <div className="mb-8">
+        <KPIDashboard showFullDashboard={true} />
+      </div>
+      {/* Reports Table */}
+      <Card>
+        <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+          <h3 className="text-lg font-medium text-gray-900">Recent Reports</h3>
+          {reports.length > 0 && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleExportAllCSV}
+              className="text-gray-600 hover:text-gray-800"
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              Export All as CSV
+            </Button>
+          )}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report #</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tank ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Modified</th>
+                {/* Analysis Columns */}
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">NDE</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Settlement</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Checklist</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Appurtenances</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Vents</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Recommendations</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Attachments</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Repairs</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sketches</th>
+                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Dates</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {reports.length === 0 ? (
+                <tr>
+                  <td colSpan={17} className="px-6 py-8 text-center text-gray-500">No inspection reports found.</td>
+                </tr>
+              ) : (
+                reports.map((report) => {
+                  const Dot = ({ present }: { present: boolean }) => (
+                    <span className={`inline-block w-3 h-3 rounded-full ${present ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  );
+                  // Fetch related arrays for each report (simulate with empty arrays if not present)
+                  const appurtenanceInspections = report.appurtenanceInspections || [];
+                  const ventingInspections = report.ventingInspections || [];
+                  const checklists = report.checklists || [];
+                  const settlementSurvey = report.settlementSurvey ? [report.settlementSurvey] : [];
+                  const attachments = report.attachments || [];
+                  const repairRecommendations = report.repairRecommendations || [];
+                  // Section presence checks
+                  const hasNDE = typeof report.findings === 'string' && report.findings.trim().length > 0;
+                  const hasSettlement = settlementSurvey.length > 0;
+                  const hasChecklist = checklists.length > 0;
+                  const hasAppurtenances = appurtenanceInspections.length > 0;
+                  const hasVents = ventingInspections.length > 0;
+                  const hasRecommendations = repairRecommendations.length > 0;
+                  const hasAttachments = attachments.length > 0;
+                  const hasRepairs = repairRecommendations.length > 0;
+                  const hasSketches = false; // No sketches field in schema
+                  const hasDates = typeof report.inspectionDate === 'string' && report.inspectionDate.trim().length > 0;
+                  return (
+                    <tr key={report.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{report.reportNumber}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.tankId}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">{report.service}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(report.status ?? "")}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(report.updatedAt ?? "")}</td>
+                      {/* Analysis Dots */}
+                      <td className="px-2 py-4 text-center"><Dot present={hasNDE} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasSettlement} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasChecklist} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasAppurtenances} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasVents} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasRecommendations} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasAttachments} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasRepairs} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasSketches} /></td>
+                      <td className="px-2 py-4 text-center"><Dot present={hasDates} /></td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div className="flex space-x-2">
+                          ...existing code...
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!reportToDelete} onOpenChange={() => setReportToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Report</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete report {reportToDelete?.reportNumber}? 
+              This action cannot be undone and will permanently delete all associated data including thickness measurements, checklists, and attachments.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => reportToDelete && deleteReportMutation.mutate(reportToDelete.id)}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete Report
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
 
       console.log('Dashboard PDF: Loaded comprehensive data:');
       console.log('- Measurements:', measurements?.length || 0);

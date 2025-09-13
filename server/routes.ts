@@ -1,40 +1,48 @@
+import { componentSchema, nozzleSchema, cmlPointSchema, cmlBulkSchema, shellCoursesPutSchema, appendixSchema, tminOverrideSchema, writeupPutSchema, validate } from './validation-schemas.ts';
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
-import { storage } from "./storage";
+import { storage } from "./storage.ts";
 import { 
   insertInspectionReportSchema, 
   insertThicknessMeasurementSchema,
   insertInspectionChecklistSchema,
   inspectionReports,
   thicknessMeasurements,
-  inspectionChecklists
-} from "@shared/schema";
-import { db } from "./db";
+  inspectionChecklists,
+  reportComponents,
+  reportNozzles,
+  cmlPoints,
+  reportShellCourses,
+  reportAppendices,
+  reportWriteup,
+  reportPracticalTminOverrides
+} from "../shared/schema.ts";
+import { db } from "./db.ts";
 import { eq } from "drizzle-orm";
-import { handleExcelImport } from "./import-handler";
-import { handleChecklistUpload, standardChecklists } from "./checklist-handler";
-import { checklistTemplates, insertChecklistTemplateSchema } from "@shared/schema";
-import { generateInspectionTemplate, generateChecklistTemplateExcel } from "./template-generator";
-import { exportFlatCSV, exportWholePacketZip } from "./exporter";
+import { handleExcelImport } from "./import-handler.ts";
+import { handleChecklistUpload, standardChecklists } from "./checklist-handler.ts";
+import { checklistTemplates, insertChecklistTemplateSchema } from "../shared/schema.ts";
+import { generateInspectionTemplate, generateChecklistTemplateExcel } from "./template-generator.ts";
+import { exportFlatCSV, exportWholePacketZip } from "./exporter.ts";
 import { 
   generateDataIngestionPackage,
   parseBasePageNominals,
   parseShellTMLs,
   parseNozzleTMLs
-} from "./csv-templates";
+} from "./csv-templates.ts";
 import {
   performAPI653Evaluation,
   calculateKPIMetrics,
   type TankParameters,
   type ComponentThickness
-} from "./api653-calculator";
+} from "./api653-calculator.ts";
 import { 
   calculateCorrosionRate,
   calculateRemainingLife,
   calculateMinimumRequiredThickness,
   determineInspectionStatus
-} from "./api653-calculations";
+} from "./api653-calculations.ts";
 
 // Unit converter utilities
 const UnitConverter = {
@@ -117,6 +125,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     }
   });
+  
+    // Basic health endpoint (duplicated from index for test harness usage without full server boot)
+    app.get('/api/health', (_req, res) => {
+      res.json({ ok: true });
+    });
 
   // Excel Template Download endpoint
   app.get("/api/template/download", (req, res) => {
@@ -156,7 +169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (fileName.endsWith('.pdf')) {
         console.log('Calling handlePDFImport...');
         // Import handlePDFImport here since it's in the same file
-        const { handlePDFImport } = await import('./import-handler');
+  const { handlePDFImport } = await import('./import-handler.ts');
         result = await handlePDFImport(req.file.buffer, req.file.originalname);
       } else {
         console.log('Calling handleExcelImport...');
@@ -1578,13 +1591,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Assistant Routes
+  // AI Assistant Routes (guarded – may not be implemented in current storage layer)
   app.get("/api/ai/guidance-templates", async (req, res) => {
     try {
       const { section, category } = req.query;
-      const templates = await storage.getAiGuidanceTemplates({ 
-        section: section as string, 
-        category: category as string 
+      const sAny: any = storage as any; // dynamic capability
+      if (typeof sAny["getAiGuidanceTemplates"] !== 'function') {
+        return res.status(501).json({ message: "AI guidance templates not implemented" });
+      }
+      const templates = await sAny["getAiGuidanceTemplates"]({
+        section: section as string,
+        category: category as string
       });
       res.json(templates);
     } catch (err) {
@@ -1596,17 +1613,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/ai/chat", async (req, res) => {
     try {
       const { message, reportId, sessionId, context, conversationHistory } = req.body;
-      
-      // Here we'll implement the AI chat logic
-      // For now, return a contextual response based on the message
-      const response = await storage.processAiChat({
+      const sAny: any = storage as any;
+      if (typeof sAny["processAiChat"] !== 'function') {
+        return res.status(501).json({ message: "AI chat not implemented" });
+      }
+      const response = await sAny["processAiChat"]({
         message,
         reportId,
         sessionId,
         context,
         conversationHistory
       });
-      
       res.json(response);
     } catch (err) {
       console.error('Error processing AI chat:', err);
@@ -1617,10 +1634,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/ai/conversations/:reportId/:sessionId", async (req, res) => {
     try {
       const { reportId, sessionId } = req.params;
-      const conversation = await storage.getAiConversation(
-        parseInt(reportId), 
-        sessionId
-      );
+      const sAny: any = storage as any;
+      if (typeof sAny["getAiConversation"] !== 'function') {
+        return res.status(501).json({ message: "AI conversations not implemented" });
+      }
+      const conversation = await sAny["getAiConversation"](parseInt(reportId), sessionId);
       res.json(conversation);
     } catch (err) {
       console.error('Error fetching conversation:', err);
@@ -1630,7 +1648,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/ai/conversations", async (req, res) => {
     try {
-      const conversation = await storage.saveAiConversation(req.body);
+      const sAny: any = storage as any;
+      if (typeof sAny["saveAiConversation"] !== 'function') {
+        return res.status(501).json({ message: "AI conversation persistence not implemented" });
+      }
+      const conversation = await sAny["saveAiConversation"](req.body);
       res.json(conversation);
     } catch (err) {
       console.error('Error saving conversation:', err);
@@ -1673,9 +1695,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const measurements = req.body.measurements.map((m: any) => ({ ...m, surveyId }));
       const newMeasurements = await storage.createBulkAdvancedSettlementMeasurements(measurements);
       res.json(newMeasurements);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving bulk measurements:', err);
-      res.status(500).json({ message: "Failed to create measurements", error: err.message });
+      res.status(500).json({ message: "Failed to create measurements", error: err?.message || 'unknown error' });
     }
   });
 
@@ -1693,7 +1715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Import calculator functions
-      const { calculateCosineFit, processExternalRingwallSurvey } = await import("./settlement-calculator");
+  const { calculateCosineFit, processExternalRingwallSurvey } = await import("./settlement-calculator.ts");
       
       // Convert measurements to points format
       let points = measurements.map(m => ({
@@ -1769,6 +1791,403 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== Extended Report Domain Endpoints =====
+  // Utility helpers
+  const parseId = (val: any) => {
+    const n = Number(val); return Number.isFinite(n) ? n : undefined;
+  };
+
+  // Components
+  app.get('/api/reports/:reportId/components', async (req, res) => {
+    const reportId = parseId(req.params.reportId);
+    if (!reportId) return res.status(400).json({ success:false, message:'Invalid reportId' });
+    const rows = await db.select().from(reportComponents).where(eq(reportComponents.reportId, reportId));
+    res.json({ success:true, data: rows });
+  });
+  app.post('/api/reports/:reportId/components', validate(componentSchema), async (req, res) => {
+    try {
+      const reportId = parseId(req.params.reportId);
+      if (!reportId) return res.status(400).json({ success:false, message:'Invalid reportId' });
+  const body = req.body;
+      const inserted = await db.insert(reportComponents).values({
+        reportId,
+        componentId: body.componentId,
+        description: body.description || null,
+        componentType: body.componentType || null,
+        nominalThickness: body.nominalThickness || null,
+        actualThickness: body.actualThickness || null,
+        previousThickness: body.previousThickness || null,
+        corrosionRate: body.corrosionRate || null,
+        remainingLife: body.remainingLife || null,
+        governing: body.governing || false,
+        notes: body.notes || null,
+        createdAt: new Date().toISOString()
+      }).returning();
+      const fallback = {
+        reportId,
+        componentId: body.componentId,
+        description: body.description || null,
+        componentType: body.componentType || null,
+        nominalThickness: body.nominalThickness || null,
+        actualThickness: body.actualThickness || null,
+        previousThickness: body.previousThickness || null,
+        corrosionRate: body.corrosionRate || null,
+        remainingLife: body.remainingLife || null,
+        governing: body.governing || false,
+        notes: body.notes || null
+      };
+      res.json({ success:true, data: inserted[0] || fallback });
+    } catch (e:any) { res.status(500).json({ success:false, message:e.message }); }
+  });
+  app.patch('/api/reports/:reportId/components/:id', async (req, res) => {
+    const id = parseId(req.params.id);
+    if (!id) return res.status(400).json({ success:false, message:'Invalid id'});
+    const patch = { ...req.body };
+    await db.update(reportComponents).set(patch).where(eq(reportComponents.id, id));
+    res.json({ success:true });
+  });
+  app.delete('/api/reports/:reportId/components/:id', async (req,res)=>{
+    const id = parseId(req.params.id); if(!id) return res.status(400).json({ success:false, message:'Invalid id'});
+    await db.delete(reportComponents).where(eq(reportComponents.id, id));
+    res.json({ success:true });
+  });
+
+  // Nozzles
+  app.get('/api/reports/:reportId/nozzles', async (req,res)=>{
+    const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+    const rows = await db.select().from(reportNozzles).where(eq(reportNozzles.reportId, reportId));
+    res.json({ success:true, data: rows });
+  });
+  app.post('/api/reports/:reportId/nozzles', validate(nozzleSchema), async (req,res)=>{
+    try {
+      const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+  const b = req.body;
+      const inserted = await db.insert(reportNozzles).values({
+        reportId,
+        nozzleTag: b.nozzleTag,
+        size: b.size || null,
+        service: b.service || null,
+        elevation: b.elevation || null,
+        orientation: b.orientation || null,
+        nominalThickness: b.nominalThickness || null,
+        actualThickness: b.actualThickness || null,
+        previousThickness: b.previousThickness || null,
+        corrosionRate: b.corrosionRate || null,
+        remainingLife: b.remainingLife || null,
+        tminPractical: b.tminPractical || null,
+        tminUser: b.tminUser || null,
+        status: b.status || null,
+        notes: b.notes || null,
+        createdAt: new Date().toISOString()
+      }).returning();
+      const fallback = {
+        reportId,
+        nozzleTag: b.nozzleTag,
+        size: b.size || null,
+        service: b.service || null,
+        elevation: b.elevation || null,
+        orientation: b.orientation || null,
+        nominalThickness: b.nominalThickness || null,
+        actualThickness: b.actualThickness || null,
+        previousThickness: b.previousThickness || null,
+        corrosionRate: b.corrosionRate || null,
+        remainingLife: b.remainingLife || null,
+        tminPractical: b.tminPractical || null,
+        tminUser: b.tminUser || null,
+        status: b.status || null,
+        notes: b.notes || null
+      };
+      res.json({ success:true, data: inserted[0] || fallback });
+    } catch(e:any){ res.status(500).json({ success:false, message:e.message }); }
+  });
+  app.patch('/api/reports/:reportId/nozzles/:id', async (req,res)=>{
+    const id = parseId(req.params.id); if(!id) return res.status(400).json({ success:false, message:'Invalid id'});
+    await db.update(reportNozzles).set({ ...req.body }).where(eq(reportNozzles.id, id));
+    res.json({ success:true });
+  });
+  app.delete('/api/reports/:reportId/nozzles/:id', async (req,res)=>{
+    const id = parseId(req.params.id); if(!id) return res.status(400).json({ success:false, message:'Invalid id'});
+    await db.delete(reportNozzles).where(eq(reportNozzles.id, id));
+    res.json({ success:true });
+  });
+
+  // CML Points
+  app.get('/api/reports/:reportId/cml-points', async (req,res)=>{
+   
+
+    const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+    const { parentType, parentId } = req.query as any;
+    let rowsQuery = db.select().from(cmlPoints).where(eq(cmlPoints.reportId, reportId));
+    if (parentType && parentId) {
+      // Filtering will be applied in memory due to drizzle chain simplicity here
+      const rows = await rowsQuery;
+  return res.json({ success:true, data: rows.filter((r: any) => r.parentType === parentType && r.parentId === Number(parentId)) });
+    }
+    const rows = await rowsQuery;
+    res.json({ success:true, data: rows });
+  });
+  app.post('/api/reports/:reportId/cml-points', validate(cmlPointSchema), async (req,res)=>{
+    try {
+      const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+  const b = req.body;
+      const inserted = await db.insert(cmlPoints).values({
+        reportId,
+        parentType: b.parentType,
+        parentId: b.parentId,
+        cmlNumber: b.cmlNumber,
+        point1: b.point1 || null,
+        point2: b.point2 || null,
+        point3: b.point3 || null,
+        point4: b.point4 || null,
+        point5: b.point5 || null,
+        point6: b.point6 || null,
+        governingPoint: b.governingPoint || null,
+        notes: b.notes || null,
+        createdAt: new Date().toISOString()
+      }).returning();
+      res.json({ success:true, data: inserted[0] });
+    } catch(e:any){ res.status(500).json({ success:false, message:e.message }); }
+  });
+  app.put('/api/reports/:reportId/cml-points/bulk', validate(cmlBulkSchema), async (req,res)=>{
+    try {
+      const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+  const { parentType, parentId, points } = req.body;
+      // Delete existing for parent
+      const all = await db.select().from(cmlPoints).where(eq(cmlPoints.reportId, reportId));
+  const toDelete = all.filter((r: any) => r.parentType === parentType && r.parentId === Number(parentId)).map((r: any) => r.id);
+      for (const id of toDelete) {
+        await db.delete(cmlPoints).where(eq(cmlPoints.id, id));
+      }
+      // Insert new
+      const inserted: any[] = [];
+      for (const p of points) {
+        const ins = await db.insert(cmlPoints).values({
+          reportId,
+          parentType,
+            parentId: Number(parentId),
+          cmlNumber: p.cmlNumber,
+          point1: p.readings?.[0] || null,
+          point2: p.readings?.[1] || null,
+          point3: p.readings?.[2] || null,
+          point4: p.readings?.[3] || null,
+          point5: p.readings?.[4] || null,
+          point6: p.readings?.[5] || null,
+          governingPoint: p.governingPoint || null,
+          notes: p.notes || null,
+          createdAt: new Date().toISOString()
+        }).returning();
+        inserted.push(ins[0]);
+      }
+      res.json({ success:true, data: inserted });
+    } catch(e:any){ res.status(500).json({ success:false, message:e.message }); }
+  });
+  app.delete('/api/reports/:reportId/cml-points/:id', async (req,res)=>{
+    const id = parseId(req.params.id); if(!id) return res.status(400).json({ success:false, message:'Invalid id'});
+    await db.delete(cmlPoints).where(eq(cmlPoints.id, id));
+    res.json({ success:true });
+  });
+
+  // Shell Courses
+  app.get('/api/reports/:reportId/shell-courses', async (req,res)=>{
+    const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+    const rows = await db.select().from(reportShellCourses).where(eq(reportShellCourses.reportId, reportId));
+    res.json({ success:true, data: rows });
+  });
+  app.put('/api/reports/:reportId/shell-courses', validate(shellCoursesPutSchema), async (req,res)=>{
+    try {
+      const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+  const { courses } = req.body;
+      // Simple strategy: delete existing then insert
+      const existing = await db.select().from(reportShellCourses).where(eq(reportShellCourses.reportId, reportId));
+      for (const r of existing) await db.delete(reportShellCourses).where(eq(reportShellCourses.id, r.id));
+      const inserted: any[] = [];
+      for (const c of courses) {
+        const ins = await db.insert(reportShellCourses).values({
+          reportId,
+          courseNumber: c.courseNumber,
+          courseHeight: c.courseHeight || null,
+          nominalThickness: c.nominalThickness || null,
+          actualThickness: c.actualThickness || null,
+          previousThickness: c.previousThickness || null,
+          corrosionRate: c.corrosionRate || null,
+          remainingLife: c.remainingLife || null,
+          jointEfficiency: c.jointEfficiency || null,
+          stress: c.stress || null,
+          altStress: c.altStress || null,
+          tminCalc: c.tminCalc || null,
+          tminAlt: c.tminAlt || null,
+          fillHeight: c.fillHeight || null,
+          governing: c.governing || false,
+          notes: c.notes || null,
+          createdAt: new Date().toISOString()
+        }).returning();
+        inserted.push(ins[0]);
+      }
+      res.json({ success:true, data: inserted });
+    } catch(e:any){ res.status(500).json({ success:false, message:e.message }); }
+  });
+  app.patch('/api/reports/:reportId/shell-courses/:id', async (req,res)=>{
+    const id = parseId(req.params.id); if(!id) return res.status(400).json({ success:false, message:'Invalid id'});
+    await db.update(reportShellCourses).set({ ...req.body }).where(eq(reportShellCourses.id, id));
+    res.json({ success:true });
+  });
+  app.delete('/api/reports/:reportId/shell-courses/:id', async (req,res)=>{
+    const id = parseId(req.params.id); if(!id) return res.status(400).json({ success:false, message:'Invalid id'});
+    await db.delete(reportShellCourses).where(eq(reportShellCourses.id, id));
+    res.json({ success:true });
+  });
+
+  // Appendices
+  app.get('/api/reports/:reportId/appendices', async (req,res)=>{
+    const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+    const rows = await db.select().from(reportAppendices).where(eq(reportAppendices.reportId, reportId));
+    res.json({ success:true, data: rows });
+  });
+  app.get('/api/reports/:reportId/appendices/:code', async (req,res)=>{
+    const reportId = parseId(req.params.reportId); const code = req.params.code;
+    if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+    const rows = await db.select().from(reportAppendices).where(eq(reportAppendices.reportId, reportId));
+  const appendix = rows.find((r: any) => r.appendixCode === code.toUpperCase());
+    if(!appendix) return res.status(404).json({ success:false, message:'Not found'});
+    res.json({ success:true, data: appendix });
+  });
+  app.put('/api/reports/:reportId/appendices/:code', validate(appendixSchema), async (req,res)=>{
+    const reportId = parseId(req.params.reportId); const code = req.params.code?.toUpperCase();
+    if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+    const existing = await db.select().from(reportAppendices).where(eq(reportAppendices.reportId, reportId));
+  let target = existing.find((r: any) => r.appendixCode === code);
+    if (!target) {
+      const inserted = await db.insert(reportAppendices).values({
+        reportId,
+        appendixCode: code,
+        subject: req.body.subject || null,
+        defaultText: req.body.defaultText || null,
+        userText: req.body.userText || null,
+        applicable: req.body.applicable ?? true,
+        orderIndex: req.body.orderIndex ?? 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }).returning();
+      target = inserted[0];
+    } else {
+      await db.update(reportAppendices).set({
+        subject: req.body.subject ?? target.subject,
+        userText: req.body.userText ?? target.userText,
+        applicable: req.body.applicable ?? target.applicable,
+        orderIndex: req.body.orderIndex ?? target.orderIndex,
+        updatedAt: new Date().toISOString()
+      }).where(eq(reportAppendices.id, target.id));
+      const refreshed = await db.select().from(reportAppendices).where(eq(reportAppendices.id, target.id));
+      target = refreshed[0];
+    }
+    res.json({ success:true, data: target });
+  });
+
+  // Writeup
+  app.get('/api/reports/:reportId/writeup', async (req,res)=>{
+    const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+    const rows = await db.select().from(reportWriteup).where(eq(reportWriteup.reportId, reportId));
+    res.json({ success:true, data: rows[0] || null });
+  });
+  app.put('/api/reports/:reportId/writeup', validate(writeupPutSchema), async (req,res)=>{
+    const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+  const data = req.body;
+    const existing = await db.select().from(reportWriteup).where(eq(reportWriteup.reportId, reportId));
+    if (!existing.length) {
+      const ins = await db.insert(reportWriteup).values({
+        reportId,
+        executiveSummary: data.executiveSummary || null,
+        utResultsSummary: data.utResultsSummary || null,
+        recommendationsSummary: data.recommendationsSummary || null,
+        nextInternalYears: data.nextInternalYears || null,
+        nextExternalYears: data.nextExternalYears || null,
+        governingComponent: data.governingComponent || null,
+        frozenNarrative: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }).returning();
+      return res.json({ success:true, data: ins[0] });
+    }
+    const row = existing[0];
+    await db.update(reportWriteup).set({
+      executiveSummary: data.executiveSummary ?? row.executiveSummary,
+      utResultsSummary: data.utResultsSummary ?? row.utResultsSummary,
+      recommendationsSummary: data.recommendationsSummary ?? row.recommendationsSummary,
+      nextInternalYears: data.nextInternalYears ?? row.nextInternalYears,
+      nextExternalYears: data.nextExternalYears ?? row.nextExternalYears,
+      governingComponent: data.governingComponent ?? row.governingComponent,
+      updatedAt: new Date().toISOString()
+    }).where(eq(reportWriteup.id, row.id));
+    const refreshed = await db.select().from(reportWriteup).where(eq(reportWriteup.id, row.id));
+    res.json({ success:true, data: refreshed[0] });
+  });
+  app.post('/api/reports/:reportId/writeup/freeze-narrative', async (req,res)=>{
+    const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+    const existing = await db.select().from(reportWriteup).where(eq(reportWriteup.reportId, reportId));
+    if (!existing.length) return res.status(404).json({ success:false, message:'Writeup not initialized'});
+    await db.update(reportWriteup).set({ frozenNarrative: true, updatedAt: new Date().toISOString() }).where(eq(reportWriteup.id, existing[0].id));
+    res.json({ success:true });
+  });
+
+  // Tmin Overrides
+  app.get('/api/reports/:reportId/tmin-overrides', async (req,res)=>{
+    const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+    const rows = await db.select().from(reportPracticalTminOverrides).where(eq(reportPracticalTminOverrides.reportId, reportId));
+    res.json({ success:true, data: rows });
+  });
+  app.post('/api/reports/:reportId/tmin-overrides', validate(tminOverrideSchema), async (req,res)=>{
+    const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+  const b = req.body;
+    const ins = await db.insert(reportPracticalTminOverrides).values({
+      reportId,
+      referenceType: b.referenceType,
+      referenceId: b.referenceId,
+      defaultTmin: b.defaultTmin || null,
+      overrideTmin: b.overrideTmin || null,
+      reason: b.reason || null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }).returning();
+    res.json({ success:true, data: ins[0] });
+  });
+  app.patch('/api/reports/:reportId/tmin-overrides/:id', async (req,res)=>{
+    const id = parseId(req.params.id); if(!id) return res.status(400).json({ success:false, message:'Invalid id'});
+    await db.update(reportPracticalTminOverrides).set({ ...req.body, updatedAt: new Date().toISOString() }).where(eq(reportPracticalTminOverrides.id, id));
+    res.json({ success:true });
+  });
+  app.delete('/api/reports/:reportId/tmin-overrides/:id', async (req,res)=>{
+    const id = parseId(req.params.id); if(!id) return res.status(400).json({ success:false, message:'Invalid id'});
+    await db.delete(reportPracticalTminOverrides).where(eq(reportPracticalTminOverrides.id, id));
+    res.json({ success:true });
+  });
+
+  // Status aggregator
+  app.get('/api/reports/:reportId/status', async (req,res)=>{
+    const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
+    const [components, nozzles, shell, appendices, writeupRow, tmin] = await Promise.all([
+      db.select().from(reportComponents).where(eq(reportComponents.reportId, reportId)),
+      db.select().from(reportNozzles).where(eq(reportNozzles.reportId, reportId)),
+      db.select().from(reportShellCourses).where(eq(reportShellCourses.reportId, reportId)),
+      db.select().from(reportAppendices).where(eq(reportAppendices.reportId, reportId)),
+      db.select().from(reportWriteup).where(eq(reportWriteup.reportId, reportId)),
+      db.select().from(reportPracticalTminOverrides).where(eq(reportPracticalTminOverrides.reportId, reportId))
+    ]);
+
+    const sectionStatus = (arr: any[], min=1) => arr.length >= min ? 'in_progress' : 'empty';
+
+    const status = {
+      components: sectionStatus(components),
+      nozzles: sectionStatus(nozzles),
+      shell: sectionStatus(shell),
+      appendices: sectionStatus(appendices),
+      writeup: writeupRow.length ? 'in_progress' : 'empty',
+      tminOverrides: tmin.length ? 'in_progress' : 'empty'
+    };
+    res.json({ success:true, data: status });
+  });
+
+  // Ensure the function ends by creating and returning the HTTP server.
+  // (Search for existing createServer usage to avoid duplication.)
   const httpServer = createServer(app);
   return httpServer;
 }

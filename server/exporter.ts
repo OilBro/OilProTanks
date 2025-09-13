@@ -1,8 +1,8 @@
 import * as XLSX from "xlsx";
 import archiver from "archiver";
 import { PassThrough } from "stream";
-import { storage } from "./storage";
-import { generateInspectionTemplate } from "./template-generator";
+import { storage } from "./storage.ts";
+import { generateInspectionTemplate } from "./template-generator.ts";
 import type { InspectionReport, ThicknessMeasurement, InspectionChecklist, AppurtenanceInspection, RepairRecommendation, VentingSystemInspection, ReportAttachment } from "@shared/schema";
 
 // ------------------------------

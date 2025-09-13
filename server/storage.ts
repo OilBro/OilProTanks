@@ -1,8 +1,8 @@
-import { 
-  users, 
-  inspectionReports, 
-  thicknessMeasurements, 
-  inspectionChecklists, 
+import {
+  users,
+  inspectionReports,
+  thicknessMeasurements,
+  inspectionChecklists,
   reportTemplates,
   appurtenanceInspections,
   reportAttachments,
@@ -13,7 +13,7 @@ import {
   edgeSettlements,
   aiConversations,
   aiGuidanceTemplates,
-  type User, 
+  type User,
   type InsertUser,
   type InspectionReport,
   type InsertInspectionReport,
@@ -41,8 +41,16 @@ import {
   type InsertAiConversation,
   type AiGuidanceTemplate,
   type InsertAiGuidanceTemplate
-} from "@shared/schema";
-import { db } from "./db";
+} from "../shared/schema.ts";
+// Lazy db import to avoid requiring DATABASE_URL for MemStorage test runs
+let db: any = null;
+async function ensureDb() {
+  if (!db) {
+    const mod = await import('./db.ts');
+    db = mod.db;
+  }
+  return db;
+}
 import { eq, and } from "drizzle-orm";
 
 export interface IStorage {
@@ -184,6 +192,20 @@ export class MemStorage implements IStorage {
     this.initializeAiGuidance();
   }
 
+  // --- AI Assistant stubs ---
+  async getAiGuidanceTemplates(_filters: { section?: string; category?: string }) {
+    return [];
+  }
+  async getAiConversation(_reportId: number, _sessionId: string) {
+    return undefined;
+  }
+  async saveAiConversation(conv: InsertAiConversation) {
+    return { id: 0, reportId: conv.reportId || null, sessionId: conv.sessionId, messages: conv.messages || '[]', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as any;
+  }
+  async processAiChat(params: { message: string; reportId?: number; sessionId: string; context?: any; conversationHistory?: any[] }) {
+    return { content: `AI feature unavailable. Echo: ${params.message}` };
+  }
+
   private initializeTemplates() {
     const now = new Date().toISOString();
     
@@ -295,17 +317,55 @@ export class MemStorage implements IStorage {
   async createInspectionReport(report: InsertInspectionReport): Promise<InspectionReport> {
     const id = this.currentReportId++;
     const now = new Date().toISOString();
-    const newReport: InspectionReport = { 
-      ...report,
-      service: report.service || null,  // FIX: Explicitly include service field
-      diameter: report.diameter || null,
-      height: report.height || null,
-      originalThickness: report.originalThickness || null,
-      yearsSinceLastInspection: report.yearsSinceLastInspection || null,
-      status: report.status || null,
-      id, 
-      createdAt: now, 
-      updatedAt: now 
+    // Enumerate every column defined in inspectionReports to satisfy the InspectionReport type.
+    const newReport: InspectionReport = {
+      id,
+      reportNumber: (report as any).reportNumber ?? null,
+      tankId: (report as any).tankId ?? null,
+      service: report.service ?? null,
+      diameter: report.diameter ?? null,
+      height: report.height ?? null,
+      inspector: (report as any).inspector ?? null,
+      inspectionDate: (report as any).inspectionDate ?? null,
+      originalThickness: report.originalThickness ?? null,
+      yearsSinceLastInspection: report.yearsSinceLastInspection ?? null,
+      status: report.status ?? null,
+      createdAt: now,
+      updatedAt: now,
+      customer: (report as any).customer ?? null,
+      location: (report as any).location ?? null,
+      inspectionScope: (report as any).inspectionScope ?? null,
+      reviewer: (report as any).reviewer ?? null,
+      specificGravity: (report as any).specificGravity ?? null,
+      yearBuilt: (report as any).yearBuilt ?? null,
+      manufacturer: (report as any).manufacturer ?? null,
+      constructionStandard: (report as any).constructionStandard ?? null,
+      shellMaterial: (report as any).shellMaterial ?? null,
+      foundationType: (report as any).foundationType ?? null,
+      roofType: (report as any).roofType ?? null,
+      capacity: (report as any).capacity ?? null,
+      capacityUnit: (report as any).capacityUnit ?? null,
+      product: (report as any).product ?? null,
+      facilityName: (report as any).facilityName ?? null,
+      tankAge: (report as any).tankAge ?? null,
+      designCode: (report as any).designCode ?? null,
+      lastInternalInspection: (report as any).lastInternalInspection ?? null,
+      nextInternalInspection: (report as any).nextInternalInspection ?? null,
+      nextExternalInspection: (report as any).nextExternalInspection ?? null,
+      diameterUnit: (report as any).diameterUnit ?? null,
+      heightUnit: (report as any).heightUnit ?? null,
+      coatingCondition: (report as any).coatingCondition ?? null,
+      foundationSettlement: (report as any).foundationSettlement ?? null,
+      foundationCracking: (report as any).foundationCracking ?? null,
+      foundationSealing: (report as any).foundationSealing ?? null,
+      maxSettlement: (report as any).maxSettlement ?? null,
+      settlementLocation: (report as any).settlementLocation ?? null,
+      settlementCompliance: (report as any).settlementCompliance ?? null,
+      surveyMethod: (report as any).surveyMethod ?? null,
+      inspectorCertification: (report as any).inspectorCertification ?? null,
+      inspectorExperience: (report as any).inspectorExperience ?? null,
+      findings: (report as any).findings ?? null,
+      recommendations: (report as any).recommendations ?? null,
     };
     this.inspectionReports.set(id, newReport);
     return newReport;
@@ -632,17 +692,20 @@ export class MemStorage implements IStorage {
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+    const dbi = await ensureDb();
+    const [user] = await dbi.select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+    const dbi = await ensureDb();
+    const [user] = await dbi.select().from(users).where(eq(users.username, username));
     return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
+    const dbi = await ensureDb();
+    const [user] = await dbi
       .insert(users)
       .values(insertUser)
       .returning();
@@ -650,17 +713,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getInspectionReports(): Promise<InspectionReport[]> {
-    return await db.select().from(inspectionReports).orderBy(inspectionReports.updatedAt);
+    const dbi = await ensureDb();
+    return await dbi.select().from(inspectionReports).orderBy(inspectionReports.updatedAt);
   }
 
   async getInspectionReport(id: number): Promise<InspectionReport | undefined> {
-    const [report] = await db.select().from(inspectionReports).where(eq(inspectionReports.id, id));
+    const dbi = await ensureDb();
+    const [report] = await dbi.select().from(inspectionReports).where(eq(inspectionReports.id, id));
     return report || undefined;
   }
 
   async createInspectionReport(report: InsertInspectionReport): Promise<InspectionReport> {
     const now = new Date().toISOString();
-    const [newReport] = await db
+    const dbi = await ensureDb();
+    const [newReport] = await dbi
       .insert(inspectionReports)
       .values({
         ...report,
@@ -672,7 +738,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateInspectionReport(id: number, report: Partial<InsertInspectionReport>): Promise<InspectionReport> {
-    const [updated] = await db
+    const dbi = await ensureDb();
+    const [updated] = await dbi
       .update(inspectionReports)
       .set({
         ...report,
@@ -687,17 +754,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteInspectionReport(id: number): Promise<boolean> {
-    const result = await db.delete(inspectionReports).where(eq(inspectionReports.id, id));
+    const dbi = await ensureDb();
+    const result = await dbi.delete(inspectionReports).where(eq(inspectionReports.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 
   async getThicknessMeasurements(reportId: number): Promise<ThicknessMeasurement[]> {
-    return await db.select().from(thicknessMeasurements).where(eq(thicknessMeasurements.reportId, reportId));
+    const dbi = await ensureDb();
+    return await dbi.select().from(thicknessMeasurements).where(eq(thicknessMeasurements.reportId, reportId));
   }
 
   async createThicknessMeasurement(measurement: InsertThicknessMeasurement): Promise<ThicknessMeasurement> {
     const now = new Date().toISOString();
-    const [newMeasurement] = await db
+    const dbi = await ensureDb();
+    const [newMeasurement] = await dbi
       .insert(thicknessMeasurements)
       .values({
         ...measurement,
@@ -708,7 +778,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateThicknessMeasurement(id: number, measurement: Partial<InsertThicknessMeasurement>): Promise<ThicknessMeasurement> {
-    const [updated] = await db
+    const dbi = await ensureDb();
+    const [updated] = await dbi
       .update(thicknessMeasurements)
       .set(measurement)
       .where(eq(thicknessMeasurements.id, id))
@@ -720,16 +791,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteThicknessMeasurement(id: number): Promise<boolean> {
-    const result = await db.delete(thicknessMeasurements).where(eq(thicknessMeasurements.id, id));
+    const dbi = await ensureDb();
+    const result = await dbi.delete(thicknessMeasurements).where(eq(thicknessMeasurements.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 
   async getInspectionChecklists(reportId: number): Promise<InspectionChecklist[]> {
-    return await db.select().from(inspectionChecklists).where(eq(inspectionChecklists.reportId, reportId));
+    const dbi = await ensureDb();
+    return await dbi.select().from(inspectionChecklists).where(eq(inspectionChecklists.reportId, reportId));
   }
 
   async createInspectionChecklist(checklist: InsertInspectionChecklist): Promise<InspectionChecklist> {
-    const [newChecklist] = await db
+    const dbi = await ensureDb();
+    const [newChecklist] = await dbi
       .insert(inspectionChecklists)
       .values(checklist)
       .returning();
@@ -737,7 +811,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateInspectionChecklist(id: number, checklist: Partial<InsertInspectionChecklist>): Promise<InspectionChecklist> {
-    const [updated] = await db
+    const dbi = await ensureDb();
+    const [updated] = await dbi
       .update(inspectionChecklists)
       .set(checklist)
       .where(eq(inspectionChecklists.id, id))
@@ -749,17 +824,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getReportTemplates(): Promise<ReportTemplate[]> {
-    return await db.select().from(reportTemplates);
+    const dbi = await ensureDb();
+    return await dbi.select().from(reportTemplates);
   }
 
   async getReportTemplate(id: number): Promise<ReportTemplate | undefined> {
-    const [template] = await db.select().from(reportTemplates).where(eq(reportTemplates.id, id));
+    const dbi = await ensureDb();
+    const [template] = await dbi.select().from(reportTemplates).where(eq(reportTemplates.id, id));
     return template || undefined;
   }
 
   async createReportTemplate(template: InsertReportTemplate): Promise<ReportTemplate> {
     const now = new Date().toISOString();
-    const [newTemplate] = await db
+    const dbi = await ensureDb();
+    const [newTemplate] = await dbi
       .insert(reportTemplates)
       .values({
         ...template,
@@ -771,11 +849,13 @@ export class DatabaseStorage implements IStorage {
 
   // Appurtenance Inspections
   async getAppurtenanceInspections(reportId: number): Promise<AppurtenanceInspection[]> {
-    return await db.select().from(appurtenanceInspections).where(eq(appurtenanceInspections.reportId, reportId));
+    const dbi = await ensureDb();
+    return await dbi.select().from(appurtenanceInspections).where(eq(appurtenanceInspections.reportId, reportId));
   }
 
   async createAppurtenanceInspection(inspection: InsertAppurtenanceInspection): Promise<AppurtenanceInspection> {
-    const [newInspection] = await db
+    const dbi = await ensureDb();
+    const [newInspection] = await dbi
       .insert(appurtenanceInspections)
       .values(inspection)
       .returning();
@@ -784,11 +864,13 @@ export class DatabaseStorage implements IStorage {
 
   // Report Attachments
   async getReportAttachments(reportId: number): Promise<ReportAttachment[]> {
-    return await db.select().from(reportAttachments).where(eq(reportAttachments.reportId, reportId));
+    const dbi = await ensureDb();
+    return await dbi.select().from(reportAttachments).where(eq(reportAttachments.reportId, reportId));
   }
 
   async createReportAttachment(attachment: InsertReportAttachment): Promise<ReportAttachment> {
-    const [newAttachment] = await db
+    const dbi = await ensureDb();
+    const [newAttachment] = await dbi
       .insert(reportAttachments)
       .values(attachment)
       .returning();
@@ -797,11 +879,13 @@ export class DatabaseStorage implements IStorage {
 
   // Repair Recommendations
   async getRepairRecommendations(reportId: number): Promise<RepairRecommendation[]> {
-    return await db.select().from(repairRecommendations).where(eq(repairRecommendations.reportId, reportId));
+    const dbi = await ensureDb();
+    return await dbi.select().from(repairRecommendations).where(eq(repairRecommendations.reportId, reportId));
   }
 
   async createRepairRecommendation(recommendation: InsertRepairRecommendation): Promise<RepairRecommendation> {
-    const [newRecommendation] = await db
+    const dbi = await ensureDb();
+    const [newRecommendation] = await dbi
       .insert(repairRecommendations)
       .values(recommendation)
       .returning();
@@ -810,11 +894,13 @@ export class DatabaseStorage implements IStorage {
 
   // Venting System Inspections
   async getVentingSystemInspections(reportId: number): Promise<VentingSystemInspection[]> {
-    return await db.select().from(ventingSystemInspections).where(eq(ventingSystemInspections.reportId, reportId));
+    const dbi = await ensureDb();
+    return await dbi.select().from(ventingSystemInspections).where(eq(ventingSystemInspections.reportId, reportId));
   }
 
   async createVentingSystemInspection(inspection: InsertVentingSystemInspection): Promise<VentingSystemInspection> {
-    const [newInspection] = await db
+    const dbi = await ensureDb();
+    const [newInspection] = await dbi
       .insert(ventingSystemInspections)
       .values(inspection)
       .returning();
@@ -823,17 +909,20 @@ export class DatabaseStorage implements IStorage {
 
   // Advanced Settlement Surveys
   async getAdvancedSettlementSurveys(reportId: number): Promise<AdvancedSettlementSurvey[]> {
-    return await db.select().from(advancedSettlementSurveys).where(eq(advancedSettlementSurveys.reportId, reportId));
+    const dbi = await ensureDb();
+    return await dbi.select().from(advancedSettlementSurveys).where(eq(advancedSettlementSurveys.reportId, reportId));
   }
 
   async getAdvancedSettlementSurvey(id: number): Promise<AdvancedSettlementSurvey | undefined> {
-    const [survey] = await db.select().from(advancedSettlementSurveys).where(eq(advancedSettlementSurveys.id, id));
+    const dbi = await ensureDb();
+    const [survey] = await dbi.select().from(advancedSettlementSurveys).where(eq(advancedSettlementSurveys.id, id));
     return survey || undefined;
   }
 
   async createAdvancedSettlementSurvey(survey: InsertAdvancedSettlementSurvey): Promise<AdvancedSettlementSurvey> {
     const now = new Date().toISOString();
-    const [newSurvey] = await db
+    const dbi = await ensureDb();
+    const [newSurvey] = await dbi
       .insert(advancedSettlementSurveys)
       .values({
         ...survey,
@@ -845,7 +934,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAdvancedSettlementSurvey(id: number, survey: Partial<InsertAdvancedSettlementSurvey>): Promise<AdvancedSettlementSurvey> {
-    const [updated] = await db
+    const dbi = await ensureDb();
+    const [updated] = await dbi
       .update(advancedSettlementSurveys)
       .set({
         ...survey,
@@ -858,11 +948,13 @@ export class DatabaseStorage implements IStorage {
 
   // Advanced Settlement Measurements
   async getAdvancedSettlementMeasurements(surveyId: number): Promise<AdvancedSettlementMeasurement[]> {
-    return await db.select().from(advancedSettlementMeasurements).where(eq(advancedSettlementMeasurements.surveyId, surveyId));
+    const dbi = await ensureDb();
+    return await dbi.select().from(advancedSettlementMeasurements).where(eq(advancedSettlementMeasurements.surveyId, surveyId));
   }
 
   async createAdvancedSettlementMeasurement(measurement: InsertAdvancedSettlementMeasurement): Promise<AdvancedSettlementMeasurement> {
-    const [newMeasurement] = await db
+    const dbi = await ensureDb();
+    const [newMeasurement] = await dbi
       .insert(advancedSettlementMeasurements)
       .values({
         ...measurement,
@@ -877,7 +969,8 @@ export class DatabaseStorage implements IStorage {
       ...m,
       createdAt: new Date().toISOString()
     }));
-    const newMeasurements = await db
+    const dbi = await ensureDb();
+    const newMeasurements = await dbi
       .insert(advancedSettlementMeasurements)
       .values(measurementsWithTimestamp)
       .returning();
@@ -885,7 +978,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAdvancedSettlementMeasurement(id: number, data: Partial<InsertAdvancedSettlementMeasurement>): Promise<AdvancedSettlementMeasurement> {
-    const [updated] = await db
+    const dbi = await ensureDb();
+    const [updated] = await dbi
       .update(advancedSettlementMeasurements)
       .set(data)
       .where(eq(advancedSettlementMeasurements.id, id))
@@ -897,16 +991,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteAdvancedSettlementMeasurements(surveyId: number): Promise<void> {
-    await db.delete(advancedSettlementMeasurements).where(eq(advancedSettlementMeasurements.surveyId, surveyId));
+    const dbi = await ensureDb();
+    await dbi.delete(advancedSettlementMeasurements).where(eq(advancedSettlementMeasurements.surveyId, surveyId));
   }
 
   // Edge Settlements
   async getEdgeSettlements(surveyId: number): Promise<EdgeSettlement[]> {
-    return await db.select().from(edgeSettlements).where(eq(edgeSettlements.surveyId, surveyId));
+    const dbi = await ensureDb();
+    return await dbi.select().from(edgeSettlements).where(eq(edgeSettlements.surveyId, surveyId));
   }
 
   async createEdgeSettlement(settlement: InsertEdgeSettlement): Promise<EdgeSettlement> {
-    const [newSettlement] = await db
+    const dbi = await ensureDb();
+    const [newSettlement] = await dbi
       .insert(edgeSettlements)
       .values({
         ...settlement,
@@ -918,7 +1015,8 @@ export class DatabaseStorage implements IStorage {
 
   // AI Assistant Methods
   async getAiGuidanceTemplates(filters: { section?: string; category?: string }): Promise<AiGuidanceTemplate[]> {
-    let query = db.select().from(aiGuidanceTemplates);
+    const dbi = await ensureDb();
+    let query = dbi.select().from(aiGuidanceTemplates);
     
     // Apply filters if provided
     if (filters.section) {
@@ -932,7 +1030,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAiConversation(reportId: number, sessionId: string): Promise<AiConversation | undefined> {
-    const [conversation] = await db
+    const dbi = await ensureDb();
+    const [conversation] = await dbi
       .select()
       .from(aiConversations)
       .where(
@@ -945,7 +1044,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async saveAiConversation(conversation: InsertAiConversation): Promise<AiConversation> {
-    const [saved] = await db
+    const dbi = await ensureDb();
+    const [saved] = await dbi
       .insert(aiConversations)
       .values(conversation as any)
       .returning();

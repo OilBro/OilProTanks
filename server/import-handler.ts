@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
-import { analyzeSpreadsheetWithOpenRouter, processSpreadsheetWithAI } from "./openrouter-analyzer";
-import { analyzePDFWithOpenRouter, processPDFWithAI } from "./pdf-analyzer";
-import { parseLegacyExcelData, convertToSystemFormat } from "./legacy-import-mapper";
+import { analyzeSpreadsheetWithOpenRouter, processSpreadsheetWithAI } from "./openrouter-analyzer.ts";
+import { analyzePDFWithOpenRouter, processPDFWithAI } from "./pdf-analyzer.ts";
+import { parseLegacyExcelData, convertToSystemFormat } from "./legacy-import-mapper.ts";
 
 export async function handleExcelImport(buffer: Buffer, fileName: string) {
   // Check if this is a PDF file
@@ -723,10 +723,37 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
   console.log('Final importedData before return:', JSON.stringify(importedData, null, 2));
   console.log(`Processed ${processedMeasurements.length} thickness measurements`);
 
+  // Ensure all expected sections are present in importedData
+  const expectedSections = [
+    'nde', 'settlement', 'checklistItems', 'appurtenances', 'vents', 'recommendations',
+    'sketches', 'dates', 'findings', 'reportWriteUp', 'executiveSummary', 'repairRecommendations',
+    'thicknessMeasurements', 'owner', 'service', 'inspector', 'inspectionDate', 'diameter', 'height',
+    'originalThickness', 'location', 'lastInspection', 'nextInspectionDate', 'capacity', 'specificGravity', 'yearBuilt'
+  ];
+  for (const section of expectedSections) {
+    if (importedData[section] === undefined) {
+      // Use empty array for plural/collection sections, empty string for text, empty object for others
+      if ([
+        'nde', 'settlement', 'checklistItems', 'appurtenances', 'vents', 'recommendations',
+        'sketches', 'dates', 'thicknessMeasurements'
+      ].includes(section)) {
+        importedData[section] = [];
+      } else if ([
+        'findings', 'reportWriteUp', 'executiveSummary', 'repairRecommendations',
+        'owner', 'service', 'inspector', 'inspectionDate', 'diameter', 'height',
+        'originalThickness', 'location', 'lastInspection', 'nextInspectionDate', 'capacity', 'specificGravity', 'yearBuilt'
+      ].includes(section)) {
+        importedData[section] = '';
+      } else {
+        importedData[section] = {};
+      }
+    }
+  }
+  // Also ensure checklistItems and thicknessMeasurements are always arrays
   return {
     importedData,
-    thicknessMeasurements: processedMeasurements,
-    checklistItems,
+    thicknessMeasurements: Array.isArray(processedMeasurements) ? processedMeasurements : [],
+    checklistItems: Array.isArray(checklistItems) ? checklistItems : [],
     aiAnalysis,
     totalRows: data.length,
     preview: data.slice(0, 5)
@@ -922,10 +949,35 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
       console.log('Falling back to basic PDF parsing...');
     }
     
+    // Ensure all expected sections are present in importedData
+    const expectedSections = [
+      'nde', 'settlement', 'checklistItems', 'appurtenances', 'vents', 'recommendations',
+      'sketches', 'dates', 'findings', 'reportWriteUp', 'executiveSummary', 'repairRecommendations',
+      'thicknessMeasurements', 'owner', 'service', 'inspector', 'inspectionDate', 'diameter', 'height',
+      'originalThickness', 'location', 'lastInspection', 'nextInspectionDate', 'capacity', 'specificGravity', 'yearBuilt'
+    ];
+    for (const section of expectedSections) {
+      if (importedData[section] === undefined) {
+        if ([
+          'nde', 'settlement', 'checklistItems', 'appurtenances', 'vents', 'recommendations',
+          'sketches', 'dates', 'thicknessMeasurements'
+        ].includes(section)) {
+          importedData[section] = [];
+        } else if ([
+          'findings', 'reportWriteUp', 'executiveSummary', 'repairRecommendations',
+          'owner', 'service', 'inspector', 'inspectionDate', 'diameter', 'height',
+          'originalThickness', 'location', 'lastInspection', 'nextInspectionDate', 'capacity', 'specificGravity', 'yearBuilt'
+        ].includes(section)) {
+          importedData[section] = '';
+        } else {
+          importedData[section] = {};
+        }
+      }
+    }
     return {
       importedData,
-      thicknessMeasurements,
-      checklistItems,
+      thicknessMeasurements: Array.isArray(thicknessMeasurements) ? thicknessMeasurements : [],
+      checklistItems: Array.isArray(checklistItems) ? checklistItems : [],
       totalRows: totalPages,
       preview,
       aiAnalysis
