@@ -422,10 +422,146 @@ export const insertEdgeSettlementSchema = createInsertSchema(edgeSettlements).om
   createdAt: true,
 });
 
-// Types for advanced settlement
-export type AdvancedSettlementSurvey = typeof advancedSettlementSurveys.$inferSelect;
-export type InsertAdvancedSettlementSurvey = z.infer<typeof insertAdvancedSettlementSurveySchema>;
-export type AdvancedSettlementMeasurement = typeof advancedSettlementMeasurements.$inferSelect;
-export type InsertAdvancedSettlementMeasurement = z.infer<typeof insertAdvancedSettlementMeasurementSchema>;
-export type EdgeSettlement = typeof edgeSettlements.$inferSelect;
-export type InsertEdgeSettlement = z.infer<typeof insertEdgeSettlementSchema>;
+// Report Components (shell courses, plates, structural elements at higher abstraction than individual measurements)
+export const reportComponents = pgTable("report_components", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id"),
+  componentId: text("component_id"), // e.g., SHL-CRS-1, ROOF, FLOOR
+  description: text("description"),
+  componentType: text("component_type"), // shell_course, roof, floor, nozzle_group, foundation
+  nominalThickness: decimal("nominal_thickness", { precision: 10, scale: 3 }),
+  actualThickness: decimal("actual_thickness", { precision: 10, scale: 3 }),
+  previousThickness: decimal("previous_thickness", { precision: 10, scale: 3 }),
+  corrosionRate: decimal("corrosion_rate", { precision: 10, scale: 4 }),
+  remainingLife: decimal("remaining_life", { precision: 10, scale: 2 }),
+  governing: boolean("governing"),
+  notes: text("notes"),
+  createdAt: text("created_at"),
+});
+
+// Report Nozzles (metadata separate from individual thickness points)
+export const reportNozzles = pgTable("report_nozzles", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id"),
+  nozzleTag: text("nozzle_tag"), // N1, N2, MW24 etc
+  size: text("size"), // numeric size in inches as string
+  service: text("service"),
+  elevation: text("elevation"),
+  orientation: text("orientation"), // N, S, E, W or degrees
+  nominalThickness: decimal("nominal_thickness", { precision: 10, scale: 3 }),
+  actualThickness: decimal("actual_thickness", { precision: 10, scale: 3 }),
+  previousThickness: decimal("previous_thickness", { precision: 10, scale: 3 }),
+  corrosionRate: decimal("corrosion_rate", { precision: 10, scale: 4 }),
+  remainingLife: decimal("remaining_life", { precision: 10, scale: 2 }),
+  tminPractical: decimal("tmin_practical", { precision: 10, scale: 3 }),
+  tminUser: decimal("tmin_user", { precision: 10, scale: 3 }),
+  status: text("status"), // acceptable, monitor, action_required
+  notes: text("notes"),
+  createdAt: text("created_at"),
+});
+
+// Consolidated thickness points per CML entity (component or nozzle)
+export const cmlPoints = pgTable("cml_points", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id"),
+  parentType: text("parent_type"), // component, nozzle
+  parentId: integer("parent_id"),
+  cmlNumber: integer("cml_number"),
+  point1: decimal("point_1", { precision: 10, scale: 3 }),
+  point2: decimal("point_2", { precision: 10, scale: 3 }),
+  point3: decimal("point_3", { precision: 10, scale: 3 }),
+  point4: decimal("point_4", { precision: 10, scale: 3 }),
+  point5: decimal("point_5", { precision: 10, scale: 3 }),
+  point6: decimal("point_6", { precision: 10, scale: 3 }),
+  governingPoint: decimal("governing_point", { precision: 10, scale: 3 }),
+  notes: text("notes"),
+  createdAt: text("created_at"),
+});
+
+// Shell Course calculation rows (structured for hoop stress & remaining life calcs)
+export const reportShellCourses = pgTable("report_shell_courses", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id"),
+  courseNumber: integer("course_number"),
+  courseHeight: decimal("course_height", { precision: 10, scale: 3 }), // feet
+  nominalThickness: decimal("nominal_thickness", { precision: 10, scale: 3 }),
+  actualThickness: decimal("actual_thickness", { precision: 10, scale: 3 }),
+  previousThickness: decimal("previous_thickness", { precision: 10, scale: 3 }),
+  corrosionRate: decimal("corrosion_rate", { precision: 10, scale: 4 }),
+  remainingLife: decimal("remaining_life", { precision: 10, scale: 2 }),
+  jointEfficiency: decimal("joint_efficiency", { precision: 5, scale: 3 }),
+  stress: decimal("stress", { precision: 10, scale: 0 }), // psi
+  altStress: decimal("alt_stress", { precision: 10, scale: 0 }),
+  tminCalc: decimal("tmin_calc", { precision: 10, scale: 3 }),
+  tminAlt: decimal("tmin_alt", { precision: 10, scale: 3 }),
+  fillHeight: decimal("fill_height", { precision: 10, scale: 3 }),
+  governing: boolean("governing"),
+  notes: text("notes"),
+  createdAt: text("created_at"),
+});
+
+// Appendices (A-H) storage with default + user modified text
+export const reportAppendices = pgTable("report_appendices", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id"),
+  appendixCode: text("appendix_code"), // A, B, C ... H
+  subject: text("subject"),
+  defaultText: text("default_text"),
+  userText: text("user_text"),
+  applicable: boolean("applicable"),
+  orderIndex: integer("order_index"),
+  createdAt: text("created_at"),
+  updatedAt: text("updated_at"),
+});
+
+// Write-up & executive summary consolidated record
+export const reportWriteup = pgTable("report_writeup", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id"),
+  executiveSummary: text("executive_summary"),
+  utResultsSummary: text("ut_results_summary"),
+  recommendationsSummary: text("recommendations_summary"),
+  nextInternalYears: integer("next_internal_years"),
+  nextExternalYears: integer("next_external_years"),
+  governingComponent: text("governing_component"),
+  frozenNarrative: boolean("frozen_narrative"), // flag once first manual save
+  createdAt: text("created_at"),
+  updatedAt: text("updated_at"),
+});
+
+// Practical tmin overrides per nozzle / component
+export const reportPracticalTminOverrides = pgTable("report_practical_tmin_overrides", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id"),
+  referenceType: text("reference_type"), // nozzle, pipe_nozzle, component
+  referenceId: text("reference_id"), // N6, MW24, SHL-CRS-1
+  defaultTmin: decimal("default_tmin", { precision: 10, scale: 3 }),
+  overrideTmin: decimal("override_tmin", { precision: 10, scale: 3 }),
+  reason: text("reason"),
+  createdAt: text("created_at"),
+  updatedAt: text("updated_at"),
+});
+
+// Insert schemas & types
+export const insertReportComponentSchema = createInsertSchema(reportComponents).omit({ id: true, createdAt: true });
+export const insertReportNozzleSchema = createInsertSchema(reportNozzles).omit({ id: true, createdAt: true });
+export const insertCmlPointSchema = createInsertSchema(cmlPoints).omit({ id: true, createdAt: true });
+export const insertReportShellCourseSchema = createInsertSchema(reportShellCourses).omit({ id: true, createdAt: true });
+export const insertReportAppendixSchema = createInsertSchema(reportAppendices).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertReportWriteupSchema = createInsertSchema(reportWriteup).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertReportPracticalTminOverrideSchema = createInsertSchema(reportPracticalTminOverrides).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type ReportComponent = typeof reportComponents.$inferSelect;
+export type InsertReportComponent = z.infer<typeof insertReportComponentSchema>;
+export type ReportNozzle = typeof reportNozzles.$inferSelect;
+export type InsertReportNozzle = z.infer<typeof insertReportNozzleSchema>;
+export type CmlPoint = typeof cmlPoints.$inferSelect;
+export type InsertCmlPoint = z.infer<typeof insertCmlPointSchema>;
+export type ReportShellCourse = typeof reportShellCourses.$inferSelect;
+export type InsertReportShellCourse = z.infer<typeof insertReportShellCourseSchema>;
+export type ReportAppendix = typeof reportAppendices.$inferSelect;
+export type InsertReportAppendix = z.infer<typeof insertReportAppendixSchema>;
+export type ReportWriteup = typeof reportWriteup.$inferSelect;
+export type InsertReportWriteup = z.infer<typeof insertReportWriteupSchema>;
+export type ReportPracticalTminOverride = typeof reportPracticalTminOverrides.$inferSelect;
+export type InsertReportPracticalTminOverride = z.infer<typeof insertReportPracticalTminOverrideSchema>;
