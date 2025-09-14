@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle, Download } from "lucide-react";
 import { uploadImportFile, runOrphanCleanup } from "@/lib/api";
-import { showAIAnalysisIndicators, showMaintenanceUtilities } from "@/lib/config";
+import { showAIAnalysisIndicators as buildAIFlag, showMaintenanceUtilities as buildMaintFlag } from "@/lib/config";
+import { useFeatureFlags } from "@/hooks/use-feature-flags";
 import { useLocation } from "wouter";
 
 interface ImportResult {
@@ -37,6 +38,7 @@ interface ImportResult {
 }
 
 export default function ImportReports() {
+  const { flags: runtimeFlags } = useFeatureFlags();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [dragActive, setDragActive] = useState(false);
@@ -390,8 +392,20 @@ export default function ImportReports() {
   return (
     <div>
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Import Excel Reports</h2>
-        <p className="text-gray-600">Upload existing Excel inspection reports to convert them to the digital format</p>
+        <div className="flex items-start flex-wrap gap-3">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Import Excel Reports</h2>
+            <p className="text-gray-600">Upload existing Excel inspection reports to convert them to the digital format</p>
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            {(runtimeFlags.aiAnalysisUI || buildAIFlag) && (
+              <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded uppercase tracking-wide">AI ANALYSIS</span>
+            )}
+            {(runtimeFlags.maintenanceUtilsUI || buildMaintFlag) && (
+              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded uppercase tracking-wide">MAINT UTIL</span>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Template Download Section */}
@@ -482,7 +496,7 @@ export default function ImportReports() {
             </div>
 
             {/* AI Analysis Status */}
-            {showAIAnalysisIndicators && importResult.aiAnalysis && (
+            {(runtimeFlags.aiAnalysisUI || buildAIFlag) && importResult.aiAnalysis && (
               <div className={`p-3 rounded-lg mb-4 ${importResult.aiAnalysis.confidence > 0.5 ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
@@ -632,7 +646,7 @@ export default function ImportReports() {
             )}
 
             {/* Maintenance / Cleanup Section (Dev Only) */}
-            {showMaintenanceUtilities && (
+            {(runtimeFlags.maintenanceUtilsUI || buildMaintFlag) && (
             <div className="mt-10 border-t pt-6">
               <h4 className="font-semibold text-gray-800 mb-3">Maintenance Utilities (Developers)</h4>
               <p className="text-sm text-gray-600 mb-4">Run orphan cleanup to detect and optionally remove measurements or checklist rows without a parent report.</p>

@@ -406,8 +406,10 @@ Response 200:
 ```
 
 Notes:
+
 - Flags mirror corresponding `VITE_` environment variables set on the server build environment.
-- Only expose boolean UI toggles (no secrets, tokens, or dynamic config with sensitive values).
+- If the client build-time flag (e.g. `VITE_AI_ANALYSIS_UI`) is `true` but the runtime endpoint returns it as `false`, the UI will still respect the OR (i.e. either enables it). To hard-disable a feature, ensure both build-time and runtime flags are false.
+- Only boolean UI toggles are exposed (no secrets, tokens, or sensitive config values).
 
 ----
 Generated on 2025-09-13.
