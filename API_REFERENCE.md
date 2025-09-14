@@ -91,6 +91,7 @@ Notes:
 
 - Filtering is performed at the database layer for efficiency.
 - If `limit`/`offset` are omitted the full dataset is returned (use carefully as data grows).
+- Performance: The backend includes indexes on `(origin, updated_at DESC)`, `status`, and `updated_at` to optimize common dashboard queries and pagination. If you add new heavy filters, consider adding corresponding indexes.
 
 Aggregated completion/status of report sections.
 Response 200:
