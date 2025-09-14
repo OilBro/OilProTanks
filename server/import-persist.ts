@@ -63,7 +63,8 @@ export async function persistImportedReport(params: {
     const [report] = await tx.insert(inspectionReports).values({
       ...reportInsert,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      origin: 'import'
     }).returning();
 
     // Apply post-create update for professional narrative fields if provided

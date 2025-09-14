@@ -15,6 +15,7 @@ interface InspectionReport {
   service: string | null;
   status: string | null;
   updatedAt: string | null;
+  origin?: string | null;
   findings?: string | null;
   foundationSettlement?: string | null;
   inspectionScope?: string | null;
@@ -105,6 +106,7 @@ export default function DashboardPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report #</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origin</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tank ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
@@ -121,7 +123,7 @@ export default function DashboardPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {reports.length === 0 ? (
-                <tr><td colSpan={13} className="px-6 py-8 text-center text-gray-500">No inspection reports found.</td></tr>
+                <tr><td colSpan={14} className="px-6 py-8 text-center text-gray-500">No inspection reports found.</td></tr>
               ) : (
                 reports.map(report => {
                   const Dot = ({ present }: { present: boolean }) => <span className={`inline-block w-3 h-3 rounded-full ${present ? 'bg-green-500' : 'bg-red-500'}`}/>;
@@ -135,6 +137,11 @@ export default function DashboardPage() {
                   return (
                     <tr key={report.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{report.reportNumber}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        {report.origin && (
+                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium tracking-wide uppercase ${report.origin === 'import' ? 'bg-blue-100 text-blue-700' : report.origin === 'manual' ? 'bg-gray-100 text-gray-700' : 'bg-purple-100 text-purple-700'}`}>{report.origin}</span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{report.tankId}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 capitalize">{report.service}</td>
                       <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(report.status || '')}</td>

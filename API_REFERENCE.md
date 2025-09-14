@@ -76,7 +76,7 @@ Request Body (example minimal):
 { "tankId": "TST-1", "service": "crude", "diameter": "100", "height": "40" }
 ```
 
-Response 201: `{ id: number, reportNumber: string, status: "in_progress", ... }`
+Response 201: `{ id: number, reportNumber: string, status: "in_progress", origin: "manual"|"import"|"template"|null, ... }`
 
 ### GET /api/reports/:reportId/status
 
@@ -377,6 +377,7 @@ All create/replace endpoints above use the `validate(schema)` middleware. On fai
 - Pagination & filtering for large datasets (components, CML points).
 - Consolidate status aggregator schema in docs.
 - Add OpenAPI/Swagger generation based on Zod schemas.
+- Track `origin` on reports to differentiate manual data entry vs. automated imports (implemented: `origin` field now present).
 
 ## Environment Variables (Client Feature Flags)
 

@@ -300,7 +300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Processed data for validation:', processedData);
       
       // Use the storage interface which handles validation
-      const newReport = await storage.createInspectionReport(processedData);
+  const newReport = await storage.createInspectionReport({ ...processedData, origin: reportData.origin || 'manual' });
       console.log(`Report created successfully with ID: ${newReport.id}`);
       
       res.status(201).json(newReport);

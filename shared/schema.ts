@@ -51,6 +51,7 @@ export const inspectionReports = pgTable("inspection_reports", {
   inspectorExperience: text("inspector_experience"),
   findings: text("findings"),
   recommendations: text("recommendations"),
+  origin: text("origin"), // manual, import, template, api
 });
 
 export const thicknessMeasurements = pgTable("thickness_measurements", {
