@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import cors from "cors";
 import { requestLogger, errorHandler } from './middleware';
+import { startImageAnalysisWorker } from './imageAnalysisService';
 
 const app = express();
 
@@ -55,6 +56,11 @@ app.use(requestLogger);
 
 (async () => {
   const server = await registerRoutes(app);
+
+  // Initialize background workers conditionally via feature flags
+  if (process.env.VITE_AI_ANALYSIS_UI === 'true') {
+    startImageAnalysisWorker();
+  }
 
   // Basic 404 handler for unknown API requests only (before error handler)
   app.use('/api', (req: Request, res: Response) => {

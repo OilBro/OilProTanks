@@ -23,6 +23,8 @@ import {
 } from "../shared/schema.ts";
 import { db } from "./db.ts";
 import { eq } from "drizzle-orm";
+import { imageAnalyses } from "../shared/schema.ts";
+import { enqueueImageAnalysis, getLatestAnalysisForAttachment } from './imageAnalysisService.ts';
 import { handleExcelImport } from "./import-handler.ts";
 import { persistImportedReport, cleanupOrphanedReportChildren } from './import-persist.ts';
 import { handleChecklistUpload, standardChecklists } from "./checklist-handler.ts";
@@ -764,6 +766,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(attachments);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch report attachments" });
+    }
+  });
+
+  // Image Analysis Endpoints
+  // Enqueue analysis for an attachment
+  app.post('/api/attachments/:attachmentId/analyze', async (req, res) => {
+    try {
+      if (process.env.VITE_AI_ANALYSIS_UI !== 'true') {
+        return res.status(403).json({ message: 'Image analysis disabled by feature flag' });
+      }
+      const attachmentId = parseInt(req.params.attachmentId);
+      if (isNaN(attachmentId)) return res.status(400).json({ message: 'Invalid attachment id'});
+
+      // Attempt to fetch attachment to derive reportId (best-effort; storage lacks single fetch, so query DB directly)
+      let reportId: number | null = null;
+      try {
+        const raw = await db.select().from(imageAnalyses).where(eq(imageAnalyses.attachmentId, attachmentId));
+        if (raw.length) reportId = raw[0].reportId || null; // fallback if prior analyses exist
+      } catch {}
+
+      const analysis = await enqueueImageAnalysis(attachmentId, reportId);
+      res.json({ success: true, analysisId: analysis.id, status: analysis.status });
+    } catch (e: any) {
+      console.error('Failed to enqueue image analysis', e);
+      res.status(500).json({ message: e.message || 'Failed to enqueue analysis' });
+    }
+  });
+
+  // Get latest analysis summary for an attachment
+  app.get('/api/attachments/:attachmentId/analysis', async (req, res) => {
+    try {
+      const attachmentId = parseInt(req.params.attachmentId);
+      if (isNaN(attachmentId)) return res.status(400).json({ message: 'Invalid attachment id'});
+      const analysis = await getLatestAnalysisForAttachment(attachmentId);
+      if (!analysis) return res.status(404).json({ message: 'No analysis found' });
+      res.json(analysis);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message || 'Failed to fetch analysis' });
     }
   });
 

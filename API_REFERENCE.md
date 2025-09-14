@@ -399,6 +399,81 @@ The frontend (Vite) conditionally exposes feature UI based on `VITE_` prefixed e
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `VITE_AI_ANALYSIS_UI` | (unset/false) | When `true`, shows AI analysis confidence / success banner on the Import Reports page. When absent or not `true`, import proceeds silently without the banner. |
+
+## Image Analysis (AI Vision Scaffold)
+
+These endpoints provide a stubbed/deterministic image analysis pipeline for attachments. They are gated by the `VITE_AI_ANALYSIS_UI` feature flag. The current implementation queues an analysis job and produces mock YOLO‑style labels and bounding boxes for demonstration and UI integration.
+
+### POST /api/attachments/:attachmentId/analyze
+
+Enqueue an image analysis job for a given report attachment. The response returns immediately; processing is asynchronous.
+
+Feature Flag: Requires server env `VITE_AI_ANALYSIS_UI=true` else returns 403.
+
+Response 200 (queued):
+```json
+{ "success": true, "analysisId": 42, "status": "queued" }
+```
+
+Possible Status Values (lifecycle): `queued | processing | completed | failed`
+
+Error Responses:
+```json
+400 { "message": "Invalid attachment id" }
+403 { "message": "Image analysis disabled by feature flag" }
+500 { "message": "Failed to enqueue analysis" }
+```
+
+### GET /api/attachments/:attachmentId/analysis
+
+Fetch the most recent analysis record for an attachment.
+
+Successful Response Example (completed):
+```json
+{
+  "id": 42,
+  "attachmentId": 15,
+  "reportId": 7,
+  "status": "completed",
+  "modelVersion": "mock-yolo-v0",
+  "summary": {
+    "labels": [ { "label": "corrosion", "count": 1 } ],
+    "defects": [ { "label": "corrosion", "count": 1 } ],
+    "processingMs": 250
+  },
+  "startedAt": "2025-09-14T03:20:00.123Z",
+  "completedAt": "2025-09-14T03:20:00.373Z",
+  "createdAt": "2025-09-14T03:19:59.999Z",
+  "updatedAt": "2025-09-14T03:20:00.373Z"
+}
+```
+
+404 if no analysis exists yet.
+
+### Data Model Summary
+
+Tables introduced (migration `0004_add_image_analysis.sql`):
+
+- `image_analyses`: One row per analysis execution attempt.
+  - `status` lifecycle: queued → processing → completed | failed
+  - `summary.labels`: Aggregated label counts
+  - `summary.defects`: Subset of labels considered defects (severity classification TBD)
+  - Timestamps: `started_at`, `completed_at`, plus audit `created_at/updated_at`
+
+- `image_labels`: Individual label detections with confidence & category.
+- `image_regions`: Bounding boxes / polygons for spatial detections (relative coordinates 0-1).
+
+Indexes: attachment lookup, report lookup, status filtering, and FK fan‑out (`analysis_id`) for labels & regions.
+
+### Future Enhancements (Roadmap)
+
+- Enforce foreign keys once attachment and analysis lifecycle finalized.
+- Add pagination to labels/regions retrieval.
+- Support multiple models & ensemble metadata.
+- Introduce severity scoring heuristics and human validation workflow.
+- Add retry / failure handling with exponential backoff.
+- Real YOLO / vision model integration (GPU or external inference service).
+
 | `VITE_MAINTENANCE_UTILS_UI` | (unset/false) | When `true`, exposes maintenance utilities (orphan cleanup) section in the Import Reports page for operational diagnostics. Keep disabled in production unless required. |
 
 Usage:

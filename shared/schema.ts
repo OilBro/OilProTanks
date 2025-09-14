@@ -141,6 +141,48 @@ export const reportAttachments = pgTable("report_attachments", {
   uploadedAt: text("uploaded_at"),
 });
 
+// Image Analysis (AI vision) tables
+export const imageAnalyses = pgTable("image_analyses", {
+  id: serial("id").primaryKey(),
+  attachmentId: integer("attachment_id"), // FK to report_attachments.id (not enforced yet)
+  reportId: integer("report_id"), // denormalized for quick filtering
+  status: text("status"), // queued, processing, completed, failed
+  modelVersion: text("model_version"),
+  summary: jsonb("summary").$type<{
+    labels?: Array<{ label: string; count: number }>;
+    defects?: Array<{ label: string; severity?: string; count: number }>;
+    processingMs?: number;
+  }>(),
+  error: text("error"),
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const imageLabels = pgTable("image_labels", {
+  id: serial("id").primaryKey(),
+  analysisId: integer("analysis_id"), // FK to image_analyses.id (not enforced yet)
+  label: text("label"),
+  confidence: decimal("confidence", { precision: 5, scale: 4 }), // 0-1
+  category: text("category"), // defect, component, metadata
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const imageRegions = pgTable("image_regions", {
+  id: serial("id").primaryKey(),
+  analysisId: integer("analysis_id"),
+  label: text("label"),
+  confidence: decimal("confidence", { precision: 5, scale: 4 }),
+  x: decimal("x", { precision: 10, scale: 4 }), // relative 0-1
+  y: decimal("y", { precision: 10, scale: 4 }),
+  width: decimal("width", { precision: 10, scale: 4 }),
+  height: decimal("height", { precision: 10, scale: 4 }),
+  polygon: jsonb("polygon").$type<Array<{ x: number; y: number }>>(), // optional detailed shape
+  defectSeverity: text("defect_severity"), // info, minor, moderate, major, critical
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Repair recommendations with tracking
 export const repairRecommendations = pgTable("repair_recommendations", {
   id: serial("id").primaryKey(),
@@ -266,6 +308,25 @@ export const insertReportAttachmentSchema = createInsertSchema(reportAttachments
   uploadedAt: true,
 });
 
+// Insert schemas for image analysis
+export const insertImageAnalysisSchema = createInsertSchema(imageAnalyses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  startedAt: true,
+  completedAt: true,
+});
+
+export const insertImageLabelSchema = createInsertSchema(imageLabels).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertImageRegionSchema = createInsertSchema(imageRegions).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertRepairRecommendationSchema = createInsertSchema(repairRecommendations).omit({
   id: true,
   createdAt: true,
@@ -292,6 +353,12 @@ export type InsertAppurtenanceInspection = z.infer<typeof insertAppurtenanceInsp
 export type AppurtenanceInspection = typeof appurtenanceInspections.$inferSelect;
 export type InsertReportAttachment = z.infer<typeof insertReportAttachmentSchema>;
 export type ReportAttachment = typeof reportAttachments.$inferSelect;
+export type ImageAnalysis = typeof imageAnalyses.$inferSelect;
+export type InsertImageAnalysis = z.infer<typeof insertImageAnalysisSchema>;
+export type ImageLabel = typeof imageLabels.$inferSelect;
+export type InsertImageLabel = z.infer<typeof insertImageLabelSchema>;
+export type ImageRegion = typeof imageRegions.$inferSelect;
+export type InsertImageRegion = z.infer<typeof insertImageRegionSchema>;
 export type InsertRepairRecommendation = z.infer<typeof insertRepairRecommendationSchema>;
 export type RepairRecommendation = typeof repairRecommendations.$inferSelect;
 export type InsertVentingSystemInspection = z.infer<typeof insertVentingSystemInspectionSchema>;
