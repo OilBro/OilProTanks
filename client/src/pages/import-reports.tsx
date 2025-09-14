@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle, Download } from "lucide-react";
+import { uploadImportFile, runOrphanCleanup } from "@/lib/api";
 import { useLocation } from "wouter";
 
 interface ImportResult {
@@ -52,55 +53,43 @@ export default function ImportReports() {
     return field !== undefined && typeof field !== 'number';
   };
 
-  const importMutation = useMutation({
+  const importMutation = useMutation<ImportResult, Error, File>({
     mutationFn: async (file: File) => {
-      console.log('Uploading file:', file.name, 'Size:', file.size, 'Type:', file.type);
-      
-      const formData = new FormData();
-      formData.append('excelFile', file);
-      
-      const response = await fetch('/api/reports/import', {
-        method: 'POST',
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        let errorMessage = 'Failed to import Excel file';
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-          console.error('Import error:', errorData);
-        } catch (e) {
-          console.error('Failed to parse error response');
-        }
-        throw new Error(errorMessage);
-      }
-      
-      return response.json();
+      console.log('Uploading file via helper:', file.name);
+      const data = await uploadImportFile(file);
+      // Normalize minimal fields for legacy UI expectations
+      return {
+        success: data.success,
+        reportId: data.reportId,
+        reportNumber: data.reportNumber,
+        measurementsCreated: data.measurementsCreated,
+        checklistCreated: data.checklistCreated,
+        warnings: data.warnings,
+        importedData: data.importedData || {},
+        message: data.success ? 'Import successful' : 'Import processed',
+        thicknessMeasurements: data.thicknessMeasurements || 0,
+        checklistItems: data.checklistItems || 0,
+        totalRows: data.totalRows || 0,
+        preview: data.preview || []
+      } as ImportResult;
     },
     onSuccess: (result: ImportResult) => {
       console.log('=== EXCEL IMPORT SUCCESS ===');
       console.log('Full import result:', result);
       console.log('Result structure:', Object.keys(result));
       
-      // If report was successfully created, navigate to it
+      // The backend now persists atomically; always show summary first with quick view and then allow navigation
+      setImportResult(result as any);
       if (result.success && result.reportId) {
         queryClient.invalidateQueries({ queryKey: ['/api/reports'] });
         toast({
-          title: "Import Successful",
-          description: `Successfully imported report ${result.reportNumber}. Redirecting...`,
+          title: 'Import Successful',
+          description: `Imported report ${result.reportNumber}. Review summary below.`
         });
-        
-        // Navigate to the newly created report
-        setTimeout(() => {
-          setLocation(`/report/${result.reportId}`);
-        }, 1000);
       } else {
-        // Show the import result for review
-        setImportResult(result);
         toast({
-          title: "File Processed",
-          description: `Processed Excel file with ${result.totalRows} rows. Review the data below.`,
+          title: 'File Processed',
+          description: `Processed file with ${result.totalRows} rows.`
         });
       }
     },
@@ -313,10 +302,7 @@ export default function ImportReports() {
     try {
       setCleanupLoading(true);
       setCleanupResult(null);
-      const resp = await fetch(`/api/reports/maintenance/cleanup-orphans?dryRun=${apply ? 'false' : 'true'}`, {
-        method: 'POST'
-      });
-      const data = await resp.json();
+      const data = await runOrphanCleanup(!apply);
       setCleanupResult(data);
       toast({
         title: apply ? 'Cleanup Applied' : 'Dry Run Complete',
@@ -614,19 +600,13 @@ export default function ImportReports() {
               </div>
             )}
 
-            {/* Create Report Button */}
-            <div className="mt-6 flex justify-end space-x-4">
-              <Button variant="outline" onClick={() => setImportResult(null)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={createReport}
-                disabled={createReportMutation.isPending}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {createReportMutation.isPending ? "Creating..." : "Create Report"}
-              </Button>
-            </div>
+            {/* Navigation / View Report */}
+            {importResult.success && importResult.reportId && (
+              <div className="mt-6 flex justify-end space-x-4">
+                <Button variant="outline" onClick={() => setImportResult(null)}>Close</Button>
+                <Button onClick={() => setLocation(`/report/${importResult.reportId}`)} className="bg-green-600 hover:bg-green-700">View Report</Button>
+              </div>
+            )}
 
             {/* Warnings Display */}
             {importResult.warnings && importResult.warnings.length > 0 && (
@@ -644,6 +624,7 @@ export default function ImportReports() {
             )}
 
             {/* Maintenance / Cleanup Section (Dev Only) */}
+            {import.meta.env.MODE !== 'production' && (
             <div className="mt-10 border-t pt-6">
               <h4 className="font-semibold text-gray-800 mb-3">Maintenance Utilities (Developers)</h4>
               <p className="text-sm text-gray-600 mb-4">Run orphan cleanup to detect and optionally remove measurements or checklist rows without a parent report.</p>
@@ -661,6 +642,7 @@ export default function ImportReports() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Warning if data is incomplete */}
             {(!importResult.importedData?.tankId || !importResult.importedData?.reportNumber) && (
