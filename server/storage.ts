@@ -60,7 +60,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   
   // Inspection Reports
-  getInspectionReports(): Promise<InspectionReport[]>;
+  getInspectionReports(originFilter?: string): Promise<InspectionReport[]>;
   getInspectionReport(id: number): Promise<InspectionReport | undefined>;
   createInspectionReport(report: InsertInspectionReport): Promise<InspectionReport>;
   updateInspectionReport(id: number, report: Partial<InsertInspectionReport>): Promise<InspectionReport>;
@@ -306,8 +306,12 @@ export class MemStorage implements IStorage {
   }
 
   // Inspection Reports
-  async getInspectionReports(): Promise<InspectionReport[]> {
-    return Array.from(this.inspectionReports.values());
+  async getInspectionReports(originFilter?: string): Promise<InspectionReport[]> {
+    const all = Array.from(this.inspectionReports.values());
+    if (originFilter && originFilter !== 'all') {
+      return all.filter(r => (r as any).origin === originFilter);
+    }
+    return all;
   }
 
   async getInspectionReport(id: number): Promise<InspectionReport | undefined> {
@@ -366,6 +370,7 @@ export class MemStorage implements IStorage {
       inspectorExperience: (report as any).inspectorExperience ?? null,
       findings: (report as any).findings ?? null,
       recommendations: (report as any).recommendations ?? null,
+      origin: (report as any).origin ?? null,
     };
     this.inspectionReports.set(id, newReport);
     return newReport;
@@ -712,8 +717,16 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getInspectionReports(): Promise<InspectionReport[]> {
+  async getInspectionReports(originFilter?: string): Promise<InspectionReport[]> {
     const dbi = await ensureDb();
+    // Apply where clause only if a specific origin (not 'all' or undefined) provided
+    if (originFilter && originFilter !== 'all') {
+      return await dbi
+        .select()
+        .from(inspectionReports)
+        .where(eq(inspectionReports.origin as any, originFilter))
+        .orderBy(inspectionReports.updatedAt);
+    }
     return await dbi.select().from(inspectionReports).orderBy(inspectionReports.updatedAt);
   }
 
