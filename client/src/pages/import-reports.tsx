@@ -18,6 +18,9 @@ interface ImportResult {
   checklistItems: number | any[];
   totalRows: number;
   preview?: any[];
+  measurementsCreated?: number;
+  checklistCreated?: number;
+  warnings?: string[];
   aiInsights?: {
     confidence: number;
     detectedColumns: string[];
@@ -36,6 +39,8 @@ export default function ImportReports() {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [cleanupResult, setCleanupResult] = useState<any | null>(null);
+  const [cleanupLoading, setCleanupLoading] = useState(false);
   
   // Helper functions to handle number | array types
   const getCount = (field: number | any[] | undefined): number => {
@@ -304,6 +309,26 @@ export default function ImportReports() {
     }
   };
 
+  const runCleanup = async (apply: boolean) => {
+    try {
+      setCleanupLoading(true);
+      setCleanupResult(null);
+      const resp = await fetch(`/api/reports/maintenance/cleanup-orphans?dryRun=${apply ? 'false' : 'true'}`, {
+        method: 'POST'
+      });
+      const data = await resp.json();
+      setCleanupResult(data);
+      toast({
+        title: apply ? 'Cleanup Applied' : 'Dry Run Complete',
+        description: apply ? 'Orphaned rows removed.' : 'Dry run results displayed below.'
+      });
+    } catch (e: any) {
+      toast({ title: 'Cleanup Failed', description: e.message, variant: 'destructive' });
+    } finally {
+      setCleanupLoading(false);
+    }
+  };
+
   const createReport = () => {
     console.log('=== CREATE REPORT BUTTON CLICKED ===');
     console.log('Full importResult:', importResult);
@@ -514,6 +539,12 @@ export default function ImportReports() {
                   <div><strong>Total Rows:</strong> {importResult.totalRows}</div>
                   <div><strong>Thickness Measurements:</strong> {getCount(importResult.thicknessMeasurements)}</div>
                   <div><strong>Checklist Items:</strong> {getCount(importResult.checklistItems)}</div>
+                  {typeof importResult.measurementsCreated === 'number' && (
+                    <div><strong>Persisted Measurements:</strong> {importResult.measurementsCreated}</div>
+                  )}
+                  {typeof importResult.checklistCreated === 'number' && (
+                    <div><strong>Persisted Checklist Items:</strong> {importResult.checklistCreated}</div>
+                  )}
                   <div><strong>Status:</strong> <span className="text-green-600">Ready to import</span></div>
                 </div>
               </div>
@@ -595,6 +626,40 @@ export default function ImportReports() {
               >
                 {createReportMutation.isPending ? "Creating..." : "Create Report"}
               </Button>
+            </div>
+
+            {/* Warnings Display */}
+            {importResult.warnings && importResult.warnings.length > 0 && (
+              <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                <div className="flex items-center mb-2">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2" />
+                  <h4 className="font-medium text-yellow-800">Import Warnings</h4>
+                </div>
+                <ul className="list-disc list-inside text-sm text-yellow-800 space-y-1">
+                  {importResult.warnings.map((w, i) => (
+                    <li key={i}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Maintenance / Cleanup Section (Dev Only) */}
+            <div className="mt-10 border-t pt-6">
+              <h4 className="font-semibold text-gray-800 mb-3">Maintenance Utilities (Developers)</h4>
+              <p className="text-sm text-gray-600 mb-4">Run orphan cleanup to detect and optionally remove measurements or checklist rows without a parent report.</p>
+              <div className="flex flex-wrap gap-3">
+                <Button type="button" variant="outline" disabled={cleanupLoading} onClick={() => runCleanup(false)}>
+                  {cleanupLoading ? 'Running Dry Run...' : 'Dry Run Cleanup'}
+                </Button>
+                <Button type="button" disabled={cleanupLoading} className="bg-red-600 hover:bg-red-700" onClick={() => runCleanup(true)}>
+                  {cleanupLoading ? 'Applying...' : 'Apply Cleanup'}
+                </Button>
+              </div>
+              {cleanupResult && (
+                <div className="mt-4 bg-gray-50 p-4 rounded text-xs overflow-x-auto">
+                  <pre className="whitespace-pre-wrap">{JSON.stringify(cleanupResult, null, 2)}</pre>
+                </div>
+              )}
             </div>
 
             {/* Warning if data is incomplete */}
