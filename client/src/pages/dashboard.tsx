@@ -27,8 +27,9 @@ interface InspectionReport {
 
 interface ReportStats { totalReports: number; inProgress: number; completed: number; requiresAction: number; }
 
-const fetchReports = async (): Promise<InspectionReport[]> => {
-  const res = await fetch('/api/reports');
+const fetchReports = async (originFilter?: string): Promise<InspectionReport[]> => {
+  const qs = originFilter && originFilter !== 'all' ? `?origin=${encodeURIComponent(originFilter)}` : '';
+  const res = await fetch(`/api/reports${qs}`);
   if(!res.ok) throw new Error('Failed to load reports');
   return res.json();
 };
@@ -40,7 +41,8 @@ const fetchStats = async (): Promise<ReportStats> => {
 };
 
 export default function DashboardPage() {
-  const { data: reports = [], isLoading: reportsLoading } = useQuery({ queryKey:['reports'], queryFn: fetchReports });
+  const [originFilter, setOriginFilter] = React.useState<string>('all');
+  const { data: reports = [], isLoading: reportsLoading } = useQuery({ queryKey:['reports', originFilter], queryFn: () => fetchReports(originFilter) });
   const { data: stats, isLoading: statsLoading } = useQuery({ queryKey:['report-stats'], queryFn: fetchStats });
   const [reportToDelete, setReportToDelete] = React.useState<InspectionReport | null>(null);
 
@@ -82,9 +84,24 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Inspection Reports</h2>
-        <p className="text-gray-600">Manage your API 653 tank inspection reports</p>
+      <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Inspection Reports</h2>
+          <p className="text-gray-600">Manage your API 653 tank inspection reports</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="text-sm text-gray-600">Origin:</label>
+          <select
+            value={originFilter}
+            onChange={e => setOriginFilter(e.target.value)}
+            className="text-sm border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">All</option>
+            <option value="manual">Manual</option>
+            <option value="import">Import</option>
+            <option value="template">Template</option>
+          </select>
+        </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card><CardContent className="p-6 flex items-center"><FileText className="h-8 w-8 text-blue-600" /><div className="ml-4"><p className="text-sm font-medium text-gray-500">Total Reports</p><p className="text-2xl font-semibold text-gray-900">{stats?.totalReports || 0}</p></div></CardContent></Card>

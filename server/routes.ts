@@ -191,7 +191,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/reports", async (req, res) => {
     try {
       const reports = await storage.getInspectionReports();
-      res.json(reports);
+      const origin = (req.query.origin as string | undefined)?.trim();
+      const filtered = origin && origin !== 'all' ? reports.filter(r => (r as any).origin === origin) : reports;
+      res.json(filtered);
     } catch (error) {
       console.error('Failed to fetch reports:', error);
       res.status(500).json({ message: "Failed to fetch reports" });
