@@ -84,6 +84,9 @@ export const shellCourseSchema = z.object({
   notes: z.string().optional().nullable()
 });
 
+// Partial variant for patching an individual shell course
+export const shellCoursePatchSchema = shellCourseSchema.partial();
+
 export const shellCoursesPutSchema = z.object({
   courses: z.array(shellCourseSchema).min(1)
 });
@@ -117,6 +120,7 @@ export type ComponentInput = z.infer<typeof componentSchema>;
 export type NozzleInput = z.infer<typeof nozzleSchema>;
 export type CmlPointInput = z.infer<typeof cmlPointSchema>;
 export type ShellCourseInput = z.infer<typeof shellCourseSchema>;
+export type ShellCoursePatchInput = z.infer<typeof shellCoursePatchSchema>;
 
 // --- Express validation middleware helper ---
 export function validate<T extends z.ZodTypeAny>(schema: T) {

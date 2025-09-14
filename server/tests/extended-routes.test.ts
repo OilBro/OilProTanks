@@ -78,6 +78,31 @@ describe('Extended Report Domain Routes', () => {
     assert.equal(res.body.pagination.limit, 50);
   });
 
+  // Added pagination edge cases
+  it('negative limit coerces to default 50', async () => {
+    const res = await request(app)
+      .get(`/api/reports/${createdReportId}/components?limit=-10`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.pagination.limit, 50);
+  });
+
+  it('negative offset coerces to 0', async () => {
+    const res = await request(app)
+      .get(`/api/reports/${createdReportId}/components?offset=-5`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.pagination.offset, 0);
+  });
+
+  it('large offset still returns success (empty data allowed)', async () => {
+    const res = await request(app)
+      .get(`/api/reports/${createdReportId}/components?offset=999999`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.ok(Array.isArray(res.body.data));
+  });
+
   it('PATCH component validates types', async () => {
     // create second component
     const createRes = await request(app)

@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "OilProTanks API",
-    "version": "0.2.0"
+    "version": "0.3.0"
   },
   "paths": {
     "/api/reports/{reportId}/components": {
@@ -64,6 +64,9 @@
                         },
                         "offset": {
                           "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
                         }
                       }
                     }
@@ -116,7 +119,7 @@
         },
         "responses": {
           "200": {
-            "description": "Created",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -180,14 +183,14 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Component"
+                "$ref": "#/components/schemas/ComponentPatch"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Updated",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -195,7 +198,8 @@
                   "properties": {
                     "success": {
                       "type": "boolean"
-                    }
+                    },
+                    "data": {}
                   }
                 }
               }
@@ -243,7 +247,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Deleted",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -251,7 +255,8 @@
                   "properties": {
                     "success": {
                       "type": "boolean"
-                    }
+                    },
+                    "data": {}
                   }
                 }
               }
@@ -337,6 +342,9 @@
                         },
                         "offset": {
                           "type": "integer"
+                        },
+                        "total": {
+                          "type": "integer"
                         }
                       }
                     }
@@ -389,7 +397,7 @@
         },
         "responses": {
           "200": {
-            "description": "Created",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -453,14 +461,14 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/Nozzle"
+                "$ref": "#/components/schemas/NozzlePatch"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Updated",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -468,7 +476,8 @@
                   "properties": {
                     "success": {
                       "type": "boolean"
-                    }
+                    },
+                    "data": {}
                   }
                 }
               }
@@ -516,7 +525,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Deleted",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -524,7 +533,8 @@
                   "properties": {
                     "success": {
                       "type": "boolean"
-                    }
+                    },
+                    "data": {}
                   }
                 }
               }
@@ -685,7 +695,7 @@
         },
         "responses": {
           "200": {
-            "description": "Created",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -748,7 +758,7 @@
         },
         "responses": {
           "200": {
-            "description": "Replaced",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -812,7 +822,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Deleted",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -820,7 +830,8 @@
                   "properties": {
                     "success": {
                       "type": "boolean"
-                    }
+                    },
+                    "data": {}
                   }
                 }
               }
@@ -874,7 +885,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "type": "object"
+                        "$ref": "#/components/schemas/ShellCourse"
                       }
                     }
                   }
@@ -926,7 +937,7 @@
         },
         "responses": {
           "200": {
-            "description": "Replaced",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -938,7 +949,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "type": "object"
+                        "$ref": "#/components/schemas/ShellCourse"
                       }
                     }
                   }
@@ -993,14 +1004,14 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/ShellCoursePatch"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Updated",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1008,7 +1019,8 @@
                   "properties": {
                     "success": {
                       "type": "boolean"
-                    }
+                    },
+                    "data": {}
                   }
                 }
               }
@@ -1056,7 +1068,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Deleted",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1064,7 +1076,8 @@
                   "properties": {
                     "success": {
                       "type": "boolean"
-                    }
+                    },
+                    "data": {}
                   }
                 }
               }
@@ -1257,7 +1270,7 @@
         },
         "responses": {
           "200": {
-            "description": "Upserted",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1371,7 +1384,7 @@
         },
         "responses": {
           "200": {
-            "description": "Upserted",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1424,7 +1437,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Frozen",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1432,7 +1445,8 @@
                   "properties": {
                     "success": {
                       "type": "boolean"
-                    }
+                    },
+                    "data": {}
                   }
                 }
               }
@@ -1556,7 +1570,7 @@
         },
         "responses": {
           "200": {
-            "description": "Created",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1627,7 +1641,7 @@
         },
         "responses": {
           "200": {
-            "description": "Updated",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1635,7 +1649,8 @@
                   "properties": {
                     "success": {
                       "type": "boolean"
-                    }
+                    },
+                    "data": {}
                   }
                 }
               }
@@ -1683,7 +1698,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Deleted",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1691,7 +1706,8 @@
                   "properties": {
                     "success": {
                       "type": "boolean"
-                    }
+                    },
+                    "data": {}
                   }
                 }
               }
@@ -2067,6 +2083,109 @@
           "parentId",
           "points"
         ]
+      },
+      "ShellCourse": {
+        "type": "object",
+        "properties": {
+          "courseNumber": {
+            "type": "number"
+          },
+          "courseHeight": {
+            "type": "number"
+          },
+          "nominalThickness": {
+            "type": "number"
+          },
+          "actualThickness": {
+            "type": "number"
+          },
+          "previousThickness": {
+            "type": "number"
+          },
+          "corrosionRate": {
+            "type": "number"
+          },
+          "remainingLife": {
+            "type": "number"
+          },
+          "jointEfficiency": {
+            "type": "number"
+          },
+          "stress": {
+            "type": "number"
+          },
+          "altStress": {
+            "type": "number"
+          },
+          "tminCalc": {
+            "type": "number"
+          },
+          "tminAlt": {
+            "type": "number"
+          },
+          "fillHeight": {
+            "type": "number"
+          },
+          "governing": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "courseNumber"
+        ]
+      },
+      "ShellCoursePatch": {
+        "type": "object",
+        "properties": {
+          "courseNumber": {
+            "type": "number"
+          },
+          "courseHeight": {
+            "type": "number"
+          },
+          "nominalThickness": {
+            "type": "number"
+          },
+          "actualThickness": {
+            "type": "number"
+          },
+          "previousThickness": {
+            "type": "number"
+          },
+          "corrosionRate": {
+            "type": "number"
+          },
+          "remainingLife": {
+            "type": "number"
+          },
+          "jointEfficiency": {
+            "type": "number"
+          },
+          "stress": {
+            "type": "number"
+          },
+          "altStress": {
+            "type": "number"
+          },
+          "tminCalc": {
+            "type": "number"
+          },
+          "tminAlt": {
+            "type": "number"
+          },
+          "fillHeight": {
+            "type": "number"
+          },
+          "governing": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
       },
       "ShellCoursesPut": {
         "type": "object",
