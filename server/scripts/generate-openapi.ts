@@ -1,6 +1,6 @@
 import { writeFileSync } from 'fs';
 import { z } from 'zod';
-import { componentSchema, nozzleSchema, cmlPointSchema, cmlBulkSchema, shellCoursesPutSchema, appendixSchema, writeupPutSchema, tminOverrideSchema } from '../validation-schemas.ts';
+import { componentSchema, componentPatchSchema, nozzleSchema, nozzlePatchSchema, cmlPointSchema, cmlPointPatchSchema, cmlBulkSchema, shellCoursesPutSchema, appendixSchema, writeupPutSchema, tminOverrideSchema } from '../validation-schemas.ts';
 
 type Z = typeof z;
 
@@ -38,8 +38,11 @@ function convert(schema: any): any {
 
 const namedSchemas: Record<string, any> = {
   Component: componentSchema,
+  ComponentPatch: componentPatchSchema,
   Nozzle: nozzleSchema,
+  NozzlePatch: nozzlePatchSchema,
   CmlPoint: cmlPointSchema,
+  CmlPointPatch: cmlPointPatchSchema,
   CmlBulkRequest: cmlBulkSchema,
   ShellCoursesPut: shellCoursesPutSchema,
   Appendix: appendixSchema,
@@ -118,6 +121,132 @@ const doc = {
       delete: {
         summary: 'Delete nozzle',
         parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} }, { name:'id', in:'path', required:true, schema:{ type:'integer'} } ],
+        responses: { '200': { description:'Deleted', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'} }}}}}, '400': errorResponse }
+      }
+    },
+    '/api/reports/{reportId}/cml-points': {
+      get: {
+        summary: 'List CML points',
+        parameters: [
+          { name:'reportId', in:'path', required:true, schema:{ type:'integer'} },
+          { name:'parentType', in:'query', required:false, schema:{ type:'string', enum:['component','nozzle'] } },
+          { name:'parentId', in:'query', required:false, schema:{ type:'integer'} },
+          { name:'limit', in:'query', required:false, schema:{ type:'integer', minimum:1, maximum:500, default:50 } },
+          { name:'offset', in:'query', required:false, schema:{ type:'integer', minimum:0, default:0 } }
+        ],
+        responses: { '200': { description:'OK', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean' }, data:{ type:'array', items:{ $ref:'#/components/schemas/CmlPoint'} }, pagination:{ type:'object', properties:{ limit:{ type:'integer'}, offset:{ type:'integer'}, total:{ type:'integer'} }}}}}}}, '400': errorResponse }
+      },
+      post: {
+        summary: 'Create CML point',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} } ],
+        requestBody: { required:true, content:{ 'application/json': { schema:{ $ref:'#/components/schemas/CmlPoint' }}}},
+        responses: { '200': { description:'Created', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'}, data:{ $ref:'#/components/schemas/CmlPoint'} }}}}}, '400': errorResponse }
+      }
+    },
+    '/api/reports/{reportId}/cml-points/bulk': {
+      put: {
+        summary: 'Bulk replace CML points for parent',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} } ],
+        requestBody: { required:true, content:{ 'application/json': { schema:{ $ref:'#/components/schemas/CmlBulkRequest' }}}},
+        responses: { '200': { description:'Replaced', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'}, data:{ type:'array', items:{ $ref:'#/components/schemas/CmlPoint'} }}}}}}, '400': errorResponse }
+      }
+    },
+    '/api/reports/{reportId}/cml-points/{id}': {
+      delete: {
+        summary: 'Delete CML point',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} }, { name:'id', in:'path', required:true, schema:{ type:'integer'} } ],
+        responses: { '200': { description:'Deleted', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'} }}}}}, '400': errorResponse }
+      }
+    },
+    '/api/reports/{reportId}/shell-courses': {
+      get: {
+        summary: 'List shell courses',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} } ],
+        responses: { '200': { description:'OK', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'}, data:{ type:'array', items:{ type:'object' }}}}}}}, '400': errorResponse }
+      },
+      put: {
+        summary: 'Replace shell courses',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} } ],
+        requestBody: { required:true, content:{ 'application/json': { schema:{ $ref:'#/components/schemas/ShellCoursesPut' }}}},
+        responses: { '200': { description:'Replaced', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'}, data:{ type:'array', items:{ type:'object'} }}}}}}, '400': errorResponse }
+      }
+    },
+    '/api/reports/{reportId}/shell-courses/{id}': {
+      patch: {
+        summary: 'Update shell course (partial)',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} }, { name:'id', in:'path', required:true, schema:{ type:'integer'} } ],
+        requestBody: { required:true, content:{ 'application/json': { schema:{ type:'object' }}}},
+        responses: { '200': { description:'Updated', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'} }}}}}, '400': errorResponse }
+      },
+      delete: {
+        summary: 'Delete shell course',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} }, { name:'id', in:'path', required:true, schema:{ type:'integer'} } ],
+        responses: { '200': { description:'Deleted', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'} }}}}}, '400': errorResponse }
+      }
+    },
+    '/api/reports/{reportId}/appendices': {
+      get: {
+        summary: 'List appendices',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} } ],
+        responses: { '200': { description:'OK', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'}, data:{ type:'array', items:{ $ref:'#/components/schemas/Appendix'} }}}}}}, '400': errorResponse }
+      }
+    },
+    '/api/reports/{reportId}/appendices/{code}': {
+      get: {
+        summary: 'Get appendix by code',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} }, { name:'code', in:'path', required:true, schema:{ type:'string'} } ],
+        responses: { '200': { description:'OK', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'}, data:{ $ref:'#/components/schemas/Appendix'} }}}}}, '400': errorResponse, '404': errorResponse }
+      },
+      put: {
+        summary: 'Put appendix (create/update)',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} }, { name:'code', in:'path', required:true, schema:{ type:'string'} } ],
+        requestBody: { required:true, content:{ 'application/json': { schema:{ $ref:'#/components/schemas/Appendix'} } }},
+        responses: { '200': { description:'Upserted', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'}, data:{ $ref:'#/components/schemas/Appendix'} }}}}}, '400': errorResponse }
+      }
+    },
+    '/api/reports/{reportId}/writeup': {
+      get: {
+        summary: 'Get report writeup',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} } ],
+        responses: { '200': { description:'OK', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'}, data:{ $ref:'#/components/schemas/WriteupPut'} }}}}}, '400': errorResponse }
+      },
+      put: {
+        summary: 'Put report writeup',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} } ],
+        requestBody: { required:true, content:{ 'application/json': { schema:{ $ref:'#/components/schemas/WriteupPut'} } }},
+        responses: { '200': { description:'Upserted', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'}, data:{ $ref:'#/components/schemas/WriteupPut'} }}}}}, '400': errorResponse }
+      }
+    },
+    '/api/reports/{reportId}/writeup/freeze-narrative': {
+      post: {
+        summary: 'Freeze writeup narrative',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} } ],
+        responses: { '200': { description:'Frozen', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'} }}}}}, '400': errorResponse, '404': errorResponse }
+      }
+    },
+    '/api/reports/{reportId}/tmin-overrides': {
+      get: {
+        summary: 'List Tmin overrides',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} } ],
+        responses: { '200': { description:'OK', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'}, data:{ type:'array', items:{ $ref:'#/components/schemas/TminOverride'} }}}}}}, '400': errorResponse }
+      },
+      post: {
+        summary: 'Create Tmin override',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} } ],
+        requestBody: { required:true, content:{ 'application/json': { schema:{ $ref:'#/components/schemas/TminOverride'} } }},
+        responses: { '200': { description:'Created', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'}, data:{ $ref:'#/components/schemas/TminOverride'} }}}}}, '400': errorResponse }
+      }
+    },
+    '/api/reports/{reportId}/tmin-overrides/{id}': {
+      patch: {
+        summary: 'Patch Tmin override',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} },{ name:'id', in:'path', required:true, schema:{ type:'integer'} } ],
+        requestBody: { required:true, content:{ 'application/json': { schema:{ $ref:'#/components/schemas/TminOverride'} } }},
+        responses: { '200': { description:'Updated', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'} }}}}}, '400': errorResponse }
+      },
+      delete: {
+        summary: 'Delete Tmin override',
+        parameters: [ { name:'reportId', in:'path', required:true, schema:{ type:'integer'} },{ name:'id', in:'path', required:true, schema:{ type:'integer'} } ],
         responses: { '200': { description:'Deleted', content:{ 'application/json': { schema:{ type:'object', properties:{ success:{ type:'boolean'} }}}}}, '400': errorResponse }
       }
     }
