@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle, Download } from "lucide-react";
 import { uploadImportFile, runOrphanCleanup } from "@/lib/api";
+import { showAIAnalysisIndicators } from "@/lib/config";
 import { useLocation } from "wouter";
 
 interface ImportResult {
@@ -474,7 +475,7 @@ export default function ImportReports() {
             </div>
 
             {/* AI Analysis Status */}
-            {importResult.aiAnalysis && (
+            {showAIAnalysisIndicators && importResult.aiAnalysis && (
               <div className={`p-3 rounded-lg mb-4 ${importResult.aiAnalysis.confidence > 0.5 ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">

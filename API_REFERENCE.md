@@ -378,5 +378,20 @@ All create/replace endpoints above use the `validate(schema)` middleware. On fai
 - Consolidate status aggregator schema in docs.
 - Add OpenAPI/Swagger generation based on Zod schemas.
 
+## Environment Variables (Client Feature Flags)
+
+The frontend (Vite) conditionally exposes feature UI based on `VITE_` prefixed environment variables.
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `VITE_AI_ANALYSIS_UI` | (unset/false) | When `true`, shows AI analysis confidence / success banner on the Import Reports page. When absent or not `true`, import proceeds silently without the banner. |
+
+Usage:
+1. Copy `.env.example` to `.env`.
+2. Set `VITE_AI_ANALYSIS_UI=true` to enable indicators.
+3. Restart dev server (`vite`) for changes to take effect.
+
+Security: Only `VITE_` variables are shipped to the browser; never store secrets in them.
+
 ----
 Generated on 2025-09-13.
