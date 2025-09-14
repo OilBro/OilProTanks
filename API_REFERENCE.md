@@ -385,6 +385,7 @@ The frontend (Vite) conditionally exposes feature UI based on `VITE_` prefixed e
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `VITE_AI_ANALYSIS_UI` | (unset/false) | When `true`, shows AI analysis confidence / success banner on the Import Reports page. When absent or not `true`, import proceeds silently without the banner. |
+| `VITE_MAINTENANCE_UTILS_UI` | (unset/false) | When `true`, exposes maintenance utilities (orphan cleanup) section in the Import Reports page for operational diagnostics. Keep disabled in production unless required. |
 
 Usage:
 1. Copy `.env.example` to `.env`.

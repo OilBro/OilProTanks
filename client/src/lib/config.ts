@@ -1,5 +1,7 @@
 // Centralized client-side feature flag access
 // Vite exposes variables starting with VITE_
 
-export const showAIAnalysisIndicators: boolean =
-  (import.meta as any).env?.VITE_AI_ANALYSIS_UI === 'true';
+const env = (import.meta as any).env || {};
+
+export const showAIAnalysisIndicators: boolean = env.VITE_AI_ANALYSIS_UI === 'true';
+export const showMaintenanceUtilities: boolean = env.VITE_MAINTENANCE_UTILS_UI === 'true';

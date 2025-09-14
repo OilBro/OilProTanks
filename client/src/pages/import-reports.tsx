@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle, Download } from "lucide-react";
 import { uploadImportFile, runOrphanCleanup } from "@/lib/api";
-import { showAIAnalysisIndicators } from "@/lib/config";
+import { showAIAnalysisIndicators, showMaintenanceUtilities } from "@/lib/config";
 import { useLocation } from "wouter";
 
 interface ImportResult {
@@ -625,7 +625,7 @@ export default function ImportReports() {
             )}
 
             {/* Maintenance / Cleanup Section (Dev Only) */}
-            {import.meta.env.MODE !== 'production' && (
+            {showMaintenanceUtilities && (
             <div className="mt-10 border-t pt-6">
               <h4 className="font-semibold text-gray-800 mb-3">Maintenance Utilities (Developers)</h4>
               <p className="text-sm text-gray-600 mb-4">Run orphan cleanup to detect and optionally remove measurements or checklist rows without a parent report.</p>
