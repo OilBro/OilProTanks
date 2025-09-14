@@ -2,5 +2,6 @@
     "markdown.validate.enabled": true,
     "github.copilot.enable": {
         "scminput": true
-    }
+    },
+    "remote.autoForwardPortsFallback": 0
 }
