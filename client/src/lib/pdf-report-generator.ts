@@ -114,19 +114,147 @@ interface ReportData {
 }
 
 export class ProfessionalReportGenerator {
-  private addCoverPage(data: ReportData) {}
-  private createTankDetailsSection(details: TankDetails) {}
-  private createBottomPlateSection(bottomData: BottomData) {}
-  private createAppurtenancesSection(appurtenances: any) {}
-  // Section stubs to resolve compile errors and ensure headers
+  // --- Implemented previously-empty methods ---
+  private addCoverPage(data: ReportData) {
+    // Reset to first page top area
+    this.currentY = 40;
+    this.pdf.setFont('helvetica', 'bold');
+    this.pdf.setFontSize(24);
+    this.pdf.setTextColor(...this.primaryColor);
+    this.pdf.text('API 653 INSPECTION REPORT', this.pageWidth / 2, this.currentY, { align: 'center' });
+    this.currentY += 16;
+
+    this.pdf.setFontSize(14);
+    this.pdf.setTextColor(0, 0, 0);
+    this.pdf.text(`Tank: ${data.tankId || 'N/A'}`, this.pageWidth / 2, this.currentY, { align: 'center' });
+    this.currentY += 10;
+    this.pdf.setFontSize(12);
+    this.pdf.text(`Report #: ${data.reportNumber || 'N/A'}`, this.pageWidth / 2, this.currentY, { align: 'center' });
+    this.currentY += 8;
+    this.pdf.text(`Inspection Date: ${data.inspectionDate || 'N/A'}`, this.pageWidth / 2, this.currentY, { align: 'center' });
+    this.currentY += 8;
+    this.pdf.text(`Inspector: ${data.inspector || 'N/A'}`, this.pageWidth / 2, this.currentY, { align: 'center' });
+    this.currentY += 20;
+
+    // Simple accent bar
+    this.pdf.setFillColor(...this.primaryColor);
+    this.pdf.rect(this.margin, this.currentY, this.pageWidth - (this.margin * 2), 3, 'F');
+    this.currentY += 10;
+
+    // Quick summary box
+    this.pdf.setFont('helvetica', 'normal');
+    this.pdf.setFontSize(11);
+    const summaryLines = [
+      `Facility: ${data.facilityName || 'N/A'}`,
+      `Location: ${data.location || 'N/A'}`,
+      `Design Code: ${data.tankDetails?.designCode || 'API 650 / 653'}`,
+      `Material: ${data.tankDetails?.material || 'N/A'}`
+    ];
+    let y = this.currentY;
+    this.pdf.setDrawColor(200, 200, 200);
+    this.pdf.rect(this.margin, y - 6, this.pageWidth - (this.margin * 2), summaryLines.length * 7 + 4);
+    summaryLines.forEach(l => {
+      this.pdf.text(l, this.margin + 4, y);
+      y += 7;
+    });
+    this.currentY = y + 10;
+
+    this.pdf.addPage();
+    this.currentY = 30;
+  }
+
+  private createTankDetailsSection(details: TankDetails) {
+    // Reuse logic from createTankInformation style (lean version)
+    const data = [
+      ['Diameter (ft)', details.diameter.toString()],
+      ['Height (ft)', details.height.toString()],
+      ['Capacity (bbls)', details.capacity.toString()],
+      ['Product', details.product],
+      ['Year Built', details.yearBuilt.toString()],
+      ['Design Code', details.designCode],
+      ['Material', details.material]
+    ];
+    autoTable(this.pdf, {
+      head: [['Parameter', 'Value']],
+      body: data,
+      startY: this.currentY,
+      theme: 'grid',
+      headStyles: { fillColor: this.primaryColor, fontStyle: 'bold', fontSize: 11 },
+      bodyStyles: { fontSize: 10 }
+    });
+    this.pdf.addPage();
+    this.currentY = 30;
+  }
+
+  private createBottomPlateSection(bottomData: BottomData) {
+    // Delegate to comprehensive bottom assessment section for consistency
+    this.createBottomAssessmentSection({
+      reportNumber: '',
+      tankId: '',
+      facilityName: '',
+      location: '',
+      inspectionDate: '',
+      inspector: '',
+      tankDetails: { diameter: 0, height: 0, capacity: 0, product: '', yearBuilt: 0, designCode: '', material: '' },
+      shellData: { courses: [], governingCourse: 0, overallStatus: '' },
+      bottomData
+    } as unknown as ReportData); // Type coercion for re-use
+  }
+
+  private createAppurtenancesSection(appurtenances: any) {
+    this.pdf.setFont('helvetica', 'normal');
+    this.pdf.setFontSize(10);
+    if (!appurtenances || Object.keys(appurtenances).length === 0) {
+      this.pdf.text('No appurtenance data provided.', this.margin, this.currentY);
+      this.currentY += 10;
+      return;
+    }
+    Object.entries(appurtenances).forEach(([k, v]) => {
+      if (this.currentY > this.pageHeight - 30) { this.pdf.addPage(); this.currentY = 30; }
+      this.pdf.text(`${k}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`, this.margin, this.currentY);
+      this.currentY += 6;
+    });
+  }
+
   private createShellThicknessSection(shellData: ShellData) {
-    // ...existing code or placeholder...
+    // Simple wrapper to reuse the more detailed calculations section
+    const tmp: ReportData = {
+      reportNumber: '', tankId: '', facilityName: '', location: '', inspectionDate: '', inspector: '',
+      tankDetails: { diameter: 0, height: 0, capacity: 0, product: '', yearBuilt: 0, designCode: '', material: '' },
+      shellData,
+      bottomData: { nominalThickness: 0, minMeasured: 0, requiredThickness: 0, corrosionRate: 0, remainingLife: 0 }
+    } as unknown as ReportData;
+    this.createShellCalculationsSection(tmp);
   }
+
   private createVentsSection(vents: any) {
-    // ...existing code or placeholder...
+    this.pdf.setFont('helvetica', 'normal');
+    this.pdf.setFontSize(10);
+    if (!vents) {
+      this.pdf.text('No vent data provided.', this.margin, this.currentY);
+      this.currentY += 10;
+      return;
+    }
+    Object.entries(vents).forEach(([k, v]) => {
+      if (this.currentY > this.pageHeight - 30) { this.pdf.addPage(); this.currentY = 30; }
+      this.pdf.text(`${k}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`, this.margin, this.currentY);
+      this.currentY += 6;
+    });
   }
+
   private createChecklistSection(checklist: any) {
-    // ...existing code or placeholder...
+    this.pdf.setFont('helvetica', 'normal');
+    this.pdf.setFontSize(10);
+    if (!checklist) {
+      this.pdf.text('No checklist data provided.', this.margin, this.currentY);
+      this.currentY += 10;
+      return;
+    }
+    Object.entries(checklist).forEach(([k, v]) => {
+      if (this.currentY > this.pageHeight - 30) { this.pdf.addPage(); this.currentY = 30; }
+      this.pdf.text(`${k}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`, this.margin, this.currentY);
+      this.currentY += 6;
+    });
   }
   private pdf: jsPDF;
   private pageHeight = 297; // A4 height in mm
@@ -183,7 +311,7 @@ export class ProfessionalReportGenerator {
       this.pdf.setFont('helvetica', 'italic');
       this.pdf.setFontSize(11);
       this.pdf.setTextColor(220, 38, 38);
-      this.pdf.text('No CML data available for this section.', this.margin, this.currentY);
+      this.pdf.text('No settlement data available for this section.', this.margin, this.currentY);
       this.currentY += 10;
       this.pdf.setTextColor(0, 0, 0);
     }
@@ -227,6 +355,19 @@ export class ProfessionalReportGenerator {
       this.pdf.setFontSize(11);
       this.pdf.setTextColor(220, 38, 38);
       this.pdf.text('No checklist data available for this section.', this.margin, this.currentY);
+      this.currentY += 10;
+      this.pdf.setTextColor(0, 0, 0);
+    }
+
+    // CML DATA
+    this.addSectionHeader('CML DATA');
+    if (data.cmlData && data.cmlData.length) {
+      this.createCMLSection(data.cmlData);
+    } else {
+      this.pdf.setFont('helvetica', 'italic');
+      this.pdf.setFontSize(11);
+      this.pdf.setTextColor(220, 38, 38);
+      this.pdf.text('No CML data available.', this.margin, this.currentY);
       this.currentY += 10;
       this.pdf.setTextColor(0, 0, 0);
     }
