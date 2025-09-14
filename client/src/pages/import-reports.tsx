@@ -15,6 +15,7 @@ interface ImportResult {
   message: string;
   reportId?: number;
   reportNumber?: string;
+  origin?: string;
   importedData: any;
   thicknessMeasurements: number | any[];
   checklistItems: number | any[];
@@ -63,6 +64,7 @@ export default function ImportReports() {
         success: data.success,
         reportId: data.reportId,
         reportNumber: data.reportNumber,
+        origin: (data as any).origin,
         measurementsCreated: data.measurementsCreated,
         checklistCreated: data.checklistCreated,
         warnings: data.warnings,
@@ -469,9 +471,14 @@ export default function ImportReports() {
       {importResult && (
         <Card className="mb-6">
           <CardContent className="p-6">
-            <div className="flex items-center mb-4">
-              <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-              <h3 className="text-lg font-semibold text-gray-900">Import Results</h3>
+            <div className="flex items-center mb-4 gap-2 flex-wrap">
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                <h3 className="text-lg font-semibold text-gray-900">Import Results</h3>
+              </div>
+              {importResult.origin && (
+                <span className="text-xs uppercase tracking-wide bg-blue-100 text-blue-700 px-2 py-1 rounded">{importResult.origin}</span>
+              )}
             </div>
 
             {/* AI Analysis Status */}

@@ -134,6 +134,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         reportId: persisted.report.id,
         reportNumber: persisted.report.reportNumber,
+        origin: 'import',
         measurementsCreated: persisted.measurementsCreated,
         checklistCreated: persisted.checklistCreated,
         warnings: persisted.warnings,
@@ -153,6 +154,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, ...result });
     } catch (e: any) {
       res.status(500).json({ success:false, message: e.message || 'Cleanup failed'});
+    }
+  });
+
+  // Feature flags exposure (non-sensitive UI flags only)
+  app.get('/api/feature-flags', (req, res) => {
+    try {
+      const flags = {
+        aiAnalysisUI: process.env.VITE_AI_ANALYSIS_UI === 'true',
+        maintenanceUtilsUI: process.env.VITE_MAINTENANCE_UTILS_UI === 'true'
+      };
+      res.json({ success: true, flags });
+    } catch (e: any) {
+      res.status(500).json({ success:false, message: e.message || 'Failed to read flags'});
     }
   });
 

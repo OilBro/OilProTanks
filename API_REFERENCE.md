@@ -394,5 +394,20 @@ Usage:
 
 Security: Only `VITE_` variables are shipped to the browser; never store secrets in them.
 
+## Feature Flags Endpoint
+
+### GET /api/feature-flags
+
+Returns non-sensitive UI feature flags so the client can reflect server-configured toggles.
+
+Response 200:
+```
+{ "success": true, "flags": { "aiAnalysisUI": true, "maintenanceUtilsUI": false } }
+```
+
+Notes:
+- Flags mirror corresponding `VITE_` environment variables set on the server build environment.
+- Only expose boolean UI toggles (no secrets, tokens, or dynamic config with sensitive values).
+
 ----
 Generated on 2025-09-13.
