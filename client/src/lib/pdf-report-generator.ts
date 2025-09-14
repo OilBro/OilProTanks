@@ -160,8 +160,8 @@ export class ProfessionalReportGenerator {
     });
     this.currentY = y + 10;
 
-    this.pdf.addPage();
-    this.currentY = 30;
+    // Leave remaining space; subsequent sections will paginate as needed
+    this.currentY += 10;
   }
 
   private createTankDetailsSection(details: TankDetails) {
@@ -183,8 +183,7 @@ export class ProfessionalReportGenerator {
       headStyles: { fillColor: this.primaryColor, fontStyle: 'bold', fontSize: 11 },
       bodyStyles: { fontSize: 10 }
     });
-    this.pdf.addPage();
-    this.currentY = 30;
+    this.currentY = this.pdf.lastAutoTable.finalY + 25;
   }
 
   private createBottomPlateSection(bottomData: BottomData) {
@@ -272,6 +271,15 @@ export class ProfessionalReportGenerator {
       unit: 'mm',
       format: 'a4'
     });
+  }
+
+  // Ensure there is vertical space for a block of approximate height (mm); if not, add new page
+  private ensureSpace(needed: number) {
+    const bottomLimit = this.pageHeight - 20; // 20mm bottom margin
+    if (this.currentY + needed > bottomLimit) {
+      this.pdf.addPage();
+      this.currentY = 30; // reset top margin region
+    }
   }
   
   generate(data: ReportData): Blob {
@@ -507,11 +515,11 @@ export class ProfessionalReportGenerator {
       this.currentY += 8;
     });
     
-    this.pdf.addPage();
+    this.currentY += 15;
   }
   
   private createExecutiveSummary(data: ReportData) {
-    this.currentY = 30;
+    this.ensureSpace(30);
     this.addSectionHeader('EXECUTIVE SUMMARY');
     
     // Overall Status Box
@@ -613,7 +621,7 @@ export class ProfessionalReportGenerator {
   }
   
   private createShellCalculationsSection(data: ReportData) {
-    this.currentY = 30;
+    this.ensureSpace(30);
     this.addSectionHeader('SHELL THICKNESS CALCULATIONS');
     
     // Shell Courses Table
@@ -681,11 +689,11 @@ export class ProfessionalReportGenerator {
       this.pdf.text(`Maximum Corrosion Rate: ${govCourse.corrosionRate.toFixed(1)} mpy`, this.margin + 5, this.currentY + 25);
     }
     
-    this.pdf.addPage();
+    this.currentY = this.pdf.lastAutoTable.finalY + 40; // leave spacing; pagination handled elsewhere
   }
   
   private createBottomAssessmentSection(data: ReportData) {
-    this.currentY = 30;
+    this.ensureSpace(30);
     this.addSectionHeader('BOTTOM ASSESSMENT');
     
     const bottomInfo = [
@@ -726,11 +734,11 @@ export class ProfessionalReportGenerator {
       }
     });
     
-    this.pdf.addPage();
+    this.currentY = this.pdf.lastAutoTable.finalY + 30;
   }
   
   private createSettlementSection(settlementData: any) {
-    this.currentY = 30;
+    this.ensureSpace(30);
     this.addSectionHeader('SETTLEMENT ANALYSIS');
     
     if (settlementData && (settlementData.amplitude || settlementData.maxSettlement)) {
@@ -793,11 +801,11 @@ export class ProfessionalReportGenerator {
       });
     }
     
-    this.pdf.addPage();
+    this.currentY = (this.pdf.lastAutoTable?.finalY || this.currentY) + 30;
   }
   
   private createCMLSection(cmlData: any[]) {
-    this.currentY = 30;
+    this.ensureSpace(30);
     this.addSectionHeader('CML DATA ANALYSIS');
     
     // Sort CML data by remaining life (ascending)
@@ -855,11 +863,11 @@ export class ProfessionalReportGenerator {
     this.pdf.text(`Warning Locations: ${warningCount}`, this.margin + 120, this.currentY + 15);
     this.pdf.text(`Average Corrosion Rate: ${avgCorrosionRate.toFixed(1)} mpy`, this.margin + 5, this.currentY + 21);
     
-    this.pdf.addPage();
+    this.currentY = this.pdf.lastAutoTable.finalY + 35;
   }
   
   private createFindingsSection(findings: any) {
-    this.currentY = 30;
+    this.ensureSpace(30);
     this.addSectionHeader('FINDINGS & RECOMMENDATIONS');
     
     // Executive Summary
@@ -926,7 +934,7 @@ export class ProfessionalReportGenerator {
       });
     }
     
-    this.pdf.addPage();
+    this.currentY += 25;
   }
   
   private createAppendices(data: ReportData) {
@@ -1012,7 +1020,7 @@ export class ProfessionalReportGenerator {
   }
   
   private createNDEResultsSection(data: ReportData) {
-    this.currentY = 30;
+    this.ensureSpace(30);
     this.addSectionHeader('NON-DESTRUCTIVE EXAMINATION RESULTS');
     
     this.pdf.setFont('helvetica', 'normal');
@@ -1063,11 +1071,11 @@ export class ProfessionalReportGenerator {
       this.currentY += 5;
     });
     
-    this.pdf.addPage();
+    this.currentY = (this.pdf.lastAutoTable?.finalY || this.currentY) + 30;
   }
   
   private createProfessionalChecklistSection(data: ReportData) {
-    this.currentY = 30;
+    this.ensureSpace(30);
     this.addSectionHeader('PROFESSIONAL INSPECTION CHECKLIST');
     
     // API 653 Checklist Items
@@ -1114,11 +1122,11 @@ export class ProfessionalReportGenerator {
     this.currentY += 5;
     this.pdf.text('and Reconstruction.', this.margin, this.currentY);
     
-    this.pdf.addPage();
+    this.currentY = (this.pdf.lastAutoTable?.finalY || this.currentY) + 30;
   }
   
   private createSketchesSection(data: ReportData) {
-    this.currentY = 30;
+    this.ensureSpace(30);
     this.addSectionHeader('SKETCHES AND DIAGRAMS');
     
     this.pdf.setFont('helvetica', 'normal');
@@ -1169,7 +1177,7 @@ export class ProfessionalReportGenerator {
     this.currentY += 5;
     this.pdf.text('• All measurements recorded in attached data sheets', this.margin, this.currentY);
     
-    this.pdf.addPage();
+    this.currentY += 30;
   }
 }
 
