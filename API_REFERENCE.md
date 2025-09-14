@@ -14,6 +14,12 @@ Version: Draft (Generated automatically)
   "errors": { ...optional zod flatten() structure }
 }
 
+{
+  "success": false,
+  "message": "`human readable`",
+  "errors": { ...optional zod flatten() structure }
+}
+
 ```
 {
   "success": false,
