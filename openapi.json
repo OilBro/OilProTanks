@@ -1,0 +1,896 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "OilProTanks API",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/api/reports/{reportId}/components": {
+      "get": {
+        "summary": "List components",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Component"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create component",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Component"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Component"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/{reportId}/components/{id}": {
+      "patch": {
+        "summary": "Update component (partial)",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Component"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete component",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/{reportId}/nozzles": {
+      "get": {
+        "summary": "List nozzles",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Nozzle"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "offset": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create nozzle",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Nozzle"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Nozzle"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/reports/{reportId}/nozzles/{id}": {
+      "patch": {
+        "summary": "Update nozzle (partial)",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Nozzle"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete nozzle",
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Component": {
+        "type": "object",
+        "properties": {
+          "componentId": {
+            "type": "string"
+          },
+          "componentType": {
+            "type": "string",
+            "enum": [
+              "shell",
+              "floor",
+              "roof",
+              "nozzle",
+              "appurtenance",
+              "other"
+            ]
+          },
+          "description": {
+            "type": "string"
+          },
+          "nominalThickness": {
+            "type": "number"
+          },
+          "actualThickness": {
+            "type": "number"
+          },
+          "previousThickness": {
+            "type": "number"
+          },
+          "corrosionRate": {
+            "type": "number"
+          },
+          "remainingLife": {
+            "type": "number"
+          },
+          "governing": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "componentId",
+          "componentType"
+        ]
+      },
+      "Nozzle": {
+        "type": "object",
+        "properties": {
+          "nozzleTag": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string"
+          },
+          "service": {
+            "type": "string"
+          },
+          "elevation": {
+            "type": "number"
+          },
+          "orientation": {
+            "type": "string"
+          },
+          "nominalThickness": {
+            "type": "number"
+          },
+          "actualThickness": {
+            "type": "number"
+          },
+          "previousThickness": {
+            "type": "number"
+          },
+          "corrosionRate": {
+            "type": "number"
+          },
+          "remainingLife": {
+            "type": "number"
+          },
+          "tminPractical": {
+            "type": "number"
+          },
+          "tminUser": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "in_progress",
+              "complete",
+              "pending",
+              "review"
+            ]
+          },
+          "governing": {
+            "type": "boolean"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nozzleTag"
+        ]
+      },
+      "CmlPoint": {
+        "type": "object",
+        "properties": {
+          "parentType": {
+            "type": "string",
+            "enum": [
+              "component",
+              "nozzle"
+            ]
+          },
+          "parentId": {
+            "type": "number"
+          },
+          "cmlNumber": {
+            "type": "string"
+          },
+          "point1": {
+            "type": "number"
+          },
+          "point2": {
+            "type": "number"
+          },
+          "point3": {
+            "type": "number"
+          },
+          "point4": {
+            "type": "number"
+          },
+          "point5": {
+            "type": "number"
+          },
+          "point6": {
+            "type": "number"
+          },
+          "governingPoint": {
+            "type": "number"
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "parentType",
+          "parentId",
+          "cmlNumber"
+        ]
+      },
+      "CmlBulkRequest": {
+        "type": "object",
+        "properties": {
+          "parentType": {
+            "type": "string",
+            "enum": [
+              "component",
+              "nozzle"
+            ]
+          },
+          "parentId": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ]
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "cmlNumber": {
+                  "type": "string"
+                },
+                "readings": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  }
+                },
+                "governingPoint": {
+                  "type": "number"
+                },
+                "notes": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "cmlNumber"
+              ]
+            }
+          }
+        },
+        "required": [
+          "parentType",
+          "parentId",
+          "points"
+        ]
+      },
+      "ShellCoursesPut": {
+        "type": "object",
+        "properties": {
+          "courses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "courseNumber": {
+                  "type": "number"
+                },
+                "courseHeight": {
+                  "type": "number"
+                },
+                "nominalThickness": {
+                  "type": "number"
+                },
+                "actualThickness": {
+                  "type": "number"
+                },
+                "previousThickness": {
+                  "type": "number"
+                },
+                "corrosionRate": {
+                  "type": "number"
+                },
+                "remainingLife": {
+                  "type": "number"
+                },
+                "jointEfficiency": {
+                  "type": "number"
+                },
+                "stress": {
+                  "type": "number"
+                },
+                "altStress": {
+                  "type": "number"
+                },
+                "tminCalc": {
+                  "type": "number"
+                },
+                "tminAlt": {
+                  "type": "number"
+                },
+                "fillHeight": {
+                  "type": "number"
+                },
+                "governing": {
+                  "type": "boolean"
+                },
+                "notes": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "courseNumber"
+              ]
+            }
+          }
+        },
+        "required": [
+          "courses"
+        ]
+      },
+      "Appendix": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "defaultText": {
+            "type": "string"
+          },
+          "userText": {
+            "type": "string"
+          },
+          "applicable": {
+            "type": "boolean"
+          },
+          "orderIndex": {
+            "type": "number"
+          }
+        }
+      },
+      "WriteupPut": {
+        "type": "object",
+        "properties": {
+          "executiveSummary": {
+            "type": "string"
+          },
+          "utResultsSummary": {
+            "type": "string"
+          },
+          "recommendationsSummary": {
+            "type": "string"
+          },
+          "nextInternalYears": {
+            "type": "number"
+          },
+          "nextExternalYears": {
+            "type": "number"
+          },
+          "governingComponent": {
+            "type": "string"
+          }
+        }
+      },
+      "TminOverride": {
+        "type": "object",
+        "properties": {
+          "referenceType": {
+            "type": "string"
+          },
+          "referenceId": {
+            "type": "number"
+          },
+          "defaultTmin": {
+            "type": "number"
+          },
+          "overrideTmin": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "referenceType",
+          "referenceId"
+        ]
+      }
+    }
+  }
+}

@@ -18,6 +18,8 @@ export const componentSchema = z.object({
   governing: z.boolean().optional(),
   notes: z.string().optional().nullable()
 });
+// Partial variant for PATCH
+export const componentPatchSchema = componentSchema.partial();
 
 export const nozzleSchema = z.object({
   nozzleTag: z.string().min(1, 'nozzleTag required'),
@@ -36,6 +38,7 @@ export const nozzleSchema = z.object({
   governing: z.boolean().optional(),
   notes: z.string().optional().nullable()
 });
+export const nozzlePatchSchema = nozzleSchema.partial();
 
 export const cmlPointSchema = z.object({
   parentType: parentTypeEnum,
@@ -50,6 +53,7 @@ export const cmlPointSchema = z.object({
   governingPoint: z.number().optional().nullable(),
   notes: z.string().optional().nullable()
 });
+export const cmlPointPatchSchema = cmlPointSchema.partial();
 
 export const cmlBulkSchema = z.object({
   parentType: parentTypeEnum,

@@ -1,4 +1,7 @@
-import { componentSchema, nozzleSchema, cmlPointSchema, cmlBulkSchema, shellCoursesPutSchema, appendixSchema, tminOverrideSchema, writeupPutSchema, validate } from './validation-schemas.ts';
+import { componentSchema, componentPatchSchema, nozzleSchema, nozzlePatchSchema, cmlPointSchema, cmlPointPatchSchema, cmlBulkSchema, shellCoursesPutSchema, appendixSchema, tminOverrideSchema, writeupPutSchema, validate } from './validation-schemas.ts';
+import { registerComponentRoutes, registerNozzleRoutes } from './routes/components.routes.ts';
+import swaggerUi from 'swagger-ui-express';
+import { readFileSync } from 'fs';
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
@@ -46,64 +49,37 @@ import {
 
 // Unit converter utilities
 const UnitConverter = {
-  // Length conversions
   toFeet: (value: number, unit: string): number => {
-    const conversions: Record<string, number> = {
-      'ft': 1,
-      'in': 0.0833333,
-      'm': 3.28084,
-      'mm': 0.00328084
-    };
+    const conversions: Record<string, number> = { ft:1, in:0.0833333, m:3.28084, mm:0.00328084 };
     return value * (conversions[unit] || 1);
   },
-  
-  // Volume conversions
-  toGallons: (value: number, unit: string): number => {
-    const conversions: Record<string, number> = {
-      'gal': 1,
-      'L': 0.264172,
-      'bbl': 42,
-      'm3': 264.172
-    };
+  toGallons: (value:number, unit:string): number => {
+    const conversions: Record<string, number> = { gal:1, L:0.264172, bbl:42, m3:264.172 };
     return value * (conversions[unit] || 1);
   },
-  
-  // Thickness conversions
-  toInches: (value: number, unit: string): number => {
-    const conversions: Record<string, number> = {
-      'in': 1,
-      'mm': 0.0393701,
-      'mils': 0.001
-    };
+  toInches: (value:number, unit:string): number => {
+    const conversions: Record<string, number> = { in:1, mm:0.0393701, mils:0.001 };
     return value * (conversions[unit] || 1);
   },
-  
-  // Pressure conversions
-  toPSI: (value: number, unit: string): number => {
-    const conversions: Record<string, number> = {
-      'psi': 1,
-      'kPa': 0.145038,
-      'bar': 14.5038,
-      'atm': 14.6959
-    };
+  toPSI: (value:number, unit:string): number => {
+    const conversions: Record<string, number> = { psi:1, kPa:0.145038, bar:14.5038, atm:14.6959 };
     return value * (conversions[unit] || 1);
   }
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  
   // Configure multer for file uploads
   const upload = multer({ 
     storage: multer.memoryStorage(),
-    limits: { fileSize: 25 * 1024 * 1024 }, // 25MB limit for PDFs
+    limits: { fileSize: 25 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
       const allowedTypes = [
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-        'application/vnd.ms-excel', // .xls
-        'application/vnd.ms-excel.sheet.macroEnabled.12', // .xlsm
-        'application/pdf', // .pdf
-        'text/csv', // .csv
-        'application/csv' // .csv alternate mime type
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel',
+        'application/vnd.ms-excel.sheet.macroEnabled.12',
+        'application/pdf',
+        'text/csv',
+        'application/csv'
       ];
       const isAllowed = allowedTypes.includes(file.mimetype) || 
                        file.originalname.toLowerCase().endsWith('.xlsx') ||
@@ -111,296 +87,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
                        file.originalname.toLowerCase().endsWith('.xlsm') ||
                        file.originalname.toLowerCase().endsWith('.pdf') ||
                        file.originalname.toLowerCase().endsWith('.csv');
-      
-      console.log('File upload validation:', {
-        filename: file.originalname,
-        mimetype: file.mimetype,
-        isAllowed
-      });
-      
-      if (isAllowed) {
-        cb(null, true);
-      } else {
-        cb(new Error('Invalid file type. Only Excel (.xlsx, .xls, .xlsm), PDF, and CSV files are allowed.'));
-      }
-    }
-  });
-  
-    // Basic health endpoint (duplicated from index for test harness usage without full server boot)
-    app.get('/api/health', (_req, res) => {
-      res.json({ ok: true });
-    });
-
-  // Excel Template Download endpoint
-  app.get("/api/template/download", (req, res) => {
-    try {
-      const templateBuffer = generateInspectionTemplate();
-      const filename = `API_653_Inspection_Template_${new Date().toISOString().split('T')[0]}.xlsx`;
-      
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Content-Length', templateBuffer.byteLength.toString());
-      
-      res.send(Buffer.from(templateBuffer));
-    } catch (error) {
-      console.error('Template generation error:', error);
-      res.status(500).json({ message: 'Failed to generate template' });
+      if (isAllowed) cb(null,true); else cb(new Error('Invalid file type.'));
     }
   });
 
-  // Excel Import endpoint
+  // Delegate to modular route registrations (components/nozzles)
+  registerComponentRoutes(app);
+  registerNozzleRoutes(app);
+  // Excel Import endpoint (restored)
   app.post("/api/reports/import", upload.single('excelFile'), async (req, res) => {
     try {
-      console.log('=== File Import Request ===');
-      console.log('File received:', req.file ? {
-        originalname: req.file.originalname,
-        size: req.file.size,
-        mimetype: req.file.mimetype
-      } : 'No file');
-      
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
-      }
-
-      // Check file type and route to appropriate handler
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
       const fileName = req.file.originalname.toLowerCase();
       let result;
-      
       if (fileName.endsWith('.pdf')) {
-        console.log('Calling handlePDFImport...');
-        // Import handlePDFImport here since it's in the same file
-  const { handlePDFImport } = await import('./import-handler.ts');
+        const { handlePDFImport } = await import('./import-handler.ts');
         result = await handlePDFImport(req.file.buffer, req.file.originalname);
       } else {
-        console.log('Calling handleExcelImport...');
         result = await handleExcelImport(req.file.buffer, req.file.originalname);
       }
-      
-      console.log('Import result summary:');
-      console.log('- Total rows:', result.totalRows);
-      console.log('- AI Confidence:', result.aiAnalysis?.confidence);
-      console.log('- Imported data fields:', Object.keys(result.importedData || {}));
-      console.log('- Thickness measurements count:', result.thicknessMeasurements?.length || 0);
-      console.log('- Checklist items count:', result.checklistItems?.length || 0);
-      
-      // CRITICAL FIX: Actually create the report from imported data
-      
-      // Clean up tank ID to prevent filenames being used
-      if (result.importedData.tankId?.endsWith('.xlsx') || 
-          result.importedData.tankId?.endsWith('.xls') || 
-          result.importedData.tankId?.endsWith('.xlsm')) {
-        // Extract actual tank ID from the imported data or use a default
-        result.importedData.tankId = result.importedData.equipmentId || 
-                                    result.importedData.unitNumber || 
-                                    `TANK-${Date.now()}`;
-      }
-      
-      // Standardize service types
-      const serviceMapping: Record<string, string> = {
-        'crude_oil': 'crude',
-        'crude oil': 'crude',
-        'diesel': 'diesel',
-        'gasoline': 'gasoline',
-        'alcohol': 'alcohol',
-        'fish oil and sludge oil': 'other',
-        'other': 'other'
-      };
-      
-      if (result.importedData.service) {
-        const normalizedService = result.importedData.service.toLowerCase();
-        result.importedData.service = serviceMapping[normalizedService] || 'other';
-      }
-      
-      // Extract special fields that shouldn't be in constructor
       const { findings, reportWriteUp, recommendations, notes, ...reportData } = result.importedData;
-      
-      // Create the report with valid fields only
-      try {
-        console.log('Creating report from imported data:', reportData);
-        
-        // Parse and validate the report data - convert numbers to strings where needed
-        const validatedData = insertInspectionReportSchema.parse({
-          ...reportData,
-          diameter: reportData.diameter != null ? String(reportData.diameter) : null,
-          height: reportData.height != null ? String(reportData.height) : null,
-          originalThickness: reportData.originalThickness != null ? String(reportData.originalThickness) : null,
-          status: reportData.status || null,
-          yearsSinceLastInspection: reportData.yearsSinceLastInspection ? parseInt(reportData.yearsSinceLastInspection) : null
-        });
-        
-        // Create the report
-        const createdReport = await storage.createInspectionReport(validatedData);
-        console.log('Report created successfully with ID:', createdReport.id);
-        
-        // Create thickness measurements if any
-        if (result.thicknessMeasurements && result.thicknessMeasurements.length > 0) {
-          console.log(`Creating ${result.thicknessMeasurements.length} thickness measurements`);
-          
-          for (const measurement of result.thicknessMeasurements) {
-            try {
-              const measurementData = {
-                ...measurement,
-                reportId: createdReport.id,
-                currentThickness: String(measurement.currentThickness || 0),
-                originalThickness: String(measurement.originalThickness || 0.375)
-              };
-              
-              await storage.createThicknessMeasurement(measurementData);
-            } catch (error) {
-              console.error('Failed to create thickness measurement:', error);
-            }
-          }
-        }
-        
-        // Create checklist items if any
-        if (result.checklistItems && result.checklistItems.length > 0) {
-          console.log(`Creating ${result.checklistItems.length} checklist items`);
-          
-          for (const item of result.checklistItems) {
-            try {
-              await storage.createInspectionChecklist({
-                ...item,
-                reportId: createdReport.id
-              });
-            } catch (error) {
-              console.error('Failed to create checklist item:', error);
-            }
-          }
-        }
-        
-        // Update report with findings if present
-        if (findings || reportWriteUp || recommendations || notes) {
-          const updateData: any = {};
-          if (findings) updateData.findings = findings;
-          if (reportWriteUp) updateData.reportWriteUp = reportWriteUp;
-          if (recommendations) updateData.recommendations = recommendations;
-          if (notes) updateData.notes = notes;
-          
-          // Update the report with the additional fields
-          try {
-            await storage.updateInspectionReport(createdReport.id, updateData);
-            console.log('Updated report with findings and additional fields');
-          } catch (updateError) {
-            console.error('Failed to update report with findings:', updateError);
-          }
-        }
-        
-        res.json({
-          success: true,
-          message: `Successfully imported inspection report ${createdReport.reportNumber}`,
-          reportId: createdReport.id,
-          reportNumber: createdReport.reportNumber,
-          importedData: result.importedData,
-          thicknessMeasurements: result.thicknessMeasurements?.length || 0,
-          checklistItems: result.checklistItems?.length || 0,
-          totalRows: result.totalRows,
-          preview: result.preview,
-          aiInsights: {
-            confidence: result.aiAnalysis.confidence,
-            detectedColumns: (result.aiAnalysis as any).detectedColumns || [],
-            mappingSuggestions: result.aiAnalysis.mappingSuggestions
-          }
-        });
-        
-      } catch (validationError) {
-        console.error('Report creation failed:', validationError);
-        
-        // Enhanced error handling with cleanup
-        let errorMessage = "Failed to create report from imported data.";
-        let errorDetails = {};
-        
-        if (validationError instanceof Error) {
-          errorMessage = validationError.message;
-          
-          // Parse validation errors for better user feedback
-          if (validationError.message.includes('tankId')) {
-            errorMessage = "Invalid Tank ID. Please ensure the Tank ID is properly specified in the Excel file.";
-          } else if (validationError.message.includes('service')) {
-            errorMessage = "Invalid service type. Please check the product/service field in the Excel file.";
-          } else if (validationError.message.includes('inspectionDate')) {
-            errorMessage = "Invalid inspection date format. Please use YYYY-MM-DD format.";
-          }
-          
-          // Extract validation details if available
-          if ((validationError as any).issues) {
-            errorDetails = {
-              validationIssues: (validationError as any).issues.map((issue: any) => ({
-                field: issue.path.join('.'),
-                message: issue.message,
-                received: issue.received
-              }))
-            };
-          }
-        }
-        
-        // Return the error but still show the extracted data for user review
-        res.status(400).json({
-          success: false,
-          message: errorMessage,
-          error: validationError instanceof Error ? validationError.message : 'Validation failed',
-          errorDetails,
-          importedData: result.importedData,
-          thicknessMeasurements: result.thicknessMeasurements,
-          checklistItems: result.checklistItems,
-          totalRows: result.totalRows,
-          preview: result.preview,
-          aiInsights: {
-            confidence: result.aiAnalysis.confidence,
-            detectedColumns: (result.aiAnalysis as any).detectedColumns || [],
-            mappingSuggestions: result.aiAnalysis.mappingSuggestions
-          },
-          suggestions: [
-            "Review the Tank ID field - it should be a valid identifier",
-            "Check the service/product type - use standard values like 'crude_oil', 'diesel', etc.",
-            "Verify date formats are YYYY-MM-DD",
-            "Ensure numeric fields (diameter, height) contain valid numbers"
-          ]
-        });
+      if (reportData.tankId?.match(/\.xls/)) {
+        reportData.tankId = reportData.equipmentId || reportData.unitNumber || `TANK-${Date.now()}`;
       }
-
-    } catch (error) {
-      console.error('Excel import error:', error);
-      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-      
-      // Enhanced error categorization
-      let errorMessage = "Failed to process Excel file";
-      let errorCategory = "unknown";
-      
-      if (error instanceof Error) {
-        if (error.message.includes('ENOENT') || error.message.includes('file not found')) {
-          errorMessage = "File not found or corrupted during upload";
-          errorCategory = "file_error";
-        } else if (error.message.includes('Invalid file format') || error.message.includes('XLSX')) {
-          errorMessage = "Invalid Excel file format. Please upload a valid .xlsx, .xls, or .xlsm file";
-          errorCategory = "format_error";
-        } else if (error.message.includes('timeout') || error.message.includes('ETIMEDOUT')) {
-          errorMessage = "File processing timed out. Please try with a smaller file";
-          errorCategory = "timeout_error";
-        } else if (error.message.includes('memory') || error.message.includes('heap')) {
-          errorMessage = "File too large to process. Please reduce file size and try again";
-          errorCategory = "memory_error";
-        } else {
-          errorMessage = error.message;
-          errorCategory = "processing_error";
-        }
+      const serviceMapping: Record<string,string> = { 'crude_oil':'crude','crude oil':'crude','diesel':'diesel','gasoline':'gasoline','alcohol':'alcohol','fish oil and sludge oil':'other','other':'other'};
+      if (reportData.service) {
+        const norm = reportData.service.toLowerCase();
+        reportData.service = serviceMapping[norm] || 'other';
       }
-      
-      res.status(500).json({ 
-        message: errorMessage,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        errorCategory,
-        timestamp: new Date().toISOString(),
-        suggestions: [
-          "Ensure the file is a valid Excel format (.xlsx, .xls, .xlsm)",
-          "Check that the file is not corrupted",
-          "Verify the file contains tank inspection data",
-          "Try uploading a smaller file if the current one is very large"
-        ]
+      const validatedData = insertInspectionReportSchema.parse({
+        ...reportData,
+        diameter: reportData.diameter != null ? String(reportData.diameter) : null,
+        height: reportData.height != null ? String(reportData.height) : null,
+        originalThickness: reportData.originalThickness != null ? String(reportData.originalThickness) : null,
+        status: reportData.status || null,
+        yearsSinceLastInspection: reportData.yearsSinceLastInspection ? parseInt(reportData.yearsSinceLastInspection) : null
       });
+      const createdReport = await storage.createInspectionReport(validatedData);
+      if (findings || reportWriteUp || recommendations || notes) {
+        const updateData: any = {};
+        if (findings) updateData.findings = findings;
+        if (reportWriteUp) updateData.reportWriteUp = reportWriteUp;
+        if (recommendations) updateData.recommendations = recommendations;
+        if (notes) updateData.notes = notes;
+        try { await storage.updateInspectionReport(createdReport.id, updateData); } catch {}
+      }
+      res.json({ success:true, reportId: createdReport.id, reportNumber: createdReport.reportNumber, importedData: result.importedData });
+    } catch (e:any) {
+      res.status(500).json({ success:false, message: e.message || 'Import failed'});
     }
   });
 
   // Report Statistics - must come before the parameterized route
+  
   app.get("/api/reports/stats", async (req, res) => {
     try {
       const reports = await storage.getInspectionReports();
@@ -1792,6 +1531,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ===== Extended Report Domain Endpoints =====
+  // OpenAPI / Swagger (minimal schemas only)
+  try {
+    const spec = JSON.parse(readFileSync('openapi.json','utf-8'));
+    app.get('/api/openapi.json', (_req,res)=>res.json(spec));
+    app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(spec));
+  } catch(e) {
+    console.warn('OpenAPI spec not found; run `npm run openapi:gen` to generate.');
+  }
   // Utility helpers
   const parseId = (val: any) => {
     const n = Number(val); return Number.isFinite(n) ? n : undefined;
@@ -1801,8 +1548,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/reports/:reportId/components', async (req, res) => {
     const reportId = parseId(req.params.reportId);
     if (!reportId) return res.status(400).json({ success:false, message:'Invalid reportId' });
-    const rows = await db.select().from(reportComponents).where(eq(reportComponents.reportId, reportId));
-    res.json({ success:true, data: rows });
+    // Pagination params
+    const limitRaw = req.query.limit as string | undefined;
+    const offsetRaw = req.query.offset as string | undefined;
+    let limit = 50; // default
+    let offset = 0;
+    if (limitRaw !== undefined) {
+      const n = Number(limitRaw); if(Number.isFinite(n) && n > 0 && n <= 500) limit = Math.floor(n);
+    }
+    if (offsetRaw !== undefined) {
+      const n = Number(offsetRaw); if(Number.isFinite(n) && n >= 0) offset = Math.floor(n);
+    }
+    const rows = await db.select().from(reportComponents).where(eq(reportComponents.reportId, reportId)).limit(limit).offset(offset);
+    res.json({ success:true, data: rows, pagination:{ limit, offset } });
   });
   app.post('/api/reports/:reportId/components', validate(componentSchema), async (req, res) => {
     try {
@@ -1839,7 +1597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success:true, data: inserted[0] || fallback });
     } catch (e:any) { res.status(500).json({ success:false, message:e.message }); }
   });
-  app.patch('/api/reports/:reportId/components/:id', async (req, res) => {
+  app.patch('/api/reports/:reportId/components/:id', validate(componentPatchSchema), async (req, res) => {
     const id = parseId(req.params.id);
     if (!id) return res.status(400).json({ success:false, message:'Invalid id'});
     const patch = { ...req.body };
@@ -1855,8 +1613,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Nozzles
   app.get('/api/reports/:reportId/nozzles', async (req,res)=>{
     const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
-    const rows = await db.select().from(reportNozzles).where(eq(reportNozzles.reportId, reportId));
-    res.json({ success:true, data: rows });
+    const limitRaw = req.query.limit as string | undefined;
+    const offsetRaw = req.query.offset as string | undefined;
+    let limit = 50; let offset = 0;
+    if (limitRaw !== undefined) { const n = Number(limitRaw); if(Number.isFinite(n) && n > 0 && n <= 500) limit = Math.floor(n); }
+    if (offsetRaw !== undefined) { const n = Number(offsetRaw); if(Number.isFinite(n) && n >= 0) offset = Math.floor(n); }
+    const rows = await db.select().from(reportNozzles).where(eq(reportNozzles.reportId, reportId)).limit(limit).offset(offset);
+    res.json({ success:true, data: rows, pagination:{ limit, offset } });
   });
   app.post('/api/reports/:reportId/nozzles', validate(nozzleSchema), async (req,res)=>{
     try {
@@ -1900,7 +1663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success:true, data: inserted[0] || fallback });
     } catch(e:any){ res.status(500).json({ success:false, message:e.message }); }
   });
-  app.patch('/api/reports/:reportId/nozzles/:id', async (req,res)=>{
+  app.patch('/api/reports/:reportId/nozzles/:id', validate(nozzlePatchSchema), async (req,res)=>{
     const id = parseId(req.params.id); if(!id) return res.status(400).json({ success:false, message:'Invalid id'});
     await db.update(reportNozzles).set({ ...req.body }).where(eq(reportNozzles.id, id));
     res.json({ success:true });
@@ -1913,18 +1676,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // CML Points
   app.get('/api/reports/:reportId/cml-points', async (req,res)=>{
-   
-
     const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
-    const { parentType, parentId } = req.query as any;
-    let rowsQuery = db.select().from(cmlPoints).where(eq(cmlPoints.reportId, reportId));
-    if (parentType && parentId) {
-      // Filtering will be applied in memory due to drizzle chain simplicity here
-      const rows = await rowsQuery;
-  return res.json({ success:true, data: rows.filter((r: any) => r.parentType === parentType && r.parentId === Number(parentId)) });
+    const { parentType, parentId } = req.query as Record<string,string>;
+    const limitRaw = req.query.limit as string | undefined;
+    const offsetRaw = req.query.offset as string | undefined;
+    let limit = 50; let offset = 0;
+    if (limitRaw !== undefined) { const n = Number(limitRaw); if(Number.isFinite(n) && n>0 && n<=500) limit = Math.floor(n); }
+    if (offsetRaw !== undefined) { const n = Number(offsetRaw); if(Number.isFinite(n) && n>=0) offset = Math.floor(n); }
+    const baseRows = await db.select().from(cmlPoints).where(eq(cmlPoints.reportId, reportId));
+    let filtered = baseRows;
+    if (parentType || parentId) {
+      if (!(parentType && parentId)) {
+        return res.status(400).json({ success:false, message:'parentType and parentId must be provided together' });
+      }
+      if (!['component','nozzle'].includes(parentType)) {
+        return res.status(400).json({ success:false, message:'Invalid parentType'});
+      }
+      const pid = Number(parentId);
+      if (!Number.isFinite(pid)) return res.status(400).json({ success:false, message:'Invalid parentId'});
+  filtered = filtered.filter((r: any) => r.parentType === parentType && r.parentId === pid);
     }
-    const rows = await rowsQuery;
-    res.json({ success:true, data: rows });
+    const paged = filtered.slice(offset, offset + limit);
+    res.json({ success:true, data: paged, pagination:{ limit, offset, total: filtered.length } });
   });
   app.post('/api/reports/:reportId/cml-points', validate(cmlPointSchema), async (req,res)=>{
     try {
@@ -2160,6 +1933,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await db.delete(reportPracticalTminOverrides).where(eq(reportPracticalTminOverrides.id, id));
     res.json({ success:true });
   });
+
+  // OpenAPI / Swagger endpoints (if not already mounted earlier)
+  try {
+    const spec = JSON.parse(readFileSync('openapi.json','utf-8'));
+    if (!(app as any)._openapiMounted) {
+      app.get('/api/openapi.json', (_req,res)=>res.json(spec));
+      app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(spec));
+      (app as any)._openapiMounted = true;
+    }
+  } catch {}
+
+  return createServer(app);
 
   // Status aggregator
   app.get('/api/reports/:reportId/status', async (req,res)=>{

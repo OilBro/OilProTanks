@@ -60,6 +60,51 @@ describe('Extended Report Domain Routes', () => {
     assert.equal(res.body.success, false);
   });
 
+  it('supports pagination params for components', async () => {
+    const res = await request(app)
+      .get(`/api/reports/${createdReportId}/components?limit=5&offset=0`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.ok(res.body.pagination);
+    assert.equal(res.body.pagination.limit, 5);
+  });
+
+  it('pagination enforces upper bound (limit>500 ignored to default 50)', async () => {
+    const res = await request(app)
+      .get(`/api/reports/${createdReportId}/components?limit=9999`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    // current behavior: should fall back to default 50
+    assert.equal(res.body.pagination.limit, 50);
+  });
+
+  it('PATCH component validates types', async () => {
+    // create second component
+    const createRes = await request(app)
+      .post(`/api/reports/${createdReportId}/components`)
+      .send({ componentId: 'C2', componentType: 'shell' });
+    assert.equal(createRes.status, 200);
+    const compId = createRes.body.data.id;
+    const badPatch = await request(app)
+      .patch(`/api/reports/${createdReportId}/components/${compId}`)
+      .send({ nominalThickness: 'not-a-number' });
+    assert.equal(badPatch.status, 400);
+    assert.equal(badPatch.body.success, false);
+  });
+
+  it('PATCH nozzle validates types', async () => {
+    const createRes = await request(app)
+      .post(`/api/reports/${createdReportId}/nozzles`)
+      .send({ nozzleTag: 'N1' });
+    assert.equal(createRes.status, 200);
+    const nzId = createRes.body.data.id;
+    const badPatch = await request(app)
+      .patch(`/api/reports/${createdReportId}/nozzles/${nzId}`)
+      .send({ elevation: 'up' });
+    assert.equal(badPatch.status, 400);
+    assert.equal(badPatch.body.success, false);
+  });
+
   it('rejects invalid nozzle payload (missing nozzleTag)', async () => {
     const res = await request(app)
       .post(`/api/reports/${createdReportId}/nozzles`)

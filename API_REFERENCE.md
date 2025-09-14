@@ -103,8 +103,48 @@ Partial update.
 Delete nozzle.
 
 ## CML Points
-### GET /api/reports/:reportId/cml-points[?parentType=&parentId=]
-List CML points optionally filtered by parent.
+### GET /api/reports/:reportId/cml-points`[?parentType=&parentId=&limit=&offset=]`
+List CML points for a report. Optionally filter by parent component/nozzle and paginate.
+
+Query Parameters:
+```
+parentType (optional): component | nozzle
+parentId   (optional): number (must be used with parentType)
+limit      (optional): number >0 <=500 (default 50) [future enhancement]
+offset     (optional): number >=0 (default 0)        [future enhancement]
+```
+Examples:
+```
+GET /api/reports/12/cml-points
+GET /api/reports/12/cml-points?parentType=component&parentId=34
+GET /api/reports/12/cml-points?parentType=nozzle&parentId=7&limit=25&offset=50
+```
+Successful Response (filtered list):
+```
+{
+  "success": true,
+  "data": [
+    {
+      "id": 101,
+      "reportId": 12,
+      "parentType": "component",
+      "parentId": 34,
+      "cmlNumber": "C-12-01",
+      "point1": 0.375,
+      "point2": 0.372,
+      "governingPoint": 0.372,
+      "notes": null,
+      "createdAt": "2025-09-14T03:12:55.123Z"
+    }
+  ],
+  "pagination": { "limit": 50, "offset": 0 }
+}
+```
+Error Responses:
+```
+400 { success:false, message:"Invalid parentId" }
+400 { success:false, message:"parentType required when parentId provided" }
+```
 ### POST /api/reports/:reportId/cml-points
 Single CML point create.
 ```
