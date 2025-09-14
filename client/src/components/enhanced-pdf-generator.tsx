@@ -23,19 +23,8 @@ export interface EnhancedReportData {
 }
 
 export function generateEnhancedPDF(data: EnhancedReportData): void {
-  // Use the new professional PDF generator
-  const professionalData = {
-    report: data.report,
-    measurements: data.measurements || [],
-    checklists: data.checklists || [],
-    appurtenanceInspections: data.appurtenanceInspections || [],
-    repairRecommendations: data.repairRecommendations || [],
-    ventingInspections: data.ventingInspections || [],
-    attachments: data.attachments || [],
-    shellCalculations: data.shellCalculations || null,
-    settlementSurvey: data.settlementSurvey || null,
-  };
-  // TODO: Implement new PDF logic here
+  // Call the legacy function which has the full implementation
+  generateEnhancedPDFLegacy(data);
 }
 
 export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
