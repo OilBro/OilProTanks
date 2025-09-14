@@ -111,6 +111,7 @@ interface ReportData {
   appurtenances?: any;
   vents?: any;
   checklist?: any;
+  logoDataUrl?: string; // optional base64 logo provided externally
 }
 
 export class ProfessionalReportGenerator {
@@ -278,6 +279,21 @@ export class ProfessionalReportGenerator {
     this.currentY = 30;
     this.addCoverPage(data);
 
+    // Optional logo (top-right of cover page) - attempt after cover creation to avoid shifting layout
+    if (data.logoDataUrl) {
+      try {
+        this.pdf.addImage(data.logoDataUrl, 'PNG', this.pageWidth - 60, 20, 40, 25, undefined, 'FAST');
+      } catch (e) {
+        // silently ignore logo embedding issues
+        console.warn('Logo embedding failed:', e);
+      }
+    }
+
+    // Table of contents & Executive Summary pages
+    this.createTableOfContents();
+    this.createExecutiveSummary(data);
+    this.createTankInformation(data);
+
     // Tank Details
     this.addSectionHeader('TANK DETAILS');
     this.createTankDetailsSection(data.tankDetails);
@@ -359,7 +375,7 @@ export class ProfessionalReportGenerator {
       this.pdf.setTextColor(0, 0, 0);
     }
 
-    // CML DATA
+  // CML DATA
     this.addSectionHeader('CML DATA');
     if (data.cmlData && data.cmlData.length) {
       this.createCMLSection(data.cmlData);
@@ -373,7 +389,7 @@ export class ProfessionalReportGenerator {
     }
 
     // Findings & Recommendations
-    this.addSectionHeader('FINDINGS & RECOMMENDATIONS');
+  this.addSectionHeader('FINDINGS & RECOMMENDATIONS');
     if (data.findings) {
       this.createFindingsSection(data.findings);
     } else {
@@ -436,6 +452,19 @@ export class ProfessionalReportGenerator {
       this.pdf.text('No sketches or diagrams available for this section.', this.margin, this.currentY);
       this.currentY += 10;
       this.pdf.setTextColor(0, 0, 0);
+    }
+
+    // Append Appendices placeholder at end
+    this.createAppendices(data);
+
+    // Add page numbers (skip cover? count all but label from page 1)
+    const pageCount = this.pdf.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      this.pdf.setPage(i);
+      this.pdf.setFont('helvetica', 'normal');
+      this.pdf.setFontSize(8);
+      this.pdf.setTextColor(120, 120, 120);
+      this.pdf.text(`Page ${i} of ${pageCount}`, this.pageWidth / 2, this.pageHeight - 8, { align: 'center' });
     }
 
     return this.pdf.output('blob');
@@ -1155,6 +1184,44 @@ export async function generateProfessionalReport(reportData: ReportData): Promis
     console.log('Starting PDF generation for report:', reportData.reportNumber);
     
   const generator = new ProfessionalReportGenerator();
+
+  // Attempt to embed logo if not already provided
+  if (!reportData.logoDataUrl) {
+    try {
+      // Expect an <img id="org-logo"> element OR fetch from a known asset path
+      const existing = document.getElementById('org-logo') as HTMLImageElement | null;
+      if (existing && existing.src.startsWith('data:')) {
+        reportData.logoDataUrl = existing.src;
+      } else {
+        // Fallback: fetch a static asset (user can replace path with actual logo)
+        const potentialPaths = [
+          '/logo.png',
+          '/logo.jpg',
+          '/logo.jpeg',
+          '/logo.bmp'
+        ];
+        for (const p of potentialPaths) {
+          try {
+            const resp = await fetch(p);
+            if (resp.ok) {
+              const blob = await resp.blob();
+              const dataUrl = await new Promise<string>((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(r.result as string);
+                r.onerror = () => reject(r.error);
+                r.readAsDataURL(blob);
+              });
+              reportData.logoDataUrl = dataUrl;
+              break;
+            }
+          } catch {}
+        }
+      }
+    } catch (e) {
+      console.warn('Logo acquisition failed:', e);
+    }
+  }
+
   const pdfBlob = generator.generate(reportData);
 
     if (!pdfBlob || pdfBlob.size === 0) {
