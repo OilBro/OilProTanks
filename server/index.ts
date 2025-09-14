@@ -56,8 +56,8 @@ app.use(requestLogger);
 (async () => {
   const server = await registerRoutes(app);
 
-  // Basic 404 handler for unknown API or asset requests (before error handler)
-  app.use((req: Request, res: Response) => {
+  // Basic 404 handler for unknown API requests only (before error handler)
+  app.use('/api', (req: Request, res: Response) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
   });
 
