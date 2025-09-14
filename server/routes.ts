@@ -24,6 +24,7 @@ import {
 import { db } from "./db.ts";
 import { eq } from "drizzle-orm";
 import { handleExcelImport } from "./import-handler.ts";
+import { persistImportedReport, cleanupOrphanedReportChildren } from './import-persist.ts';
 import { handleChecklistUpload, standardChecklists } from "./checklist-handler.ts";
 import { checklistTemplates, insertChecklistTemplateSchema } from "../shared/schema.ts";
 import { generateInspectionTemplate, generateChecklistTemplateExcel } from "./template-generator.ts";
@@ -106,35 +107,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         result = await handleExcelImport(req.file.buffer, req.file.originalname);
       }
-      const { findings, reportWriteUp, recommendations, notes, ...reportData } = result.importedData;
+
+      const { importedData, thicknessMeasurements: tms, checklistItems: clItems } = result;
+      const { findings, reportWriteUp, recommendations, notes, ...reportData } = importedData;
+
+      // Normalize tankId edge cases
       if (reportData.tankId?.match(/\.xls/)) {
         reportData.tankId = reportData.equipmentId || reportData.unitNumber || `TANK-${Date.now()}`;
       }
+      // Service mapping normalization
       const serviceMapping: Record<string,string> = { 'crude_oil':'crude','crude oil':'crude','diesel':'diesel','gasoline':'gasoline','alcohol':'alcohol','fish oil and sludge oil':'other','other':'other'};
       if (reportData.service) {
-        const norm = reportData.service.toLowerCase();
+        const norm = String(reportData.service).toLowerCase();
         reportData.service = serviceMapping[norm] || 'other';
       }
-      const validatedData = insertInspectionReportSchema.parse({
-        ...reportData,
-        diameter: reportData.diameter != null ? String(reportData.diameter) : null,
-        height: reportData.height != null ? String(reportData.height) : null,
-        originalThickness: reportData.originalThickness != null ? String(reportData.originalThickness) : null,
-        status: reportData.status || null,
-        yearsSinceLastInspection: reportData.yearsSinceLastInspection ? parseInt(reportData.yearsSinceLastInspection) : null
+
+      // Transactional persistence
+      const persisted = await persistImportedReport({
+        importedData: reportData,
+        thicknessMeasurements: Array.isArray(tms) ? tms : [],
+        checklistItems: Array.isArray(clItems) ? clItems : [],
+        findings, reportWriteUp, recommendations, notes
       });
-      const createdReport = await storage.createInspectionReport(validatedData);
-      if (findings || reportWriteUp || recommendations || notes) {
-        const updateData: any = {};
-        if (findings) updateData.findings = findings;
-        if (reportWriteUp) updateData.reportWriteUp = reportWriteUp;
-        if (recommendations) updateData.recommendations = recommendations;
-        if (notes) updateData.notes = notes;
-        try { await storage.updateInspectionReport(createdReport.id, updateData); } catch {}
-      }
-      res.json({ success:true, reportId: createdReport.id, reportNumber: createdReport.reportNumber, importedData: result.importedData });
-    } catch (e:any) {
+
+      res.json({
+        success: true,
+        reportId: persisted.report.id,
+        reportNumber: persisted.report.reportNumber,
+        measurementsCreated: persisted.measurementsCreated,
+        checklistCreated: persisted.checklistCreated,
+        warnings: persisted.warnings,
+        importedData: result.importedData
+      });
+    } catch (e: any) {
+      console.error('Import failed (transaction rolled back):', e);
       res.status(500).json({ success:false, message: e.message || 'Import failed'});
+    }
+  });
+
+  // Maintenance: cleanup orphaned child records
+  app.post('/api/reports/maintenance/cleanup-orphans', async (req, res) => {
+    try {
+      const dryRun = req.query.dryRun !== 'false';
+      const result = await cleanupOrphanedReportChildren(dryRun);
+      res.json({ success: true, ...result });
+    } catch (e: any) {
+      res.status(500).json({ success:false, message: e.message || 'Cleanup failed'});
     }
   });
 
