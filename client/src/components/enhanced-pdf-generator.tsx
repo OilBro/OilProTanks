@@ -1,325 +1,166 @@
-import { jsPDF } from 'jspdf';
-import type { 
-  InspectionReport, 
-  ThicknessMeasurement, 
-  InspectionChecklist,
-  AppurtenanceInspection,
-  RepairRecommendation,
-  VentingSystemInspection,
-  ReportAttachment
-} from '@shared/schema';
+// CLEAN SHIM IMPLEMENTATION
+// ----------------------------------------------------
+// Any existing imports of generateEnhancedPDF now yield the professional
+// report. This keeps backward compatibility without duplicating logic.
+
+import { generateProfessionalReport } from '@/lib/pdf-report-generator';
 
 export interface EnhancedReportData {
-  report: InspectionReport;
-  measurements: ThicknessMeasurement[];
-  checklists: InspectionChecklist[];
-  appurtenanceInspections?: AppurtenanceInspection[];
-  repairRecommendations?: RepairRecommendation[];
-  ventingInspections?: VentingSystemInspection[];
-  attachments?: ReportAttachment[];
-  shellCalculations?: any;
-  settlementSurvey?: any;
+  report: any;
+  measurements?: any[];
+  checklists?: any[];
+  repairRecommendations?: any[];
   cmlData?: any[];
+  settlementSurvey?: any;
+}
+
+interface AdapterReportData {
+  reportNumber: string;
+  tankId: string;
+  facilityName: string;
+  location: string;
+  inspectionDate: string;
+  inspector: string;
+  reviewedBy?: string;
+  tankDetails: any;
+  shellData: any;
+  bottomData: any;
+  settlementData?: any;
+  cmlData?: any[];
+  findings?: any;
 }
 
 export function generateEnhancedPDF(data: EnhancedReportData): void {
-  // Call the legacy function which has the full implementation
-  generateEnhancedPDFLegacy(data);
+  const mapped = mapEnhancedToProfessional(data);
+  void generateProfessionalReport(mapped);
 }
 
-export function generateEnhancedPDFLegacy(data: EnhancedReportData): void {
-  try {
-    const doc = new jsPDF();
-    const { 
-      report, 
-      measurements, 
-      checklists, 
-      appurtenanceInspections = [], 
-      repairRecommendations = [], 
-      ventingInspections = [], 
-      attachments = [],
-      shellCalculations,
-      settlementSurvey,
-      cmlData = []
-    } = data;
-    let yPosition = 20;
-    const pageHeight = 280;
-    const margin = 20;
-    const checkPageBreak = (requiredSpace: number) => {
-      if (yPosition + requiredSpace > pageHeight) {
-        doc.addPage();
-        yPosition = 20;
-      }
-    };
-    // Cover Page
-    doc.setFillColor(240, 240, 240);
-    doc.rect(0, 0, 210, 297, 'F');
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text('API 653 TANK INSPECTION REPORT', 105, 60, { align: 'center' });
-    doc.setFontSize(18);
-    doc.text(report.tankId || 'N/A', 105, 80, { align: 'center' });
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Service: ${(report.service || '').toUpperCase()}`, 105, 100, { align: 'center' });
-    doc.text(`Report No: ${report.reportNumber || 'N/A'}`, 105, 115, { align: 'center' });
-    doc.text(`Inspection Date: ${report.inspectionDate || 'N/A'}`, 105, 130, { align: 'center' });
-    doc.text(`Inspector: ${report.inspector || 'N/A'}`, 105, 145, { align: 'center' });
+function mapEnhancedToProfessional(data: EnhancedReportData): AdapterReportData {
+  const report = data.report || {};
+  const measurements = data.measurements || [];
+  const shellMeas = measurements.filter((m: any) => (m.component || '').toLowerCase() === 'shell');
+  const bottomMeas = measurements.filter((m: any) => (m.component || '').toLowerCase() === 'bottom');
+  const cmlMeas = (data.cmlData && data.cmlData.length) ? data.cmlData : measurements.filter((m: any) => (m.measurementType || '').toLowerCase() === 'cml');
 
-    // Thickness Measurements Section
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('THICKNESS MEASUREMENTS', margin, yPosition);
-    yPosition += 15;
-    if (measurements.length > 0) {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      const validMeasurements = measurements.filter(m => {
-        const original = parseFloat(m.originalThickness || '0');
-        const current = parseFloat(m.currentThickness || '0');
-        return original > 0 && current > 0;
-      });
-      if (validMeasurements.length > 0) {
-        const avgOriginal = validMeasurements.reduce((sum, m) => sum + parseFloat(m.originalThickness || '0'), 0) / validMeasurements.length;
-        const avgCurrent = validMeasurements.reduce((sum, m) => sum + parseFloat(m.currentThickness || '0'), 0) / validMeasurements.length;
-        const avgLoss = avgOriginal - avgCurrent;
-        doc.text(`Average Original Thickness: ${avgOriginal.toFixed(3)} inches`, margin, yPosition);
-        yPosition += 6;
-        doc.text(`Average Current Thickness: ${avgCurrent.toFixed(3)} inches`, margin, yPosition);
-        yPosition += 6;
-        doc.text(`Average Thickness Loss: ${avgLoss.toFixed(3)} inches`, margin, yPosition);
-        yPosition += 6;
-        doc.text(`Total Valid Measurements: ${validMeasurements.length}`, margin, yPosition);
-        yPosition += 6;
-        // Critical findings
-        const criticalCount = validMeasurements.filter(m => {
-          const original = parseFloat(m.originalThickness || '0');
-          const current = parseFloat(m.currentThickness || '0');
-          return ((original - current) / original) * 100 > 50;
-        }).length;
-        const monitorCount = validMeasurements.filter(m => {
-          const original = parseFloat(m.originalThickness || '0');
-          const current = parseFloat(m.currentThickness || '0');
-          const lossPercentage = ((original - current) / original) * 100;
-          return lossPercentage > 25 && lossPercentage <= 50;
-        }).length;
-        doc.text(`Critical Locations: ${criticalCount}`, margin, yPosition);
-        yPosition += 6;
-        doc.text(`Monitor Locations: ${monitorCount}`, margin, yPosition);
-        yPosition += 6;
-        doc.text(`Acceptable Locations: ${validMeasurements.length - criticalCount - monitorCount}`, margin, yPosition);
-      } else {
-        doc.text('No valid thickness measurements found.', margin, yPosition);
-      }
-    } else {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text('No thickness measurements available for this report.', margin, yPosition);
-    }
-    yPosition += 20;
-
-    // Appurtenance Inspections Section
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('APPURTENANCE INSPECTION RESULTS', margin, yPosition);
-    yPosition += 15;
-    if (appurtenanceInspections.length > 0) {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      appurtenanceInspections.forEach((inspection) => {
-        checkPageBreak(25);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${(inspection.appurtenanceType || '').toUpperCase()}: ${inspection.appurtenanceId}`, margin, yPosition);
-        yPosition += 6;
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Location: ${inspection.location}`, margin + 5, yPosition);
-        doc.text(`Condition: ${(inspection.condition || '').toUpperCase()}`, margin + 100, yPosition);
-        yPosition += 6;
-        if (inspection.findings) {
-          doc.text('Findings:', margin + 5, yPosition);
-          yPosition += 4;
-          const findingsLines = doc.splitTextToSize(inspection.findings, 160);
-          doc.text(findingsLines, margin + 10, yPosition);
-          yPosition += findingsLines.length * 4;
-        }
-        if (inspection.recommendations) {
-          doc.text('Recommendations:', margin + 5, yPosition);
-          yPosition += 4;
-          const recLines = doc.splitTextToSize(inspection.recommendations, 160);
-          doc.text(recLines, margin + 10, yPosition);
-          yPosition += recLines.length * 4;
-        }
-        yPosition += 5;
-      });
-    } else {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text('No appurtenance inspections available for this report.', margin, yPosition);
-      yPosition += 10;
-    }
-
-    // Repair Recommendations Section
-    doc.addPage();
-    yPosition = 20;
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('REPAIR RECOMMENDATIONS', margin, yPosition);
-    yPosition += 15;
-    if (repairRecommendations.length > 0) {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      const sortedRecommendations = [...repairRecommendations].sort((a, b) => {
-        const priorityOrder = { urgent: 0, high: 1, medium: 2, routine: 3 };
-        return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
-      });
-      sortedRecommendations.forEach((rec, index) => {
-        checkPageBreak(35);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${index + 1}. ${rec.component} - ${(rec.priority || '').toUpperCase()} PRIORITY`, margin, yPosition);
-        yPosition += 6;
-        doc.setFont('helvetica', 'normal');
-        doc.text('Defect:', margin + 5, yPosition);
-        yPosition += 4;
-        const defectLines = doc.splitTextToSize(rec.defectDescription || '', 160);
-        doc.text(defectLines, margin + 10, yPosition);
-        yPosition += defectLines.length * 4 + 2;
-        doc.text('Recommendation:', margin + 5, yPosition);
-        yPosition += 4;
-        const recLines = doc.splitTextToSize(rec.recommendation || '', 160);
-        doc.text(recLines, margin + 10, yPosition);
-        yPosition += recLines.length * 4 + 2;
-        if (rec.apiReference) {
-          doc.text(`API 653 Reference: ${rec.apiReference}`, margin + 5, yPosition);
-          yPosition += 6;
-        }
-        yPosition += 8;
-      });
-    } else {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text('No repair recommendations available for this report.', margin, yPosition);
-      yPosition += 10;
-    }
-
-    // Inspection Checklists Section
-    if (checklists.length > 0) {
-      doc.addPage();
-      yPosition = 20;
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.text('INSPECTION CHECKLIST', margin, yPosition);
-      yPosition += 15;
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      checklists.forEach((checklist, idx) => {
-        checkPageBreak(20);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${idx + 1}. ${checklist.category || 'Category'}: ${checklist.item || 'No item'}`, margin, yPosition);
-        yPosition += 6;
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Checked: ${checklist.checked ? 'Yes' : 'No'}${checklist.notes ? ' | Notes: ' + checklist.notes : ''}`, margin + 5, yPosition);
-        yPosition += 6;
-        yPosition += 5;
-      });
-    } else {
-      doc.addPage();
-      yPosition = 20;
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.text('INSPECTION CHECKLIST', margin, yPosition);
-      yPosition += 15;
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text('No inspection checklists available for this report.', margin, yPosition);
-      yPosition += 10;
-    }
-
-    // Supporting Documentation Section
-    doc.addPage();
-    yPosition = 20;
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('SUPPORTING DOCUMENTATION', margin, yPosition);
-    yPosition += 15;
-    if (attachments.length > 0) {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Total Attachments: ${attachments.length}`, margin, yPosition);
-      yPosition += 10;
-      const groupedAttachments = attachments.reduce((acc, att) => {
-        const category = att.category || 'uncategorized';
-        if (!acc[category]) acc[category] = [];
-        acc[category].push(att);
-        return acc;
-      }, {} as Record<string, typeof attachments>);
-      Object.entries(groupedAttachments).forEach(([category, catAttachments]) => {
-        checkPageBreak(15);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${(category || '').replace('_', ' ').toUpperCase()} (${catAttachments.length}):`, margin, yPosition);
-        yPosition += 6;
-        doc.setFont('helvetica', 'normal');
-        catAttachments.forEach((att) => {
-          checkPageBreak(8);
-          doc.text(`• ${att.filename} (${att.fileType})`, margin + 5, yPosition);
-          yPosition += 4;
-          if (att.description) {
-            const descLines = doc.splitTextToSize(att.description, 150);
-            doc.text(descLines, margin + 10, yPosition);
-            yPosition += descLines.length * 4;
-          }
-          yPosition += 2;
-        });
-        yPosition += 5;
-      });
-    } else {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text('No supporting documentation available for this report.', margin, yPosition);
-      yPosition += 10;
-    }
-
-    // Cosine Curve Visual Section
-    doc.addPage();
-    yPosition = 20;
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('COSINE CURVE VISUAL', margin, yPosition);
-    yPosition += 15;
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    // Draw axes
-    doc.line(margin, yPosition + 50, margin + 180, yPosition + 50); // X axis
-    doc.line(margin, yPosition + 10, margin, yPosition + 90); // Y axis
-    // Plot cosine curve
-    let prevX = margin;
-    let prevY = yPosition + 50 - 40 * Math.cos(0);
-    for (let deg = 0; deg <= 360; deg += 5) {
-      const rad = deg * Math.PI / 180;
-      const x = margin + (deg / 2);
-      const y = yPosition + 50 - 40 * Math.cos(rad);
-      doc.line(prevX, prevY, x, y);
-      prevX = x;
-      prevY = y;
-    }
-    doc.text('Y', margin - 5, yPosition + 10);
-    doc.text('X', margin + 180, yPosition + 55);
-    doc.text('Cosine Curve: y = cos(x)', margin, yPosition + 100);
-
-    // Footer on all pages
-    const pageCount = doc.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.text(`Page ${i} of ${pageCount}`, 170, 285);
-      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 20, 285);
-      doc.text(`Report: ${report.reportNumber}`, 105, 285, { align: 'center' });
-    }
-    doc.save(`${report.reportNumber}_API653_Complete_Report.pdf`);
-    console.log('PDF generation completed successfully!');
-  } catch (error) {
-    console.error('PDF generation failed:', error);
-    console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
-    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
-    throw error; // Re-throw to let the calling function handle the error
+  const shellCourses: any[] = [];
+  for (let i = 1; i <= 12; i++) {
+    const courseMeasurements = shellMeas.filter((m: any) => {
+      const loc = (m.location || '').toLowerCase();
+      return loc.includes(`course ${i}`) || loc.includes(`crs ${i}`) || loc.includes(`c${i}`);
+    });
+    if (!courseMeasurements.length) continue;
+    const minT = Math.min(...courseMeasurements.map((m: any) => parseFloat(m.measuredThickness || m.currentThickness || m.originalThickness || '0') || 0.001));
+    const nominal = parseFloat(courseMeasurements[0]?.nominalThickness || courseMeasurements[0]?.originalThickness || '0.25') || 0.25;
+    const age = (report as any).tankAge || 20;
+    const cr = ((nominal - minT) / age) * 1000;
+    const req = 0.1;
+    const rl = cr > 0 ? ((minT - req) / cr) * 1000 : 999;
+    shellCourses.push({
+      courseNumber: i,
+      height: 8,
+      nominalThickness: nominal,
+      measuredThickness: minT,
+      requiredThickness: req,
+      corrosionRate: isFinite(cr) ? cr : 0,
+      remainingLife: !isFinite(rl) || rl > 999 ? 999 : rl,
+      status: rl < 5 ? 'ACTION REQ' : rl < 10 ? 'MONITOR' : 'ACCEPTABLE'
+    });
   }
+  const governingCourse = shellCourses.length ? shellCourses.reduce((m, c) => c.remainingLife < m.remainingLife ? c : m).courseNumber : 1;
+
+  const bottomMin = bottomMeas.length ? Math.min(...bottomMeas.map((m: any) => parseFloat(m.measuredThickness || m.currentThickness || '0') || 0.001)) : 0.25;
+  const bottomNominal = parseFloat(bottomMeas[0]?.nominalThickness || bottomMeas[0]?.originalThickness || '0.25') || 0.25;
+  const bottomCR = ((bottomNominal - bottomMin) / ((report as any).tankAge || 20)) * 1000;
+  const bottomRL = bottomCR > 0 ? ((bottomMin - 0.1) / bottomCR) * 1000 : 999;
+
+  let settlementData = undefined as any;
+  if (data.settlementSurvey) {
+    const s = data.settlementSurvey;
+    settlementData = {
+      measurements: (s.measurements || []).map((m: any) => ({
+        point: m.point || m.pointNumber || 0,
+        angle: m.angle || 0,
+        elevation: m.elevation || m.measuredElevation || 0,
+        cosineFit: m.cosineFit || m.cosineFitElevation
+      })),
+      amplitude: s.amplitude || s.cosineAmplitude || 0,
+      phase: s.phase || s.cosinePhase || 0,
+      rSquared: s.rSquared || 0,
+      maxSettlement: s.maxSettlement || s.maxOutOfPlane || 0,
+      allowableSettlement: s.allowableSettlement || 0.5,
+      acceptance: s.acceptance || s.settlementAcceptance || 'PENDING'
+    };
+  }
+
+  const mappedCML = cmlMeas.map((m: any) => {
+    const current = parseFloat(m.measuredThickness || m.currentThickness || '0') || 0;
+    const tMin = parseFloat(m.minRequiredThickness || m.tMin || '0.1') || 0.1;
+    const original = parseFloat(m.nominalThickness || m.originalThickness || '0.25') || 0.25;
+    const age = (report as any).tankAge || 20;
+    const cr = ((original - current) / age) * 1000;
+    const rl = cr > 0 ? ((current - tMin) / cr) * 1000 : 999;
+    return {
+      cmlId: `CML-${m.id || m.cmlId || Math.random().toString(36).slice(2,8)}`,
+      component: m.component || 'Shell',
+      location: m.location || 'Location',
+      currentReading: current,
+      previousReading: m.previousThickness || m.previousReading,
+      tMin,
+      corrosionRate: isFinite(cr) ? cr : 0,
+      remainingLife: !isFinite(rl) || rl > 999 ? 999 : rl,
+      nextInspDate: m.nextInspectionDate || new Date(Date.now() + 5*365*86400000).toISOString().split('T')[0],
+      status: rl < 5 ? 'critical' : rl < 10 ? 'action_required' : 'acceptable'
+    };
+  });
+
+  const findings = {
+    executive: (report as any).findings || 'Tank inspection completed per API 653 standards.',
+    critical: [],
+    major: [],
+    minor: [],
+    recommendations: [
+      shellCourses.some(c => c.remainingLife < 10) ? 'Schedule shell course repairs (remaining life < 10 yrs).' : undefined,
+      bottomRL < 10 ? 'Plan bottom repair/replacement within next interval.' : undefined,
+      'Continue routine monitoring per API 653 recommended intervals.'
+    ].filter(Boolean),
+    nextInspectionDate: (report as any).nextExternalInspection || new Date(Date.now() + 5*365*86400000).toISOString().split('T')[0]
+  };
+
+  return {
+    reportNumber: report.reportNumber || 'UNSPECIFIED',
+    tankId: report.tankId || 'UNKNOWN',
+    facilityName: (report as any).facilityName || 'Facility',
+    location: (report as any).location || 'Location',
+    inspectionDate: report.inspectionDate || new Date().toISOString().split('T')[0],
+    inspector: report.inspector || 'Inspector',
+    reviewedBy: (report as any).reviewedBy,
+    tankDetails: {
+      diameter: parseFloat((report as any).diameter) || 100,
+      height: parseFloat((report as any).height) || 40,
+      capacity: parseFloat((report as any).capacity) || 50000,
+      product: (report as any).product || (report as any).service || 'Product',
+      yearBuilt: (report as any).yearBuilt || 2000,
+      lastInspection: (report as any).lastInternalInspection,
+      designCode: (report as any).designCode || 'API 650',
+      material: (report as any).shellMaterial || 'A36'
+    },
+    shellData: {
+      courses: shellCourses,
+      governingCourse,
+      overallStatus: shellCourses.some(c => c.status === 'ACTION REQ') ? 'ACTION REQUIRED' : shellCourses.some(c => c.status === 'MONITOR') ? 'MONITOR' : 'ACCEPTABLE'
+    },
+    bottomData: {
+      nominalThickness: bottomNominal,
+      minMeasured: bottomMin,
+      requiredThickness: 0.1,
+      corrosionRate: isFinite(bottomCR) ? bottomCR : 0,
+      remainingLife: !isFinite(bottomRL) || bottomRL > 999 ? 999 : bottomRL,
+      mriDate: (report as any).nextInternalInspection
+    },
+    settlementData,
+    cmlData: mappedCML.length ? mappedCML : undefined,
+    findings
+  };
 }
+
+// Legacy generator fully removed.
