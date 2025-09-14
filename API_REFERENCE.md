@@ -3,6 +3,7 @@
 Version: Draft (Generated automatically)
 
 ## General
+
 - Base URL: `/api`
 - Content-Type: `application/json`
 - Error Format:
