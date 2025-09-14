@@ -48,37 +48,49 @@ Version: Draft (Generated automatically)
 
 ## Health
 
-### GET /api/health
+`GET /api/reports`
 
-Returns service health.
+Returns a list of inspection reports with summary fields. Supports filtering and pagination.
 
-Response 200:
+Query Parameters (all optional):
 
-{
-  "success": false,
-  "message": "<human readable>",
-  "errors": { ...optional zod flatten() structure }
-}
+- `origin`: Filter by provenance (`manual` | `import` | `template` | `all`). Omit or use `all` for no filter.
+- `limit`: Number of rows to return (1-200). If omitted, returns all (not recommended for large datasets).
+- `offset`: Zero-based starting index for pagination. Use with `limit`.
 
-```
-{ ok: true }
-```
+Headers:
 
-## Reports
+- `X-Total-Count`: Total number of matching reports ignoring pagination. Always present.
 
-### POST /api/reports
+Examples:
 
-Create a new inspection report (simplified creation used in tests/import).
-
-Request Body (example minimal):
-
-```
-{ "tankId": "TST-1", "service": "crude", "diameter": "100", "height": "40" }
+```bash
+GET /api/reports                           # all reports (no pagination)
+GET /api/reports?origin=import             # all imported reports
+GET /api/reports?limit=25&offset=0         # first 25 reports
+GET /api/reports?limit=25&offset=25        # next page
+GET /api/reports?origin=manual&limit=50    # first 50 manual reports
 ```
 
-Response 201: `{ id: number, reportNumber: string, status: "in_progress", origin: "manual"|"import"|"template"|null, ... }`
+Example response body (truncated list):
 
-### GET /api/reports/:reportId/status
+```json
+[
+  {
+    "id": 123,
+    "tankId": "T-6",
+    "status": "draft",
+    "createdAt": "2024-09-01T12:34:56.000Z",
+    "updatedAt": "2024-09-01T12:34:56.000Z",
+    "origin": "import"
+  }
+]
+```
+
+Notes:
+
+- Filtering is performed at the database layer for efficiency.
+- If `limit`/`offset` are omitted the full dataset is returned (use carefully as data grows).
 
 Aggregated completion/status of report sections.
 Response 200:

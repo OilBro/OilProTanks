@@ -187,11 +187,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all reports with optional origin filter (DB-level filtering now handled in storage)
+  // Get all reports with optional origin filter & pagination
   app.get("/api/reports", async (req, res) => {
     try {
       const origin = (req.query.origin as string | undefined)?.trim();
-      const reports = await storage.getInspectionReports(origin);
+      const limitParam = req.query.limit as string | undefined;
+      const offsetParam = req.query.offset as string | undefined;
+      const limit = limitParam ? Math.min(Math.max(parseInt(limitParam,10),1), 200) : undefined;
+      const offset = offsetParam ? Math.max(parseInt(offsetParam,10), 0) : undefined;
+
+      // Fetch total count separately (without pagination) for header if pagination used
+      let total: number | undefined;
+      if (limit !== undefined || offset !== undefined) {
+        const all = await storage.getInspectionReports(origin); // unpaginated for count
+        total = all.length;
+      }
+      const reports = await storage.getInspectionReports(origin, { limit, offset });
+      if (typeof total === 'number') {
+        res.setHeader('X-Total-Count', String(total));
+      } else {
+        res.setHeader('X-Total-Count', String(reports.length));
+      }
       res.json(reports);
     } catch (error) {
       console.error('Failed to fetch reports:', error);

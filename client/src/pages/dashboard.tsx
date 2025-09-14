@@ -27,11 +27,18 @@ interface InspectionReport {
 
 interface ReportStats { totalReports: number; inProgress: number; completed: number; requiresAction: number; }
 
-const fetchReports = async (originFilter?: string): Promise<InspectionReport[]> => {
-  const qs = originFilter && originFilter !== 'all' ? `?origin=${encodeURIComponent(originFilter)}` : '';
+const fetchReports = async (params: { origin?: string; limit?: number; offset?: number }): Promise<{ data: InspectionReport[]; total: number; }> => {
+  const query: string[] = [];
+  if (params.origin && params.origin !== 'all') query.push(`origin=${encodeURIComponent(params.origin)}`);
+  if (params.limit) query.push(`limit=${params.limit}`);
+  if (typeof params.offset === 'number' && params.offset > 0) query.push(`offset=${params.offset}`);
+  const qs = query.length ? `?${query.join('&')}` : '';
   const res = await fetch(`/api/reports${qs}`);
   if(!res.ok) throw new Error('Failed to load reports');
-  return res.json();
+  const data = await res.json();
+  const totalRaw = res.headers.get('X-Total-Count');
+  const total = totalRaw ? parseInt(totalRaw,10) : data.length;
+  return { data, total };
 };
 
 const fetchStats = async (): Promise<ReportStats> => {
@@ -42,7 +49,15 @@ const fetchStats = async (): Promise<ReportStats> => {
 
 export default function DashboardPage() {
   const [originFilter, setOriginFilter] = React.useState<string>('all');
-  const { data: reports = [], isLoading: reportsLoading } = useQuery({ queryKey:['reports', originFilter], queryFn: () => fetchReports(originFilter) });
+  const [pageSize, setPageSize] = React.useState<number>(25);
+  const [page, setPage] = React.useState<number>(0); // zero-based
+  const { data: reportResult, isLoading: reportsLoading } = useQuery({ 
+    queryKey:['reports', originFilter, pageSize, page], 
+    queryFn: () => fetchReports({ origin: originFilter, limit: pageSize, offset: page * pageSize }) 
+  });
+  const reports = reportResult?.data || [];
+  const totalReports = reportResult?.total || 0;
+  const totalPages = Math.ceil(totalReports / pageSize) || 1;
   const { data: stats, isLoading: statsLoading } = useQuery({ queryKey:['report-stats'], queryFn: fetchStats });
   const [reportToDelete, setReportToDelete] = React.useState<InspectionReport | null>(null);
 
@@ -89,18 +104,30 @@ export default function DashboardPage() {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Inspection Reports</h2>
           <p className="text-gray-600">Manage your API 653 tank inspection reports</p>
         </div>
-        <div className="flex items-center gap-3">
-          <label className="text-sm text-gray-600">Origin:</label>
-          <select
-            value={originFilter}
-            onChange={e => setOriginFilter(e.target.value)}
-            className="text-sm border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">All</option>
-            <option value="manual">Manual</option>
-            <option value="import">Import</option>
-            <option value="template">Template</option>
-          </select>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600">Origin:</label>
+            <select
+              value={originFilter}
+              onChange={e => { setPage(0); setOriginFilter(e.target.value); }}
+              className="text-sm border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All</option>
+              <option value="manual">Manual</option>
+              <option value="import">Import</option>
+              <option value="template">Template</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-gray-600">Rows:</label>
+            <select
+              value={pageSize}
+              onChange={e => { setPage(0); setPageSize(parseInt(e.target.value,10)); }}
+              className="text-sm border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {[10,25,50,100].map(sz => <option key={sz} value={sz}>{sz}</option>)}
+            </select>
+          </div>
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -200,6 +227,14 @@ export default function DashboardPage() {
           </table>
         </div>
       </Card>
+      <div className="mt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="text-sm text-gray-600">Showing {reports.length ? (page * pageSize + 1) : 0} - {page * pageSize + reports.length} of {totalReports} reports</div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" disabled={page===0} onClick={()=>setPage(p=>Math.max(0,p-1))}>Prev</Button>
+          <span className="text-sm text-gray-700">Page {page+1} / {totalPages}</span>
+          <Button variant="outline" size="sm" disabled={page+1>=totalPages} onClick={()=>setPage(p=>p+1)}>Next</Button>
+        </div>
+      </div>
       <AlertDialog open={!!reportToDelete} onOpenChange={() => setReportToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

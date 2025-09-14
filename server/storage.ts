@@ -60,7 +60,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   
   // Inspection Reports
-  getInspectionReports(originFilter?: string): Promise<InspectionReport[]>;
+  getInspectionReports(originFilter?: string, options?: { limit?: number; offset?: number }): Promise<InspectionReport[]>;
   getInspectionReport(id: number): Promise<InspectionReport | undefined>;
   createInspectionReport(report: InsertInspectionReport): Promise<InspectionReport>;
   updateInspectionReport(id: number, report: Partial<InsertInspectionReport>): Promise<InspectionReport>;
@@ -306,12 +306,14 @@ export class MemStorage implements IStorage {
   }
 
   // Inspection Reports
-  async getInspectionReports(originFilter?: string): Promise<InspectionReport[]> {
-    const all = Array.from(this.inspectionReports.values());
+  async getInspectionReports(originFilter?: string, options?: { limit?: number; offset?: number }): Promise<InspectionReport[]> {
+    let all = Array.from(this.inspectionReports.values());
     if (originFilter && originFilter !== 'all') {
-      return all.filter(r => (r as any).origin === originFilter);
+      all = all.filter(r => (r as any).origin === originFilter);
     }
-    return all;
+    const limit = options?.limit && options.limit > 0 ? options.limit : all.length;
+    const offset = options?.offset && options.offset >= 0 ? options.offset : 0;
+    return all.slice(offset, offset + limit);
   }
 
   async getInspectionReport(id: number): Promise<InspectionReport | undefined> {
@@ -717,17 +719,18 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getInspectionReports(originFilter?: string): Promise<InspectionReport[]> {
+  async getInspectionReports(originFilter?: string, options?: { limit?: number; offset?: number }): Promise<InspectionReport[]> {
     const dbi = await ensureDb();
-    // Apply where clause only if a specific origin (not 'all' or undefined) provided
+    const limit = options?.limit && options.limit > 0 ? options.limit : undefined;
+    const offset = options?.offset && options.offset >= 0 ? options.offset : undefined;
+    let query = dbi.select().from(inspectionReports);
     if (originFilter && originFilter !== 'all') {
-      return await dbi
-        .select()
-        .from(inspectionReports)
-        .where(eq(inspectionReports.origin as any, originFilter))
-        .orderBy(inspectionReports.updatedAt);
+      query = query.where(eq(inspectionReports.origin as any, originFilter));
     }
-    return await dbi.select().from(inspectionReports).orderBy(inspectionReports.updatedAt);
+    query = query.orderBy(inspectionReports.updatedAt) as any;
+    if (typeof limit === 'number') query = query.limit(limit) as any;
+    if (typeof offset === 'number') query = query.offset(offset) as any;
+    return await query;
   }
 
   async getInspectionReport(id: number): Promise<InspectionReport | undefined> {
