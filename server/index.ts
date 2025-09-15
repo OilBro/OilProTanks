@@ -106,7 +106,7 @@ function startServer() {
       if (process.env.FORCE_PORT) return Number(process.env.FORCE_PORT);
       const cands = [process.env.PORT, process.env.NODE_PORT, process.env.SERVER_PORT, process.env.VITE_PORT, process.env.APP_PORT];
       for (const v of cands) { const n = Number(v); if (Number.isFinite(n) && n>0) return n; }
-      return 4500; // align with primary fallback
+      return 5000; // align with primary fallback
     })();
     console.log('[startup:fallback] binding minimal server on port', port);
     fallbackServer.listen(port, '0.0.0.0', () => {
@@ -216,8 +216,8 @@ function startServer() {
           return { port: n, source: c.name };
         }
       }
-      // If platform health check expects 4500 and no env provided, use 4500 before legacy 5000
-      return { port: 4500, source: 'fallback-4500' };
+      // If platform health check expects 5000 and no env provided, use 5000 as standard
+      return { port: 5000, source: 'fallback-5000' };
     };
     const { port, source: portSource } = resolvePort();
     const host = '0.0.0.0';
