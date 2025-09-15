@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db } from './db.ts';
 import { thicknessMeasurements, inspectionReports } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import {
