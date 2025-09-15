@@ -184,13 +184,32 @@ function startServer() {
       serveStatic(app);
     }
 
-    // Bind to dynamic platform port if provided (fallback 5000)
-    const port = Number(process.env.PORT || process.env.NODE_PORT || 5000);
-    const host = "0.0.0.0";
+    // Resolve port with extended heuristics (health check failing on 4500)
+    const resolvePort = () => {
+      const candidates: Array<{ name: string; value?: string }> = [
+        { name: 'PORT', value: process.env.PORT },
+        { name: 'NODE_PORT', value: process.env.NODE_PORT },
+        { name: 'SERVER_PORT', value: process.env.SERVER_PORT },
+        { name: 'VITE_PORT', value: process.env.VITE_PORT },
+        { name: 'APP_PORT', value: process.env.APP_PORT }
+      ];
+      for (const c of candidates) {
+        if (!c.value) continue;
+        const n = Number(c.value);
+        if (Number.isFinite(n) && n > 0) {
+          return { port: n, source: c.name };
+        }
+      }
+      // If platform health check expects 4500 and no env provided, use 4500 before legacy 5000
+      return { port: 4500, source: 'fallback-4500' };
+    };
+    const { port, source: portSource } = resolvePort();
+    const host = '0.0.0.0';
+    console.log(`[startup] binding server on ${host}:${port} (source=${portSource})`);
     server.listen({ port, host }, () => {
       readiness.started = true;
       listening = true;
-      log(`serving on ${host}:${port} (pid ${process.pid})`);
+      log(`serving on ${host}:${port} (pid ${process.pid}) (source=${portSource})`);
     });
 
     // Heartbeat (optional) to show liveness in logs every 60s (can be disabled)
