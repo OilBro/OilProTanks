@@ -68,62 +68,65 @@ app.get(['/ready','/api/ready'], (_req: Request, res: Response) => {
 // Request logging (replaces prior inline logger)
 app.use(requestLogger);
 
-(async () => {
-  const server = await registerRoutes(app);
 
-  // Initialize background workers conditionally via feature flags
-  if (process.env.VITE_AI_ANALYSIS_UI === 'true') {
-    startImageAnalysisWorker();
-  }
-
-  // Auto-seed report templates (DB mode only)
-  if (process.env.DATABASE_URL) {
-    try {
-      const existing = await db.select().from(reportTemplates).limit(1);
-      if (existing.length === 0) {
-        console.log('[startup] No report templates found. Running seed...');
-        await seedDatabase();
-        readiness.seeded = true;
-      } else {
-        console.log('[startup] Report templates present. Skipping seed.');
-        readiness.seeded = true;
-      }
-    } catch (err) {
-      console.error('[startup] Template auto-seed check failed:', err);
-      // Still mark seeded so readiness eventually returns true; platform can decide to restart if needed
-      readiness.seeded = true;
+// Main startup logic (no top-level async IIFE)
+function startServer() {
+  registerRoutes(app).then((server) => {
+    // Initialize background workers conditionally via feature flags
+    if (process.env.VITE_AI_ANALYSIS_UI === 'true') {
+      startImageAnalysisWorker();
     }
-  } else {
-    console.log('[startup] DATABASE_URL not set; running in in-memory mode (templates ephemeral).');
-    readiness.seeded = true; // nothing to seed
-  }
 
-  // Basic 404 handler for unknown API requests only (before error handler)
-  app.use('/api', (req: Request, res: Response) => {
-    res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
+    // Auto-seed report templates (DB mode only)
+    if (process.env.DATABASE_URL) {
+      db.select().from(reportTemplates).limit(1)
+        .then((existing) => {
+          if (existing.length === 0) {
+            console.log('[startup] No report templates found. Running seed...');
+            seedDatabase().then(() => { readiness.seeded = true; });
+          } else {
+            console.log('[startup] Report templates present. Skipping seed.');
+            readiness.seeded = true;
+          }
+        })
+        .catch((err) => {
+          console.error('[startup] Template auto-seed check failed:', err);
+          readiness.seeded = true;
+        });
+    } else {
+      console.log('[startup] DATABASE_URL not set; running in in-memory mode (templates ephemeral).');
+      readiness.seeded = true; // nothing to seed
+    }
+
+    // Basic 404 handler for unknown API requests only (before error handler)
+    app.use('/api', (req: Request, res: Response) => {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
+    });
+
+    // Central error handler (after routes)
+    app.use(errorHandler);
+
+    // importantly only setup vite in development and after
+    // setting up all the other routes so the catch-all route
+    // doesn't interfere with the other routes
+    if (app.get("env") === "development") {
+      setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
+
+    // ALWAYS serve the app on port 5000
+    // this serves both the API and the client.
+    // It is the only port that is not firewalled.
+    const port = 5000;
+    server.listen({
+      port,
+      host: "0.0.0.0",
+    }, () => {
+      log(`serving on port ${port}`);
+      readiness.started = true;
+    });
   });
+}
 
-  // Central error handler (after routes)
-  app.use(errorHandler);
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
-  }
-
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-  }, () => {
-    log(`serving on port ${port}`);
-    readiness.started = true;
-  });
-})();
+startServer();
