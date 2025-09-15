@@ -92,13 +92,29 @@ app.use(requestLogger);
 
 // Main startup logic (no top-level async IIFE)
 function startServer() {
+  const startupDeadlineMs = Date.now() + 10000; // warn if not listening within 10s
+  let listening = false;
+
+  const startFallbackServer = (reason: string) => {
+    if (listening) return; // already started
+    console.error('[startup:fallback] Falling back to minimal server due to:', reason);
+    const http = require('http');
+    const fallbackServer = http.createServer(app);
+    const port = Number(process.env.PORT || process.env.NODE_PORT || 5000);
+    fallbackServer.listen(port, '0.0.0.0', () => {
+      readiness.started = true;
+      listening = true;
+      console.log(`[startup:fallback] Minimal server listening on 0.0.0.0:${port}`);
+    });
+  };
+
   registerRoutes(app).then((server) => {
     // Initialize background workers conditionally via feature flags
     if (process.env.VITE_AI_ANALYSIS_UI === 'true') {
       startImageAnalysisWorker();
     }
 
-    // Background seed (never block health checks or startup)
+  // Background seed (never block health checks or startup)
     const seedDisabled = process.env.SEED_TEMPLATES_DISABLE === 'true';
     
     if (seedDisabled) {
@@ -125,16 +141,10 @@ function startServer() {
           }, STARTUP_SEED_TIMEOUT);
           
           try {
-            const seedResult = await seedDatabase();
+            await seedDatabase(); // original seed returns void
             clearTimeout(timeoutHandle);
-            
-            if (seedResult.success) {
-              readiness.seeded = true;
-              console.log('[startup] Background seeding completed successfully');
-            } else {
-              readiness.seedError = seedResult.error || 'Seeding failed for unknown reason';
-              console.error('[startup] Background seeding failed:', readiness.seedError);
-            }
+            readiness.seeded = true;
+            console.log('[startup] Background seeding completed successfully');
           } catch (seedErr) {
             clearTimeout(timeoutHandle);
             throw seedErr;
@@ -179,6 +189,7 @@ function startServer() {
     const host = "0.0.0.0";
     server.listen({ port, host }, () => {
       readiness.started = true;
+      listening = true;
       log(`serving on ${host}:${port} (pid ${process.pid})`);
     });
 
@@ -211,7 +222,18 @@ function startServer() {
     process.on('unhandledRejection', (reason) => {
       console.error('[warn] unhandledRejection', reason);
     });
+  }).catch((err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[startup] registerRoutes failed:', msg);
+    startFallbackServer(msg);
   });
+
+  // Startup watchdog warning (does not kill process)
+  setTimeout(() => {
+    if (!listening) {
+      console.warn('[startup] WARNING: Server not listening within 10s – check route registration or build output');
+    }
+  }, 10000).unref();
 }
 
 startServer();
