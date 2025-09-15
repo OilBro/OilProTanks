@@ -152,17 +152,17 @@ export function generatePlateLayoutDiagram(
   
   // Add title
   doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text(`Tank ${plateType === 'roof' ? 'Roof' : 'Bottom'} Layout`, centerX, centerY - radius - 10, { align: 'center' });
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
 }
 
 // Generate inspection symbol legend
 export function generateInspectionLegend(doc: jsPDF, x: number, y: number) {
   doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text('Inspection Legend', x, y);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
   
   let currentY = y + 10;
   const symbols = [
@@ -219,9 +219,9 @@ function drawNorthArrow(doc: jsPDF, x: number, y: number) {
   
   // Add N label
   doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text('N', x - 2, y - 15);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
 }
 
 // Generate professional settlement graph matching API-653 style
@@ -311,9 +311,9 @@ export function generateSettlementGraph(
   
   // Add title
   doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text('API-653 Shell Settlement Survey', x + width / 2, y - 5, { align: 'center' });
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
   
   // Add legend
   doc.setFontSize(7);
