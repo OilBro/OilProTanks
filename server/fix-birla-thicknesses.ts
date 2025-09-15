@@ -18,7 +18,7 @@ async function fixBirlaThicknesses() {
   
   // Group by component to see current state
   const byComponent: Record<string, typeof measurements> = {};
-  measurements.forEach(m => {
+  measurements.forEach((m: typeof measurements[0]) => {
     const comp = m.component || 'Unknown';
     if (!byComponent[comp]) byComponent[comp] = [];
     byComponent[comp].push(m);
@@ -30,7 +30,7 @@ async function fixBirlaThicknesses() {
     const first = items[0];
     if (first) {
       console.log(`  Original Thickness: ${first.originalThickness}"`);
-      console.log(`  Current values: ${items.slice(0, 3).map(i => i.currentThickness).join('", ')}"`);
+      console.log(`  Current values: ${items.slice(0, 3).map((i: typeof items[0]) => i.currentThickness).join('", ')}"`);
     }
   });
   
@@ -109,7 +109,7 @@ async function fixBirlaThicknesses() {
     .where(eq(thicknessMeasurements.reportId, reportId));
     
   const updatedByComponent: Record<string, typeof updatedMeasurements> = {};
-  updatedMeasurements.forEach(m => {
+  updatedMeasurements.forEach((m: typeof updatedMeasurements[0]) => {
     const comp = m.component || 'Unknown';
     if (!updatedByComponent[comp]) updatedByComponent[comp] = [];
     updatedByComponent[comp].push(m);
@@ -122,15 +122,15 @@ async function fixBirlaThicknesses() {
       const first = items[0];
       if (first) {
         console.log(`  Original Thickness: ${first.originalThickness}"`);
-        console.log(`  Current Thicknesses: ${items.map(i => i.currentThickness).slice(0, 3).join('", ')}"`);
+        console.log(`  Current Thicknesses: ${items.map((i: typeof items[0]) => i.currentThickness).slice(0, 3).join('", ')}"`);
         
         // Calculate average corrosion rate for this ring
-        const rates = items.map(i => parseFloat(i.corrosionRate || '0'));
-        const avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+        const rates = items.map((i: typeof items[0]) => parseFloat(i.corrosionRate || '0'));
+        const avgRate = rates.reduce((a: number, b: number): number => a + b, 0) / rates.length;
         console.log(`  Average Corrosion Rate: ${(avgRate * 1000).toFixed(2)} mpy (${avgRate.toFixed(5)} in/yr)`);
         
         // Show minimum remaining life
-        const lives = items.map(i => parseFloat(i.remainingLife || '0'));
+        const lives = items.map((i: typeof items[0]) => parseFloat(i.remainingLife || '0'));
         const minLife = Math.min(...lives);
         console.log(`  Minimum Remaining Life: ${minLife.toFixed(1)} years`);
       }

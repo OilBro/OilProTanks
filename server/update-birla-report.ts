@@ -29,7 +29,7 @@ async function updateBirlaReport() {
     minCurrent: number
   }> = {};
   
-  measurements.forEach(m => {
+  measurements.forEach((m: typeof measurements[number]) => {
     const comp = m.component || 'Unknown';
     if (!byComponent[comp]) {
       byComponent[comp] = {
@@ -54,8 +54,8 @@ async function updateBirlaReport() {
   
   // Calculate averages
   Object.entries(byComponent).forEach(([comp, data]) => {
-    const rates = data.measurements.map(m => parseFloat(m.corrosionRate || '0'));
-    data.avgRate = rates.reduce((a, b) => a + b, 0) / rates.length;
+    const rates = data.measurements.map((m: typeof measurements[number]) => parseFloat(m.corrosionRate || '0'));
+    data.avgRate = rates.reduce((a: number, b: number) => a + b, 0) / rates.length;
   });
   
   console.log('\nCOMPONENT SUMMARY:');
