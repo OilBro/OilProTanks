@@ -193,6 +193,7 @@ function startServer() {
         { name: 'VITE_PORT', value: process.env.VITE_PORT },
         { name: 'APP_PORT', value: process.env.APP_PORT }
       ];
+      console.log('[startup] port candidates:', candidates.map(c => `${c.name}=${c.value || ''}`).join(' '));
       for (const c of candidates) {
         if (!c.value) continue;
         const n = Number(c.value);
@@ -210,6 +211,21 @@ function startServer() {
       readiness.started = true;
       listening = true;
       log(`serving on ${host}:${port} (pid ${process.pid}) (source=${portSource})`);
+    });
+
+    server.on('error', (err: any) => {
+      console.error('[startup] server.listen error:', err?.code || err?.message || err);
+      if (!listening) {
+        // attempt fallback to alternate common port (5000) if different
+        if (port !== 5000) {
+          console.log('[startup] attempting fallback bind on 5000');
+          try {
+            server.listen({ port: 5000, host });
+          } catch (e) {
+            console.error('[startup] fallback bind failed:', e);
+          }
+        }
+      }
     });
 
     // Heartbeat (optional) to show liveness in logs every 60s (can be disabled)

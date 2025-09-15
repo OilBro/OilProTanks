@@ -139,8 +139,7 @@
     "bufferutil": "^4.0.8"
   },
   "engines": {
-    "node": ">=20.0.0 <21",
-    "npm": "11.6.0"
+    "node": ">=20.0.0 <21"
   },
   "packageManager": "npm@11.6.0"
 }
