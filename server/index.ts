@@ -6,9 +6,7 @@ import { requestLogger, errorHandler } from './middleware';
 import { startImageAnalysisWorker } from './imageAnalysisService';
 import { seedDatabase } from './seed';
 
-console.log('[bootstrap] starting server bootstrap...');
 const app = express();
-console.log('[bootstrap] express app created, NODE_ENV=' + (process.env.NODE_ENV || 'undefined'));
 let readiness: { started: boolean; seeded: boolean; startedAt: number; seedInProgress: boolean; seedError?: string } = {
   started: false,
   seeded: false,
@@ -102,13 +100,7 @@ function startServer() {
     console.error('[startup:fallback] Falling back to minimal server due to:', reason);
     const http = require('http');
     const fallbackServer = http.createServer(app);
-    const port = (() => {
-      if (process.env.FORCE_PORT) return Number(process.env.FORCE_PORT);
-      const cands = [process.env.PORT, process.env.NODE_PORT, process.env.SERVER_PORT, process.env.VITE_PORT, process.env.APP_PORT];
-      for (const v of cands) { const n = Number(v); if (Number.isFinite(n) && n>0) return n; }
-      return 4500; // align with primary fallback
-    })();
-    console.log('[startup:fallback] binding minimal server on port', port);
+    const port = Number(process.env.PORT || process.env.NODE_PORT || 5000);
     fallbackServer.listen(port, '0.0.0.0', () => {
       readiness.started = true;
       listening = true;
@@ -192,55 +184,13 @@ function startServer() {
       serveStatic(app);
     }
 
-    // Resolve port with extended heuristics (health check failing on 4500)
-    const resolvePort = () => {
-      if (process.env.FORCE_PORT) {
-        const forced = Number(process.env.FORCE_PORT);
-        if (Number.isFinite(forced) && forced>0) {
-          console.log('[startup] using FORCE_PORT=' + forced);
-          return { port: forced, source: 'FORCE_PORT' };
-        }
-      }
-      const candidates: Array<{ name: string; value?: string }> = [
-        { name: 'PORT', value: process.env.PORT },
-        { name: 'NODE_PORT', value: process.env.NODE_PORT },
-        { name: 'SERVER_PORT', value: process.env.SERVER_PORT },
-        { name: 'VITE_PORT', value: process.env.VITE_PORT },
-        { name: 'APP_PORT', value: process.env.APP_PORT }
-      ];
-      console.log('[startup] port candidates:', candidates.map(c => `${c.name}=${c.value || ''}`).join(' '));
-      for (const c of candidates) {
-        if (!c.value) continue;
-        const n = Number(c.value);
-        if (Number.isFinite(n) && n > 0) {
-          return { port: n, source: c.name };
-        }
-      }
-      // If platform health check expects 4500 and no env provided, use 4500 before legacy 5000
-      return { port: 4500, source: 'fallback-4500' };
-    };
-    const { port, source: portSource } = resolvePort();
-    const host = '0.0.0.0';
-    console.log(`[startup] binding server on ${host}:${port} (source=${portSource})`);
+    // Bind to dynamic platform port if provided (fallback 5000)
+    const port = Number(process.env.PORT || process.env.NODE_PORT || 5000);
+    const host = "0.0.0.0";
     server.listen({ port, host }, () => {
       readiness.started = true;
       listening = true;
-      log(`serving on ${host}:${port} (pid ${process.pid}) (source=${portSource})`);
-    });
-
-    server.on('error', (err: any) => {
-      console.error('[startup] server.listen error:', err?.code || err?.message || err);
-      if (!listening) {
-        // attempt fallback to alternate common port (5000) if different
-        if (port !== 5000) {
-          console.log('[startup] attempting fallback bind on 5000');
-          try {
-            server.listen({ port: 5000, host });
-          } catch (e) {
-            console.error('[startup] fallback bind failed:', e);
-          }
-        }
-      }
+      log(`serving on ${host}:${port} (pid ${process.pid})`);
     });
 
     // Heartbeat (optional) to show liveness in logs every 60s (can be disabled)
