@@ -6,7 +6,9 @@ import { requestLogger, errorHandler } from './middleware';
 import { startImageAnalysisWorker } from './imageAnalysisService';
 import { seedDatabase } from './seed';
 
+console.log('[bootstrap] starting server bootstrap...');
 const app = express();
+console.log('[bootstrap] express app created, NODE_ENV=' + (process.env.NODE_ENV || 'undefined'));
 let readiness: { started: boolean; seeded: boolean; startedAt: number; seedInProgress: boolean; seedError?: string } = {
   started: false,
   seeded: false,
@@ -100,7 +102,13 @@ function startServer() {
     console.error('[startup:fallback] Falling back to minimal server due to:', reason);
     const http = require('http');
     const fallbackServer = http.createServer(app);
-    const port = Number(process.env.PORT || process.env.NODE_PORT || 5000);
+    const port = (() => {
+      if (process.env.FORCE_PORT) return Number(process.env.FORCE_PORT);
+      const cands = [process.env.PORT, process.env.NODE_PORT, process.env.SERVER_PORT, process.env.VITE_PORT, process.env.APP_PORT];
+      for (const v of cands) { const n = Number(v); if (Number.isFinite(n) && n>0) return n; }
+      return 4500; // align with primary fallback
+    })();
+    console.log('[startup:fallback] binding minimal server on port', port);
     fallbackServer.listen(port, '0.0.0.0', () => {
       readiness.started = true;
       listening = true;
@@ -186,6 +194,13 @@ function startServer() {
 
     // Resolve port with extended heuristics (health check failing on 4500)
     const resolvePort = () => {
+      if (process.env.FORCE_PORT) {
+        const forced = Number(process.env.FORCE_PORT);
+        if (Number.isFinite(forced) && forced>0) {
+          console.log('[startup] using FORCE_PORT=' + forced);
+          return { port: forced, source: 'FORCE_PORT' };
+        }
+      }
       const candidates: Array<{ name: string; value?: string }> = [
         { name: 'PORT', value: process.env.PORT },
         { name: 'NODE_PORT', value: process.env.NODE_PORT },
