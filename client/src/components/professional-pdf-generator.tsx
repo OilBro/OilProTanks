@@ -58,8 +58,8 @@ export function generateProfessionalPDF(data: ProfessionalReportData): void {
     if (pageNumber > 1) {
       // Add logo on the left
       addHeaderLogo(doc);
-      doc.setFontSize(8);
-      doc.setFont(undefined, 'normal');
+  doc.setFontSize(8);
+  doc.setFont('helvetica','normal');
       doc.setTextColor(0, 0, 0);
       doc.text('API-653 Inspection Report', 210 - margin, 10, { align: 'right' });
       doc.line(margin, 15, 210 - margin, 15);
@@ -69,8 +69,8 @@ export function generateProfessionalPDF(data: ProfessionalReportData): void {
 
   // Add page footer
   const addPageFooter = () => {
-    doc.setFontSize(8);
-    doc.setFont(undefined, 'normal');
+  doc.setFontSize(8);
+  doc.setFont('helvetica','normal');
     doc.text('This document is intended for the sole use of OilPro and its customers.', 105, 285, { align: 'center' });
     doc.text('Any unauthorized reproduction of this document is prohibited. © 2025', 105, 290, { align: 'center' });
     doc.text(`${pageNumber} of ${doc.getNumberOfPages()}`, 210 - margin, 285, { align: 'right' });
@@ -193,95 +193,95 @@ function generateCoverPage(doc: jsPDF, report: InspectionReport) {
   
   // Company Header
   doc.setFontSize(14);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.setTextColor(0, 0, 0);
   doc.text('API-653 Inspection Report', 105, 35, { align: 'center' });
 
   // Customer Information
   doc.setFontSize(12);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
   doc.text(`Customer: ${report.customer || 'TBD'}`, 20, 70);
   doc.text(`Location: ${report.location || 'TBD'}`, 20, 85);
   doc.text(`OilPro Job Number: ${report.reportNumber || 'TBD'}`, 20, 100);
 
   // Inspector Information
   doc.setFontSize(11);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text('Inspected By', 20, 130);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
   doc.text(`${report.inspector || 'TBD'}`, 20, 145);
   doc.text(`API-653 Certified Inspector`, 20, 160);
 
   // Tank Information
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text('Scope of Inspection:', 110, 130);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
   doc.text(`${report.inspectionScope || 'External'}`, 110, 145);
 
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text('Date Of Inspection:', 110, 160);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
   doc.text(`${report.inspectionDate || 'TBD'}`, 110, 175);
 
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text('Tank Number:', 110, 190);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
   doc.text(`${report.tankId}`, 110, 205);
 
   // Reviewed By
   doc.setFontSize(11);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text('Reviewed By', 20, 190);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
   doc.text(`${report.reviewer || 'TBD'}`, 20, 205);
   doc.text(`P.E., API-653 Certified`, 20, 220);
 
   // Product Information
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Product Stored:', 110, 220);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   doc.text(`${(report.service || '').toUpperCase()}`, 110, 235);
 
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Specific Gravity:', 110, 250);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   doc.text(`${report.specificGravity || 'TBD'}`, 110, 265);
 
   // Tank Specifications
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Year Built:', 20, 250);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   doc.text(`${report.yearBuilt || 'TBD'}`, 20, 265);
 
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Diameter:', 70, 250);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   doc.text(`${report.diameter || 'TBD'} Ft`, 70, 265);
 
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Height:', 120, 250);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   doc.text(`${report.height || 'TBD'} Ft`, 120, 265);
 
   // Company Footer
   doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text('OilPro', 20, 280);
   doc.setFontSize(8);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
   doc.text('811 Dafney Drive, Lafayette, LA', 20, 285);
   doc.text('Phone: (337) 446-7459 | Contact: Jerry Hartfield', 20, 290);
 }
 
 function generateRevisionHistory(doc: jsPDF, report: InspectionReport, yPos: number) {
   doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text('Revision History', 20, yPos);
   yPos += 20;
 
   // Table headers
   doc.setFontSize(10);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Revision', 20, yPos);
   doc.text('Date', 60, yPos);
   doc.text('Status', 100, yPos);
@@ -293,7 +293,7 @@ function generateRevisionHistory(doc: jsPDF, report: InspectionReport, yPos: num
   yPos += 5;
 
   // Add revision entry
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
   doc.text('0', 20, yPos);
   doc.text(new Date().toLocaleDateString(), 60, yPos);
   doc.text('Original Report Issued', 100, yPos);
@@ -302,7 +302,7 @@ function generateRevisionHistory(doc: jsPDF, report: InspectionReport, yPos: num
 
 function generateTableOfContents(doc: jsPDF, yPos: number) {
   doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text('Table of Contents', 20, yPos);
   yPos += 20;
 
@@ -323,7 +323,7 @@ function generateTableOfContents(doc: jsPDF, yPos: number) {
   ];
 
   doc.setFontSize(10);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
   
   contents.forEach(item => {
     doc.text(item.title, 20, yPos);
@@ -334,7 +334,7 @@ function generateTableOfContents(doc: jsPDF, yPos: number) {
 
 function generateEvaluationSummary(doc: jsPDF, report: InspectionReport, repairRecommendations: RepairRecommendation[], yPos: number) {
   doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text('Evaluation Summary and Repair Checklist', 20, yPos);
   yPos += 20;
 
@@ -344,7 +344,7 @@ function generateEvaluationSummary(doc: jsPDF, report: InspectionReport, repairR
 
   // Create findings table
   doc.setFontSize(9);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('ID', 20, yPos);
   doc.text('Component', 35, yPos);
   doc.text('Finding', 70, yPos);
@@ -356,7 +356,7 @@ function generateEvaluationSummary(doc: jsPDF, report: InspectionReport, repairR
   yPos += 5;
 
   // Add findings
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
   let findingId = 1;
 
   // Add general findings
@@ -389,7 +389,7 @@ function generateEvaluationSummary(doc: jsPDF, report: InspectionReport, repairR
 
 function generateTankSpecifications(doc: jsPDF, report: InspectionReport, yPos: number) {
   doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text('Tank Specifications', 20, yPos);
   yPos += 20;
 
@@ -412,12 +412,12 @@ function generateTankSpecifications(doc: jsPDF, report: InspectionReport, yPos: 
   ];
 
   doc.setFontSize(11);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
   
   specs.forEach(spec => {
-    doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
     doc.text(spec.label, 20, yPos);
-    doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
     doc.text(spec.value, 80, yPos);
     yPos += 8;
   });
@@ -425,12 +425,12 @@ function generateTankSpecifications(doc: jsPDF, report: InspectionReport, yPos: 
 
 function generateFoundationSection(doc: jsPDF, report: InspectionReport, yPos: number) {
   doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Foundation and Bottom Extension', 20, yPos);
   yPos += 20;
 
   doc.setFontSize(11);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   
   const foundationText = `The tank rests on a ${report.foundationType || 'concrete ringwall'} foundation. The foundation condition was evaluated during this inspection. Areas of concern include settlement, cracking, and deterioration of sealing materials.`;
   
@@ -438,10 +438,10 @@ function generateFoundationSection(doc: jsPDF, report: InspectionReport, yPos: n
   doc.text(foundationLines, 20, yPos);
   yPos += foundationLines.length * 6 + 10;
 
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Foundation Condition:', 20, yPos);
   yPos += 8;
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   doc.text(`• Settlement: ${report.foundationSettlement || 'Within acceptable limits'}`, 25, yPos);
   yPos += 6;
   doc.text(`• Cracking: ${report.foundationCracking || 'No significant cracking observed'}`, 25, yPos);
@@ -451,12 +451,12 @@ function generateFoundationSection(doc: jsPDF, report: InspectionReport, yPos: n
 
 function generateExternalShellSection(doc: jsPDF, report: InspectionReport, measurements: ThicknessMeasurement[], yPos: number) {
   doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('External Shell', 20, yPos);
   yPos += 20;
 
   doc.setFontSize(11);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   
   const shellText = `The tank shell was inspected externally for corrosion, mechanical damage, and coating condition. Thickness measurements were taken at various locations to assess corrosion rates and remaining life.`;
   
@@ -464,7 +464,7 @@ function generateExternalShellSection(doc: jsPDF, report: InspectionReport, meas
   doc.text(shellLines, 20, yPos);
   yPos += shellLines.length * 6 + 10;
 
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Shell Condition Summary:', 20, yPos);
   yPos += 8;
   doc.setFont(undefined, 'normal');
@@ -510,13 +510,13 @@ function generateThicknessMeasurements(doc: jsPDF, measurements: ThicknessMeasur
     }
     
     doc.setFontSize(14);
-    doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
     doc.text(`${(componentName || '').toUpperCase()} MEASUREMENTS`, 20, yPos);
     yPos += 15;
     
     // Table headers
     doc.setFontSize(9);
-    doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
     doc.text('Location', 20, yPos);
     doc.text('Original (in)', 60, yPos);
     doc.text('Current (in)', 90, yPos);
@@ -529,7 +529,7 @@ function generateThicknessMeasurements(doc: jsPDF, measurements: ThicknessMeasur
     doc.line(20, yPos, 200, yPos);
     yPos += 5;
     
-    doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
     componentMeasurements.forEach(measurement => {
       if (yPos > 270) {
         doc.addPage();
@@ -557,12 +557,12 @@ function generateThicknessMeasurements(doc: jsPDF, measurements: ThicknessMeasur
 
 function generateCorrosionRateAnalysis(doc: jsPDF, measurements: ThicknessMeasurement[], yPos: number) {
   doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
   doc.text('Shell Corrosion Rate Analysis', 20, yPos);
   yPos += 20;
 
   doc.setFontSize(11);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
   
   const analysisText = `Corrosion rates were calculated based on the difference between original and current thickness measurements divided by the time in service. The analysis considers API 653 requirements for remaining life calculations.`;
   
@@ -576,10 +576,10 @@ function generateCorrosionRateAnalysis(doc: jsPDF, measurements: ThicknessMeasur
   const maxCorrosionRate = corrosionRates.length > 0 ? Math.max(...corrosionRates) : 0;
   const minCorrosionRate = corrosionRates.length > 0 ? Math.min(...corrosionRates) : 0;
 
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Corrosion Rate Statistics:', 20, yPos);
   yPos += 8;
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   doc.text(`• Average Corrosion Rate: ${avgCorrosionRate.toFixed(4)} in/yr`, 25, yPos);
   yPos += 6;
   doc.text(`• Maximum Corrosion Rate: ${maxCorrosionRate.toFixed(4)} in/yr`, 25, yPos);
@@ -591,7 +591,7 @@ function generateCorrosionRateAnalysis(doc: jsPDF, measurements: ThicknessMeasur
 
 function generateAppurtenanceInspections(doc: jsPDF, appurtenances: AppurtenanceInspection[], yPos: number) {
   doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Appurtenance Inspections', 20, yPos);
   yPos += 20;
 
@@ -602,12 +602,12 @@ function generateAppurtenanceInspections(doc: jsPDF, appurtenances: Appurtenance
     }
     
     doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica','bold');
     doc.text(`${(inspection.appurtenanceType || '').toUpperCase()}: ${inspection.appurtenanceId}`, 20, yPos);
     yPos += 10;
     
     doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica','normal');
     doc.text(`Location: ${inspection.location}`, 25, yPos);
     yPos += 6;
     doc.text(`Condition: ${(inspection.condition || '').toUpperCase()}`, 25, yPos);
@@ -635,7 +635,7 @@ function generateAppurtenanceInspections(doc: jsPDF, appurtenances: Appurtenance
 
 function generateRepairRecommendations(doc: jsPDF, recommendations: RepairRecommendation[], yPos: number) {
   doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Repair Recommendations', 20, yPos);
   yPos += 20;
 
@@ -652,12 +652,12 @@ function generateRepairRecommendations(doc: jsPDF, recommendations: RepairRecomm
     }
     
     doc.setFontSize(12);
-    doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
     doc.text(`${index + 1}. ${rec.component} - ${(rec.priority || '').toUpperCase()} PRIORITY`, 20, yPos);
     yPos += 10;
     
     doc.setFontSize(10);
-    doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
     doc.text('Defect Description:', 25, yPos);
     yPos += 4;
     const defectLines = doc.splitTextToSize(rec.defectDescription || 'No description provided', 160);
@@ -686,7 +686,7 @@ function generateRepairRecommendations(doc: jsPDF, recommendations: RepairRecomm
 
 function generateInspectionChecklists(doc: jsPDF, checklists: InspectionChecklist[], yPos: number) {
   doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Inspection Checklists', 20, yPos);
   yPos += 20;
 
@@ -703,12 +703,12 @@ function generateInspectionChecklists(doc: jsPDF, checklists: InspectionChecklis
       }
       
       doc.setFontSize(14);
-      doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
       doc.text(`${category.toUpperCase()} INSPECTION CHECKLIST`, 20, yPos);
       yPos += 15;
       
       doc.setFontSize(10);
-      doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
       
       categoryItems.forEach(item => {
         if (yPos > 270) {
@@ -736,12 +736,12 @@ function generateInspectionChecklists(doc: jsPDF, checklists: InspectionChecklis
 
 function generateExternalSurvey(doc: jsPDF, report: InspectionReport, yPos: number) {
   doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('External Survey', 20, yPos);
   yPos += 20;
 
   doc.setFontSize(11);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   
   const surveyText = `The tank was surveyed externally to determine settlement patterns and evaluate compliance with API 653 requirements. Survey measurements were taken around the tank perimeter at regular intervals.`;
   
@@ -749,10 +749,10 @@ function generateExternalSurvey(doc: jsPDF, report: InspectionReport, yPos: numb
   doc.text(surveyLines, 20, yPos);
   yPos += surveyLines.length * 6 + 10;
 
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Survey Results:', 20, yPos);
   yPos += 8;
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   doc.text(`• Maximum Settlement: ${report.maxSettlement || 'TBD'} inches`, 25, yPos);
   yPos += 6;
   doc.text(`• Settlement Location: ${report.settlementLocation || 'TBD'}`, 25, yPos);
@@ -764,17 +764,17 @@ function generateExternalSurvey(doc: jsPDF, report: InspectionReport, yPos: numb
 
 function generateInspectorQualifications(doc: jsPDF, report: InspectionReport, yPos: number) {
   doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Inspector Qualifications', 20, yPos);
   yPos += 20;
 
   doc.setFontSize(12);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Lead Inspector', 20, yPos);
   yPos += 10;
 
   doc.setFontSize(11);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   doc.text(`Name: ${report.inspector || 'TBD'}`, 25, yPos);
   yPos += 8;
   doc.text(`API 653 Certification: ${report.inspectorCertification || 'TBD'}`, 25, yPos);
@@ -785,12 +785,12 @@ function generateInspectorQualifications(doc: jsPDF, report: InspectionReport, y
   yPos += 15;
 
   doc.setFontSize(12);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Signature', 20, yPos);
   yPos += 15;
 
   doc.setFontSize(11);
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   doc.text('Inspector: _________________________', 25, yPos);
   yPos += 8;
   doc.text(`Date: ${new Date().toLocaleDateString()}`, 25, yPos);

@@ -212,7 +212,8 @@ export function ReportView() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (statusInput: string | null | undefined) => {
+    const status = (statusInput || '').toLowerCase();
     switch (status) {
       case 'completed':
         return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
@@ -221,13 +222,13 @@ export function ReportView() {
       case 'draft':
         return <Badge className="bg-gray-100 text-gray-800">Draft</Badge>;
       default:
-        return <Badge className="bg-gray-100 text-gray-800">{status}</Badge>;
+        return <Badge className="bg-gray-100 text-gray-800">{status || 'unknown'}</Badge>;
     }
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
+  const formatDate = (dateInput: string | null | undefined) => {
+    if (!dateInput) return 'N/A';
+    const date = new Date(dateInput);
     if (isNaN(date.getTime())) return 'Invalid Date';
     return date.toLocaleDateString();
   };

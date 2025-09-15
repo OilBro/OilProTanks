@@ -18,7 +18,25 @@ import {
 } from 'lucide-react';
 import { generateProfessionalReport } from '@/lib/pdf-report-generator';
 import { useToast } from '@/hooks/use-toast';
-import type { InspectionReport, ThicknessMeasurement, InspectionChecklist, SettlementSurvey } from '@shared/schema';
+import type { InspectionReport } from '@shared/schema';
+
+// Narrow, usage-focused interfaces to stabilize typing inside this component
+interface MeasurementLike {
+  id?: number;
+  component?: string | null;
+  measurementType?: string | null;
+  location?: string | null;
+  measuredThickness?: number;
+  nominalThickness?: number;
+  previousThickness?: number;
+  minRequiredThickness?: number;
+  corrosionRate?: number;
+  remainingLife?: number;
+  nextInspectionDate?: string;
+}
+
+interface ChecklistLike { severity?: string; description?: string; }
+interface SettlementSurveyLike { id?: number; cosineAmplitude?: string; cosinePhase?: string; rSquared?: string; maxOutOfPlane?: string; allowableSettlement?: string; settlementAcceptance?: string; }
 
 interface ReportExportProps {
   reportId: number;
@@ -30,25 +48,25 @@ export function ReportExport({ reportId }: ReportExportProps) {
   const [exportFormat, setExportFormat] = useState('pdf');
   
   // Fetch report data
-  const { data: report, isLoading: reportLoading } = useQuery({
+  const { data: report, isLoading: reportLoading } = useQuery<InspectionReport | null>({
     queryKey: [`/api/reports/${reportId}`],
     enabled: !!reportId
   });
   
   // Fetch measurements
-  const { data: measurements = [] } = useQuery({
+  const { data: measurements = [] } = useQuery<MeasurementLike[]>({
     queryKey: [`/api/reports/${reportId}/measurements`],
     enabled: !!reportId
   });
   
   // Fetch settlement data
-  const { data: settlementSurveys = [] } = useQuery({
+  const { data: settlementSurveys = [] } = useQuery<SettlementSurveyLike[]>({
     queryKey: [`/api/reports/${reportId}/settlement-surveys`],
     enabled: !!reportId
   });
   
   // Fetch checklists
-  const { data: checklists = [] } = useQuery({
+  const { data: checklists = [] } = useQuery<ChecklistLike[]>({
     queryKey: [`/api/reports/${reportId}/checklists`],
     enabled: !!reportId
   });
@@ -136,28 +154,28 @@ export function ReportExport({ reportId }: ReportExportProps) {
           
           settlementData = {
             measurements: settlementMeasurements.map((m: any) => ({
-              angle: parseFloat(m.angle) || 0,
-              measured: parseFloat(m.measuredElevation) || 0,
-              normalized: parseFloat(m.normalizedElevation) || 0,
-              cosineFit: parseFloat(m.cosineFitElevation) || 0,
-              outOfPlane: parseFloat(m.outOfPlane) || 0
+              angle: parseFloat(m.angle ?? '0') || 0,
+              measured: parseFloat(m.measuredElevation ?? '0') || 0,
+              normalized: parseFloat(m.normalizedElevation ?? '0') || 0,
+              cosineFit: parseFloat(m.cosineFitElevation ?? '0') || 0,
+              outOfPlane: parseFloat(m.outOfPlane ?? '0') || 0
             })),
-            amplitude: parseFloat(latestSettlement.cosineAmplitude) || 0,
-            phase: parseFloat(latestSettlement.cosinePhase) || 0,
-            rSquared: parseFloat(latestSettlement.rSquared) || 0,
-            maxSettlement: parseFloat(latestSettlement.maxOutOfPlane) || 0,
-            allowableSettlement: parseFloat(latestSettlement.allowableSettlement) || 0.5,
+            amplitude: parseFloat(latestSettlement.cosineAmplitude ?? '0') || 0,
+            phase: parseFloat(latestSettlement.cosinePhase ?? '0') || 0,
+            rSquared: parseFloat(latestSettlement.rSquared ?? '0') || 0,
+            maxSettlement: parseFloat(latestSettlement.maxOutOfPlane ?? '0') || 0,
+            allowableSettlement: parseFloat(latestSettlement.allowableSettlement ?? '0.5') || 0.5,
             acceptance: latestSettlement.settlementAcceptance || 'PENDING'
           };
         } catch (error) {
           console.error('Failed to fetch settlement measurements:', error);
           settlementData = {
             measurements: [],
-            amplitude: parseFloat(latestSettlement.cosineAmplitude) || 0,
-            phase: parseFloat(latestSettlement.cosinePhase) || 0,
-            rSquared: parseFloat(latestSettlement.rSquared) || 0,
-            maxSettlement: parseFloat(latestSettlement.maxOutOfPlane) || 0,
-            allowableSettlement: parseFloat(latestSettlement.allowableSettlement) || 0.5,
+            amplitude: parseFloat(latestSettlement.cosineAmplitude ?? '0') || 0,
+            phase: parseFloat(latestSettlement.cosinePhase ?? '0') || 0,
+            rSquared: parseFloat(latestSettlement.rSquared ?? '0') || 0,
+            maxSettlement: parseFloat(latestSettlement.maxOutOfPlane ?? '0') || 0,
+            allowableSettlement: parseFloat(latestSettlement.allowableSettlement ?? '0.5') || 0.5,
             acceptance: latestSettlement.settlementAcceptance || 'PENDING'
           };
         }
@@ -191,21 +209,21 @@ export function ReportExport({ reportId }: ReportExportProps) {
         .map((c: any) => c.description);
       
       const reportData = {
-        reportNumber: report.reportNumber,
-        tankId: report.tankId,
+        reportNumber: report.reportNumber || 'UNKNOWN',
+        tankId: report.tankId || 'N/A',
         facilityName: report.facilityName || 'Oil Storage Facility',
         location: report.location || 'Terminal',
-        inspectionDate: report.inspectionDate,
+  inspectionDate: report.inspectionDate || 'N/A',
         inspector: report.inspector || 'API 653 Inspector',
-        reviewedBy: report.reviewedBy,
+        reviewedBy: (report as any).reviewedBy || (report as any).reviewer,
         
         tankDetails: {
-          diameter: parseFloat(report.diameter) || 100,
-          height: parseFloat(report.height) || 40,
-          capacity: parseFloat(report.capacity) || 50000,
+          diameter: parseFloat(report.diameter ?? '100') || 100,
+          height: parseFloat(report.height ?? '40') || 40,
+          capacity: parseFloat(report.capacity ?? '50000') || 50000,
           product: report.product || 'Crude Oil',
-          yearBuilt: report.yearBuilt || 2000,
-          lastInspection: report.lastInternalInspection,
+          yearBuilt: typeof report.yearBuilt === 'number' ? report.yearBuilt : parseInt((report.yearBuilt as any) || '2000', 10),
+          lastInspection: report.lastInternalInspection || undefined,
           designCode: report.designCode || 'API 650',
           material: report.shellMaterial || 'A36'
         },
@@ -223,7 +241,7 @@ export function ReportExport({ reportId }: ReportExportProps) {
           requiredThickness: 0.1,
           corrosionRate: bottomCorrosionRate,
           remainingLife: bottomRemainingLife,
-          mriDate: report.nextInternalInspection
+          mriDate: report.nextInternalInspection || undefined
         },
         
         settlementData,

@@ -61,7 +61,8 @@ export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({ queryKey:['report-stats'], queryFn: fetchStats });
   const [reportToDelete, setReportToDelete] = React.useState<InspectionReport | null>(null);
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (statusInput: string | null | undefined) => {
+    const status = (statusInput || '').toLowerCase();
     switch (status) {
       case 'completed': return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>;
       case 'in_progress': return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">In Progress</Badge>;
@@ -71,9 +72,9 @@ export default function DashboardPage() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
+  const formatDate = (dateInput: string | null | undefined) => {
+    if (!dateInput) return 'N/A';
+    const date = new Date(dateInput);
     if (isNaN(date.getTime())) return 'Invalid Date';
     return date.toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric' });
   };

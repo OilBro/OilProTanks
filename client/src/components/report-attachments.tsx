@@ -77,11 +77,13 @@ export function ReportAttachments({ attachments, onAttachmentsChange }: ReportAt
   };
 
   const groupedAttachments = attachments.reduce((acc, attachment) => {
-    const category = attachment.category;
-    if (!acc[category]) {
-      acc[category] = [];
+    const rawCategory = attachment.category || 'uncategorized';
+    // Normalize to lowercase key for consistency
+    const categoryKey = rawCategory.toLowerCase();
+    if (!acc[categoryKey]) {
+      acc[categoryKey] = [];
     }
-    acc[category].push(attachment);
+    acc[categoryKey].push(attachment);
     return acc;
   }, {} as Record<string, ReportAttachment[]>);
 
@@ -180,7 +182,7 @@ export function ReportAttachments({ attachments, onAttachmentsChange }: ReportAt
         {Object.keys(groupedAttachments).length > 0 && (
           <div className="space-y-6">
             {Object.entries(groupedAttachments).map(([category, categoryAttachments]) => {
-              const categoryLabel = CATEGORIES.find(c => c.value === category)?.label || category;
+              const categoryLabel = CATEGORIES.find(c => c.value === category)?.label || (category === 'uncategorized' ? 'Uncategorized' : category);
               
               return (
                 <div key={category}>
@@ -193,8 +195,9 @@ export function ReportAttachments({ attachments, onAttachmentsChange }: ReportAt
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {categoryAttachments.map((attachment) => {
-                      const FileIcon = getFileIcon(attachment.fileType);
-                      const fileTypeLabel = FILE_TYPES.find(t => t.value === attachment.fileType)?.label;
+                      const safeFileType = attachment.fileType || 'document';
+                      const FileIcon = getFileIcon(safeFileType);
+                      const fileTypeLabel = FILE_TYPES.find(t => t.value === safeFileType)?.label || safeFileType;
                       
                       return (
                         <div key={attachment.id} className="border rounded-lg p-3 bg-white">
@@ -217,17 +220,19 @@ export function ReportAttachments({ attachments, onAttachmentsChange }: ReportAt
                           </div>
                           
                           <div className="space-y-1">
-                            <p className="text-sm font-medium truncate" title={attachment.filename}>
-                              {attachment.filename}
+                            <p className="text-sm font-medium truncate" title={attachment.filename || undefined}>
+                              {attachment.filename || 'Unnamed File'}
                             </p>
                             {attachment.description && (
                               <p className="text-xs text-gray-600 line-clamp-2">
                                 {attachment.description}
                               </p>
                             )}
-                            <p className="text-xs text-gray-400">
-                              {new Date(attachment.uploadedAt).toLocaleDateString()}
-                            </p>
+                            {attachment.uploadedAt && (
+                              <p className="text-xs text-gray-400">
+                                {new Date(attachment.uploadedAt).toLocaleDateString()}
+                              </p>
+                            )}
                           </div>
                         </div>
                       );
