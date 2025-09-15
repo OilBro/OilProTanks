@@ -9,7 +9,12 @@ import { reportTemplates } from '../shared/schema';
 import { seedDatabase } from './seed';
 
 const app = express();
-let readiness: { started: boolean; seeded: boolean; startedAt: number } = { started: false, seeded: false, startedAt: Date.now() };
+let readiness: { started: boolean; seeded: boolean; startedAt: number; seedInProgress: boolean; seedError?: string } = {
+  started: false,
+  seeded: false,
+  startedAt: Date.now(),
+  seedInProgress: false
+};
 
 // Enable CORS for cross-origin requests
 app.use(cors({
@@ -60,9 +65,13 @@ app.get('/', (_req: Request, res: Response) => {
   res.status(200).send('OK');
 });
 
-// Readiness endpoint – reports seeding & route registration completion
+// Readiness endpoint – non-blocking; reports background seeding status
 app.get(['/ready','/api/ready'], (_req: Request, res: Response) => {
-  res.json({ ready: readiness.started && readiness.seeded, ...readiness });
+  res.json({
+    ready: readiness.started && (readiness.seeded || process.env.SEED_TEMPLATES_DISABLE === 'true'),
+    ...readiness,
+    seedDisabled: process.env.SEED_TEMPLATES_DISABLE === 'true'
+  });
 });
 
 // Request logging (replaces prior inline logger)
@@ -77,25 +86,40 @@ function startServer() {
       startImageAnalysisWorker();
     }
 
-    // Auto-seed report templates (DB mode only)
-    if (process.env.DATABASE_URL) {
-      db.select().from(reportTemplates).limit(1)
-        .then((existing) => {
-          if (existing.length === 0) {
-            console.log('[startup] No report templates found. Running seed...');
-            seedDatabase().then(() => { readiness.seeded = true; });
-          } else {
-            console.log('[startup] Report templates present. Skipping seed.');
-            readiness.seeded = true;
-          }
-        })
-        .catch((err) => {
-          console.error('[startup] Template auto-seed check failed:', err);
-          readiness.seeded = true;
-        });
+    // Background seed (never block health checks)
+    const seedDisabled = process.env.SEED_TEMPLATES_DISABLE === 'true';
+    if (!seedDisabled && process.env.DATABASE_URL) {
+      readiness.seedInProgress = true;
+      setImmediate(() => {
+        db.select().from(reportTemplates).limit(1)
+          .then((existing: any[]) => {
+            if (existing.length === 0) {
+              console.log('[startup] No report templates found. Running seed (background)...');
+              return seedDatabase().then(() => {
+                readiness.seeded = true;
+                readiness.seedInProgress = false;
+                console.log('[startup] Seed completed');
+              });
+            } else {
+              console.log('[startup] Report templates present. Skipping seed.');
+              readiness.seeded = true;
+              readiness.seedInProgress = false;
+            }
+          })
+          .catch((err: unknown) => {
+            console.error('[startup] Template auto-seed check failed:', err);
+            readiness.seedError = err instanceof Error ? err.message : String(err);
+            // Mark seeded=false but stop claiming in progress so readiness reflects degraded state
+            readiness.seedInProgress = false;
+          });
+      });
     } else {
-      console.log('[startup] DATABASE_URL not set; running in in-memory mode (templates ephemeral).');
-      readiness.seeded = true; // nothing to seed
+      if (seedDisabled) {
+        console.log('[startup] Template seed disabled via SEED_TEMPLATES_DISABLE=true');
+      } else {
+        console.log('[startup] DATABASE_URL not set; running in in-memory mode (templates ephemeral).');
+      }
+      readiness.seeded = true; // treat as ready
     }
 
     // Basic 404 handler for unknown API requests only (before error handler)
@@ -119,12 +143,9 @@ function startServer() {
     // this serves both the API and the client.
     // It is the only port that is not firewalled.
     const port = 5000;
-    server.listen({
-      port,
-      host: "0.0.0.0",
-    }, () => {
-      log(`serving on port ${port}`);
+    server.listen({ port, host: "0.0.0.0" }, () => {
       readiness.started = true;
+      log(`serving on port ${port} (pid ${process.pid})`);
     });
   });
 }
