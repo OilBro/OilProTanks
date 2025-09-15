@@ -139,13 +139,42 @@ function startServer() {
       serveStatic(app);
     }
 
-    // ALWAYS serve the app on port 5000
-    // this serves both the API and the client.
-    // It is the only port that is not firewalled.
-    const port = 5000;
-    server.listen({ port, host: "0.0.0.0" }, () => {
+    // Bind to dynamic platform port if provided (fallback 5000)
+    const port = Number(process.env.PORT || process.env.NODE_PORT || 5000);
+    const host = "0.0.0.0";
+    server.listen({ port, host }, () => {
       readiness.started = true;
-      log(`serving on port ${port} (pid ${process.pid})`);
+      log(`serving on ${host}:${port} (pid ${process.pid})`);
+    });
+
+    // Heartbeat (optional) to show liveness in logs every 60s (can be disabled)
+    if (process.env.HEARTBEAT_LOG !== 'false') {
+      setInterval(() => {
+        if (readiness.started) {
+          console.log(`[heartbeat] up seedInProgress=${readiness.seedInProgress} seeded=${readiness.seeded}`);
+        }
+      }, 60000).unref();
+    }
+
+    // Graceful shutdown & error handlers
+    const shutdown = (signal: string) => {
+      console.log(`[shutdown] received ${signal}, closing server...`);
+      server.close(() => {
+        console.log('[shutdown] HTTP server closed');
+        process.exit(0);
+      });
+      // Fallback force exit after 8s
+      setTimeout(() => {
+        console.warn('[shutdown] force exit after timeout');
+        process.exit(1);
+      }, 8000).unref();
+    };
+    ['SIGINT','SIGTERM'].forEach(sig => process.on(sig as NodeJS.Signals, () => shutdown(sig)));
+    process.on('uncaughtException', (err) => {
+      console.error('[fatal] uncaughtException', err);
+    });
+    process.on('unhandledRejection', (reason) => {
+      console.error('[warn] unhandledRejection', reason);
     });
   });
 }
