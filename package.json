@@ -137,5 +137,10 @@
   "overrides": {},
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
-  }
+  },
+  "engines": {
+    "node": ">=20.0.0 <21",
+    "npm": "11.6.0"
+  },
+  "packageManager": "npm@11.6.0"
 }
