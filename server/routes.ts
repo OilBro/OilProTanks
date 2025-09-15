@@ -2134,8 +2134,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   } catch {}
 
-  return createServer(app);
-
   // Status aggregator
   app.get('/api/reports/:reportId/status', async (req,res)=>{
     const reportId = parseId(req.params.reportId); if(!reportId) return res.status(400).json({ success:false, message:'Invalid reportId'});
@@ -2161,8 +2159,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success:true, data: status });
   });
 
-  // Ensure the function ends by creating and returning the HTTP server.
-  // (Search for existing createServer usage to avoid duplication.)
-  const httpServer = createServer(app);
-  return httpServer;
+  // Final server creation (single point)
+  return createServer(app);
 }
