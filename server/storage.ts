@@ -88,6 +88,7 @@ export interface IStorage {
   
   // Report Attachments
   getReportAttachments(reportId: number): Promise<ReportAttachment[]>;
+  getReportAttachment(id: number): Promise<ReportAttachment | undefined>;
   createReportAttachment(attachment: InsertReportAttachment): Promise<ReportAttachment>;
   
   // Repair Recommendations
@@ -520,6 +521,10 @@ export class MemStorage implements IStorage {
       .filter(attachment => attachment.reportId === reportId);
   }
 
+  async getReportAttachment(id: number): Promise<ReportAttachment | undefined> {
+    return this.reportAttachments.get(id);
+  }
+
   async createReportAttachment(attachment: InsertReportAttachment): Promise<ReportAttachment> {
     const id = this.currentAttachmentId++;
     const newAttachment = {
@@ -882,6 +887,12 @@ export class DatabaseStorage implements IStorage {
   async getReportAttachments(reportId: number): Promise<ReportAttachment[]> {
     const dbi = await ensureDb();
     return await dbi.select().from(reportAttachments).where(eq(reportAttachments.reportId, reportId));
+  }
+
+  async getReportAttachment(id: number): Promise<ReportAttachment | undefined> {
+    const dbi = await ensureDb();
+    const [att] = await dbi.select().from(reportAttachments).where(eq(reportAttachments.id, id));
+    return att || undefined;
   }
 
   async createReportAttachment(attachment: InsertReportAttachment): Promise<ReportAttachment> {

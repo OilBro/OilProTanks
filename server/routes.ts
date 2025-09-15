@@ -25,6 +25,7 @@ import { db } from "./db.ts";
 import { eq } from "drizzle-orm";
 import { imageAnalyses } from "../shared/schema.ts";
 import { enqueueImageAnalysis, getLatestAnalysisForAttachment } from './imageAnalysisService.ts';
+import { imageLabels, imageRegions } from '../shared/schema.ts';
 import { handleExcelImport } from "./import-handler.ts";
 import { persistImportedReport, cleanupOrphanedReportChildren } from './import-persist.ts';
 import { handleChecklistUpload, standardChecklists } from "./checklist-handler.ts";
@@ -778,13 +779,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const attachmentId = parseInt(req.params.attachmentId);
       if (isNaN(attachmentId)) return res.status(400).json({ message: 'Invalid attachment id'});
-
-      // Attempt to fetch attachment to derive reportId (best-effort; storage lacks single fetch, so query DB directly)
+      // Fetch the attachment to derive reportId (preferred method)
       let reportId: number | null = null;
       try {
-        const raw = await db.select().from(imageAnalyses).where(eq(imageAnalyses.attachmentId, attachmentId));
-        if (raw.length) reportId = raw[0].reportId || null; // fallback if prior analyses exist
-      } catch {}
+        const attachment = await (storage as any).getReportAttachment?.(attachmentId);
+        if (attachment) reportId = attachment.reportId || null;
+      } catch (e) {
+        console.warn('Attachment lookup failed, proceeding without reportId', e);
+      }
 
       const analysis = await enqueueImageAnalysis(attachmentId, reportId);
       res.json({ success: true, analysisId: analysis.id, status: analysis.status });
@@ -804,6 +806,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(analysis);
     } catch (e: any) {
       res.status(500).json({ message: e.message || 'Failed to fetch analysis' });
+    }
+  });
+
+  // Get labels for an analysis
+  app.get('/api/analyses/:analysisId/labels', async (req, res) => {
+    try {
+      const analysisId = parseInt(req.params.analysisId);
+      if (isNaN(analysisId)) return res.status(400).json({ message: 'Invalid analysis id'});
+      const rows = await db.select().from(imageLabels).where(eq(imageLabels.analysisId, analysisId));
+      res.json({ success: true, data: rows });
+    } catch (e: any) {
+      res.status(500).json({ message: e.message || 'Failed to fetch labels' });
+    }
+  });
+
+  // Get regions for an analysis
+  app.get('/api/analyses/:analysisId/regions', async (req, res) => {
+    try {
+      const analysisId = parseInt(req.params.analysisId);
+      if (isNaN(analysisId)) return res.status(400).json({ message: 'Invalid analysis id'});
+      const rows = await db.select().from(imageRegions).where(eq(imageRegions.analysisId, analysisId));
+      res.json({ success: true, data: rows });
+    } catch (e: any) {
+      res.status(500).json({ message: e.message || 'Failed to fetch regions' });
     }
   });
 

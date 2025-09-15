@@ -450,6 +450,28 @@ Successful Response Example (completed):
 
 404 if no analysis exists yet.
 
+### GET /api/analyses/:analysisId/labels
+
+Return label detections (one row per classified label with confidence & category).
+
+Response 200:
+```json
+{ "success": true, "data": [ { "id": 10, "analysisId": 42, "label": "corrosion", "confidence": 0.8731, "category": "defect", "createdAt": "2025-09-14T03:20:00.370Z" } ] }
+```
+
+### GET /api/analyses/:analysisId/regions
+
+Return spatial detections (bounding boxes / polygons) for an analysis.
+
+Response 200:
+```json
+{ "success": true, "data": [ { "id": 15, "analysisId": 42, "label": "corrosion", "confidence": 0.8731, "x": 0.12, "y": 0.34, "width": 0.25, "height": 0.18, "polygon": null, "defectSeverity": "minor", "createdAt": "2025-09-14T03:20:00.371Z" } ] }
+```
+
+### External Inference & Retry (Experimental)
+
+If the environment variable `EXTERNAL_VISION_ENDPOINT` is set, the worker attempts an external model inference (stub). A transient failure triggers up to 2 retries with simple backoff, then falls back to the deterministic mock model. The final `modelVersion` field reflects which path was used (e.g. `external-yolo-v1` or `mock-yolo-v0`).
+
 ### Data Model Summary
 
 Tables introduced (migration `0004_add_image_analysis.sql`):
