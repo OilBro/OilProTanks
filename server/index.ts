@@ -9,6 +9,7 @@ import { reportTemplates } from '../shared/schema';
 import { seedDatabase } from './seed';
 
 const app = express();
+let readiness: { started: boolean; seeded: boolean; startedAt: number } = { started: false, seeded: false, startedAt: Date.now() };
 
 // Enable CORS for cross-origin requests
 app.use(cors({
@@ -49,9 +50,19 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Health check endpoint
-app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({ ok: true, ts: Date.now(), service: 'ReportArchitect' });
+// Basic liveness (always true if process running)
+app.get(['/api/health','/health'], (_req: Request, res: Response) => {
+  res.json({ ok: true, service: 'ReportArchitect', ts: Date.now() });
+});
+
+// Root endpoint for platform health checks (some providers hit '/')
+app.get('/', (_req: Request, res: Response) => {
+  res.status(200).send('OK');
+});
+
+// Readiness endpoint – reports seeding & route registration completion
+app.get(['/ready','/api/ready'], (_req: Request, res: Response) => {
+  res.json({ ready: readiness.started && readiness.seeded, ...readiness });
 });
 
 // Request logging (replaces prior inline logger)
@@ -72,14 +83,19 @@ app.use(requestLogger);
       if (existing.length === 0) {
         console.log('[startup] No report templates found. Running seed...');
         await seedDatabase();
+        readiness.seeded = true;
       } else {
         console.log('[startup] Report templates present. Skipping seed.');
+        readiness.seeded = true;
       }
     } catch (err) {
       console.error('[startup] Template auto-seed check failed:', err);
+      // Still mark seeded so readiness eventually returns true; platform can decide to restart if needed
+      readiness.seeded = true;
     }
   } else {
     console.log('[startup] DATABASE_URL not set; running in in-memory mode (templates ephemeral).');
+    readiness.seeded = true; // nothing to seed
   }
 
   // Basic 404 handler for unknown API requests only (before error handler)
@@ -108,5 +124,6 @@ app.use(requestLogger);
     host: "0.0.0.0",
   }, () => {
     log(`serving on port ${port}`);
+    readiness.started = true;
   });
 })();

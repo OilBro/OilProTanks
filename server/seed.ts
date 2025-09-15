@@ -1,6 +1,15 @@
 import { db } from "./db";
 import { reportTemplates } from "@shared/schema";
 
+/**
+ * Seed the database with initial report templates.
+ * NOTE: This function is safe to call during application startup – it does NOT
+ * terminate the Node.js process. Historically this module auto-ran and then
+ * called process.exit(), which caused hosting platforms that execute the seed
+ * on import (or bundlers that eagerly evaluate modules) to see the app exit
+ * immediately after seeding. We now guard execution so the process only exits
+ * when this file is executed directly (e.g. `node server/seed.ts`).
+ */
 async function seedDatabase() {
   try {
     console.log("Seeding database with template data...");
@@ -95,13 +104,15 @@ async function seedDatabase() {
   }
 }
 
-// Run seed if called directly
-seedDatabase().then(() => {
-  console.log("Seed completed");
-  process.exit(0);
-}).catch((error) => {
-  console.error("Seed failed:", error);
-  process.exit(1);
-});
+// Execute only when run directly: `node server/seed.ts`
+if (import.meta.url === `file://${process.argv[1]}`) {
+  seedDatabase().then(() => {
+    console.log("Seed completed");
+    process.exit(0);
+  }).catch((error) => {
+    console.error("Seed failed:", error);
+    process.exit(1);
+  });
+}
 
 export { seedDatabase };
