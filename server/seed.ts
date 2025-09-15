@@ -10,9 +10,36 @@ import { reportTemplates } from "@shared/schema";
  * immediately after seeding. We now guard execution so the process only exits
  * when this file is executed directly (e.g. `node server/seed.ts`).
  */
-async function seedDatabase() {
+/**
+ * Safe timeout wrapper for database operations that properly clears timers
+ * and prevents unhandled rejections during deployment
+ */
+function withSafeTimeout<T>(promise: Promise<T>, timeoutMs: number, operation: string): Promise<T> {
+  let timeoutHandle: NodeJS.Timeout;
+  
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => {
+      reject(new Error(`Database operation '${operation}' timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+  
+  return Promise.race([
+    promise.finally(() => {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
+    }),
+    timeoutPromise
+  ]);
+}
+
+/**
+ * Seed database with proper status reporting
+ * @returns Object with success status and error message if applicable
+ */
+async function seedDatabase(): Promise<{ success: boolean; error?: string }> {
+  const SEED_TIMEOUT = 10000; // 10 second timeout for each operation
+  
   try {
-    console.log("Seeding database with template data...");
+    console.log("[seed] Starting database seeding with timeout protection...");
     
     const now = new Date().toISOString();
     
@@ -88,19 +115,37 @@ async function seedDatabase() {
       }
     ];
 
-    // Check if templates already exist
-    const existingTemplates = await db.select().from(reportTemplates);
+    // Check if templates already exist with timeout protection
+    console.log("[seed] Checking for existing templates...");
+    const existingTemplates = await withSafeTimeout(
+      db.select().from(reportTemplates).limit(1),
+      SEED_TIMEOUT,
+      'check existing templates'
+    ) as any[];
     
     if (existingTemplates.length === 0) {
-      await db.insert(reportTemplates).values(templates);
-      console.log("Template data seeded successfully!");
+      console.log("[seed] No templates found, inserting templates...");
+      await withSafeTimeout(
+        db.insert(reportTemplates).values(templates),
+        SEED_TIMEOUT,
+        'insert templates'
+      );
+      console.log("[seed] Template data seeded successfully!");
     } else {
-      console.log("Templates already exist, skipping seed.");
+      console.log("[seed] Templates already exist, skipping seed.");
     }
     
+    return { success: true };
+    
   } catch (error) {
-    console.error("Error seeding database:", error);
-    throw error;
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("[seed] Error during database seeding:", errorMsg);
+    
+    if (errorMsg.includes('timed out')) {
+      console.error("[seed] Database operation timed out - this may indicate slow database connectivity");
+    }
+    
+    return { success: false, error: errorMsg };
   }
 }
 
