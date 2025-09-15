@@ -100,11 +100,44 @@ function startServer() {
     console.error('[startup:fallback] Falling back to minimal server due to:', reason);
     const http = require('http');
     const fallbackServer = http.createServer(app);
-    const port = Number(process.env.PORT || process.env.NODE_PORT || 5000);
-    fallbackServer.listen(port, '0.0.0.0', () => {
+    
+    // Use consistent port resolution logic
+    const resolvePort = () => {
+      if (process.env.FORCE_PORT) {
+        const forced = Number(process.env.FORCE_PORT);
+        if (Number.isFinite(forced) && forced > 0) {
+          return { port: forced, source: 'FORCE_PORT' };
+        }
+      }
+      const candidates = [
+        { name: 'PORT', value: process.env.PORT },
+        { name: 'NODE_PORT', value: process.env.NODE_PORT },
+        { name: 'SERVER_PORT', value: process.env.SERVER_PORT },
+        { name: 'VITE_PORT', value: process.env.VITE_PORT },
+        { name: 'APP_PORT', value: process.env.APP_PORT }
+      ];
+      for (const c of candidates) {
+        if (!c.value) continue;
+        const n = Number(c.value);
+        if (Number.isFinite(n) && n > 0) {
+          return { port: n, source: c.name };
+        }
+      }
+      return { port: 5000, source: 'fallback-5000' };
+    };
+    
+    const { port, source } = resolvePort();
+    const host = '0.0.0.0';
+    
+    console.log(`[startup:fallback] binding minimal server on ${host}:${port} (source=${source})`);
+    fallbackServer.listen(port, host, () => {
       readiness.started = true;
       listening = true;
-      console.log(`[startup:fallback] Minimal server listening on 0.0.0.0:${port}`);
+      console.log(`[startup:fallback] Minimal server listening on ${host}:${port}`);
+    });
+    
+    fallbackServer.on('error', (err: any) => {
+      console.error('[startup:fallback] server.listen error:', err?.code || err?.message || err);
     });
   };
 
@@ -184,13 +217,59 @@ function startServer() {
       serveStatic(app);
     }
 
-    // Bind to dynamic platform port if provided (fallback 5000)
-    const port = Number(process.env.PORT || process.env.NODE_PORT || 5000);
+    // Resolve port with extended heuristics and consistent fallback logic
+    const resolvePort = () => {
+      if (process.env.FORCE_PORT) {
+        const forced = Number(process.env.FORCE_PORT);
+        if (Number.isFinite(forced) && forced > 0) {
+          console.log('[startup] using FORCE_PORT=' + forced);
+          return { port: forced, source: 'FORCE_PORT' };
+        }
+      }
+      const candidates = [
+        { name: 'PORT', value: process.env.PORT },
+        { name: 'NODE_PORT', value: process.env.NODE_PORT },
+        { name: 'SERVER_PORT', value: process.env.SERVER_PORT },
+        { name: 'VITE_PORT', value: process.env.VITE_PORT },
+        { name: 'APP_PORT', value: process.env.APP_PORT }
+      ];
+      console.log('[startup] port candidates:', candidates.map(c => `${c.name}=${c.value || ''}`).join(' '));
+      for (const c of candidates) {
+        if (!c.value) continue;
+        const n = Number(c.value);
+        if (Number.isFinite(n) && n > 0) {
+          return { port: n, source: c.name };
+        }
+      }
+      return { port: 5000, source: 'fallback-5000' };
+    };
+    
+    const { port, source: portSource } = resolvePort();
     const host = "0.0.0.0";
+    
+    console.log(`[startup] binding server on ${host}:${port} (source=${portSource})`);
     server.listen({ port, host }, () => {
       readiness.started = true;
       listening = true;
-      log(`serving on ${host}:${port} (pid ${process.pid})`);
+      log(`serving on ${host}:${port} (pid ${process.pid}) (source=${portSource})`);
+    });
+
+    server.on('error', (err: any) => {
+      console.error('[startup] server.listen error:', err?.code || err?.message || err);
+      if (!listening) {
+        // attempt fallback to alternate common port (5000) if different
+        if (port !== 5000) {
+          console.log('[startup] attempting fallback bind on 5000');
+          try {
+            server.listen({ port: 5000, host });
+          } catch (e) {
+            console.error('[startup] fallback bind failed:', e);
+            startFallbackServer('main server bind failed');
+          }
+        } else {
+          startFallbackServer('port 5000 bind failed');
+        }
+      }
     });
 
     // Heartbeat (optional) to show liveness in logs every 60s (can be disabled)
