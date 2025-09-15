@@ -21,6 +21,7 @@ import {
   reportWriteup,
   reportPracticalTminOverrides
 } from "../shared/schema.ts";
+import { importLogs } from '../shared/schema.ts';
 import { db } from "./db.ts";
 import { eq } from "drizzle-orm";
 import { imageAnalyses } from "../shared/schema.ts";
@@ -100,6 +101,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerNozzleRoutes(app);
   // Excel Import endpoint (restored)
   app.post("/api/reports/import", upload.single('excelFile'), async (req, res) => {
+    const started = Date.now();
+    let logId: number | undefined;
+    let reportNumber: string | undefined;
+    const filename = req.file?.originalname;
+    const origin = req.file?.originalname?.toLowerCase().endsWith('.pdf') ? 'pdf' : 'excel';
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
       const fileName = req.file.originalname.toLowerCase();
@@ -114,37 +120,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { importedData, thicknessMeasurements: tms, checklistItems: clItems } = result;
       const { findings, reportWriteUp, recommendations, notes, ...reportData } = importedData;
 
-      // Normalize tankId edge cases
       if (reportData.tankId?.match(/\.xls/)) {
         reportData.tankId = reportData.equipmentId || reportData.unitNumber || `TANK-${Date.now()}`;
       }
-      // Service mapping normalization
       const serviceMapping: Record<string,string> = { 'crude_oil':'crude','crude oil':'crude','diesel':'diesel','gasoline':'gasoline','alcohol':'alcohol','fish oil and sludge oil':'other','other':'other'};
       if (reportData.service) {
         const norm = String(reportData.service).toLowerCase();
         reportData.service = serviceMapping[norm] || 'other';
       }
 
-      // Transactional persistence
       const persisted = await persistImportedReport({
         importedData: reportData,
         thicknessMeasurements: Array.isArray(tms) ? tms : [],
         checklistItems: Array.isArray(clItems) ? clItems : [],
         findings, reportWriteUp, recommendations, notes
       });
+      reportNumber = persisted.report.reportNumber;
 
       res.json({
         success: true,
         reportId: persisted.report.id,
-        reportNumber: persisted.report.reportNumber,
+        reportNumber: reportNumber,
         origin: 'import',
         measurementsCreated: persisted.measurementsCreated,
         checklistCreated: persisted.checklistCreated,
         warnings: persisted.warnings,
         importedData: result.importedData
       });
+
+      try {
+        await db.insert(importLogs).values({
+          origin,
+            filename,
+            status: 'success',
+            reportNumber,
+            processingMs: Date.now() - started
+        });
+      } catch (logErr) {
+        console.error('Failed to write success import log:', logErr);
+      }
     } catch (e: any) {
       console.error('Import failed (transaction rolled back):', e);
+      try {
+        await db.insert(importLogs).values({
+          origin,
+          filename,
+          status: 'failed',
+          reportNumber,
+          errorMessage: e.message?.slice(0, 500),
+          processingMs: Date.now() - started
+        });
+      } catch (logErr) {
+        console.error('Failed to write failure import log:', logErr);
+      }
       res.status(500).json({ success:false, message: e.message || 'Import failed'});
     }
   });
@@ -170,6 +198,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, flags });
     } catch (e: any) {
       res.status(500).json({ success:false, message: e.message || 'Failed to read flags'});
+    }
+  });
+
+  // Admin: force (re)seed report templates (idempotent). Protected by optional ADMIN_SEED_SECRET.
+  app.post('/api/admin/seed/templates', async (req, res) => {
+    try {
+      const provided = req.headers['x-seed-secret'] || req.query.secret;
+      if (process.env.ADMIN_SEED_SECRET && provided !== process.env.ADMIN_SEED_SECRET) {
+        return res.status(403).json({ success:false, message: 'Forbidden' });
+      }
+      if (!process.env.DATABASE_URL) {
+        return res.status(400).json({ success:false, message: 'Not in DB mode; seeding unavailable'});
+      }
+      const { seedDatabase } = await import('./seed');
+      await seedDatabase();
+      res.json({ success:true, message: 'Seed executed (see logs for details)'});
+    } catch (e: any) {
+      res.status(500).json({ success:false, message: e.message || 'Seed failed'});
+    }
+  });
+
+  // Admin: list import logs (pagination + status filter)
+  app.get('/api/admin/import-logs', async (req, res) => {
+    try {
+      if (!process.env.DATABASE_URL) {
+        return res.status(400).json({ success:false, message: 'Not in DB mode'});
+      }
+      const provided = req.headers['x-seed-secret'] || req.query.secret; // reuse same secret
+      if (process.env.ADMIN_SEED_SECRET && provided !== process.env.ADMIN_SEED_SECRET) {
+        return res.status(403).json({ success:false, message: 'Forbidden' });
+      }
+      const limit = Math.min(Math.max(parseInt(String(req.query.limit || '50'), 10), 1), 200);
+      const offset = Math.max(parseInt(String(req.query.offset || '0'), 10), 0);
+      const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+      const where: any[] = [];
+      if (status) where.push({ status });
+      // simple manual query build due to limited dynamic support here
+      let query = db.select().from(importLogs).orderBy(importLogs.id);
+      if (status) {
+        query = db.select().from(importLogs).where(eq(importLogs.status, status)).orderBy(importLogs.id);
+      }
+      const all = await query;
+      const slice = all.slice(offset, offset + limit);
+      res.setHeader('X-Total-Count', String(all.length));
+      res.json({ success:true, logs: slice });
+    } catch (e: any) {
+      res.status(500).json({ success:false, message: e.message || 'Failed to fetch import logs'});
     }
   });
 

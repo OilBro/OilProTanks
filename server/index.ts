@@ -4,6 +4,9 @@ import { setupVite, serveStatic, log } from "./vite";
 import cors from "cors";
 import { requestLogger, errorHandler } from './middleware';
 import { startImageAnalysisWorker } from './imageAnalysisService';
+import { db } from './db';
+import { reportTemplates } from '../shared/schema';
+import { seedDatabase } from './seed';
 
 const app = express();
 
@@ -60,6 +63,23 @@ app.use(requestLogger);
   // Initialize background workers conditionally via feature flags
   if (process.env.VITE_AI_ANALYSIS_UI === 'true') {
     startImageAnalysisWorker();
+  }
+
+  // Auto-seed report templates (DB mode only)
+  if (process.env.DATABASE_URL) {
+    try {
+      const existing = await db.select().from(reportTemplates).limit(1);
+      if (existing.length === 0) {
+        console.log('[startup] No report templates found. Running seed...');
+        await seedDatabase();
+      } else {
+        console.log('[startup] Report templates present. Skipping seed.');
+      }
+    } catch (err) {
+      console.error('[startup] Template auto-seed check failed:', err);
+    }
+  } else {
+    console.log('[startup] DATABASE_URL not set; running in in-memory mode (templates ephemeral).');
   }
 
   // Basic 404 handler for unknown API requests only (before error handler)

@@ -93,6 +93,83 @@ Notes:
 - If `limit`/`offset` are omitted the full dataset is returned (use carefully as data grows).
 - Performance: The backend includes indexes on `(origin, updated_at DESC)`, `status`, and `updated_at` to optimize common dashboard queries and pagination. If you add new heavy filters, consider adding corresponding indexes.
 
+## Administration
+
+### Auto-seed on Startup
+
+When `DATABASE_URL` is set (database mode), the server checks for the presence of any rows in `report_templates` during startup. If none are found it executes the template seeding routine (three default templates). In memory mode (no `DATABASE_URL`) templates are ephemeral and will disappear on restart.
+
+### POST /api/admin/seed/templates
+
+Force (re)run the template seed script. Idempotent: existing templates are left unchanged. Requires database mode. If `ADMIN_SEED_SECRET` environment variable is set, the request must include either header `X-Seed-Secret: <secret>` or query `?secret=<secret>`.
+
+Response 200:
+
+```json
+{ "success": true, "message": "Seed executed (see logs for details)" }
+```
+
+Errors:
+
+```text
+400 Not in DB mode
+403 Forbidden (secret mismatch)
+500 Seed failed
+```
+
+### GET /api/admin/import-logs[?limit=&offset=&status=]
+
+List historical import attempts (Excel/PDF). Provides basic observability for debugging failed imports.
+
+Query Parameters:
+
+```text
+limit  (optional): 1-200 (default 50)
+offset (optional): >=0 (default 0)
+status (optional): success | failed (filter)
+```
+
+Headers:
+
+```text
+X-Total-Count: total matching rows before pagination
+```
+
+Response 200:
+
+```json
+{
+  "success": true,
+  "logs": [
+    {
+      "id": 42,
+      "createdAt": "2025-01-01T12:00:00.000Z",
+      "origin": "excel",
+      "filename": "Tank6.xlsx",
+      "status": "failed",
+      "reportNumber": null,
+      "errorMessage": "Validation error...",
+      "processingMs": 812
+    }
+  ]
+}
+```
+
+Schema (`import_logs`):
+
+```text
+id            serial PK
+created_at    timestamp default now()
+origin        text (excel|pdf)
+filename      text
+status        text (success|failed)
+report_number text (nullable)
+error_message text (nullable, truncated to 500 chars)
+processing_ms integer
+```
+
+Security: Shares the same optional `ADMIN_SEED_SECRET` guard as the seed endpoint (header `X-Seed-Secret` or `?secret=`). If unset, endpoint is open—configure secret in production.
+
 Aggregated completion/status of report sections.
 Response 200:
 

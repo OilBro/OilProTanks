@@ -183,6 +183,18 @@ export const imageRegions = pgTable("image_regions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Import attempt logs for diagnostics
+export const importLogs = pgTable("import_logs", {
+  id: serial("id").primaryKey(),
+  createdAt: timestamp("created_at").defaultNow(),
+  origin: text("origin"), // excel, pdf
+  filename: text("filename"),
+  status: text("status"), // success, failed
+  reportNumber: text("report_number"),
+  errorMessage: text("error_message"),
+  processingMs: integer("processing_ms"),
+});
+
 // Repair recommendations with tracking
 export const repairRecommendations = pgTable("repair_recommendations", {
   id: serial("id").primaryKey(),
@@ -327,6 +339,11 @@ export const insertImageRegionSchema = createInsertSchema(imageRegions).omit({
   createdAt: true,
 });
 
+export const insertImportLogSchema = createInsertSchema(importLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertRepairRecommendationSchema = createInsertSchema(repairRecommendations).omit({
   id: true,
   createdAt: true,
@@ -359,6 +376,8 @@ export type ImageLabel = typeof imageLabels.$inferSelect;
 export type InsertImageLabel = z.infer<typeof insertImageLabelSchema>;
 export type ImageRegion = typeof imageRegions.$inferSelect;
 export type InsertImageRegion = z.infer<typeof insertImageRegionSchema>;
+export type ImportLog = typeof importLogs.$inferSelect;
+export type InsertImportLog = z.infer<typeof insertImportLogSchema>;
 export type InsertRepairRecommendation = z.infer<typeof insertRepairRecommendationSchema>;
 export type RepairRecommendation = typeof repairRecommendations.$inferSelect;
 export type InsertVentingSystemInspection = z.infer<typeof insertVentingSystemInspectionSchema>;
