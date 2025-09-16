@@ -22,6 +22,25 @@ FROM node:20-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
+# --- System packages required for PDF/text/image extraction ---
+# poppler-utils: pdftotext / pdftoppm used by pdf parsing & image generation flows
+# graphicsmagick: lightweight image conversions (pdf2pic / thumbnails)
+# ghostscript: fallback PDF processing for complex PDFs
+# fontconfig & liberation fonts: ensure headless PDF rendering has fonts
+# libjpeg / libpng / libwebp: underlying codecs (many may already be pulled, install explicitly for safety)
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends \
+		poppler-utils \
+		graphicsmagick \
+		ghostscript \
+		fontconfig \
+		libjpeg62-turbo \
+		libpng16-16 \
+		libwebp7 \
+		libtiff6 \
+		libgif7 \
+	&& rm -rf /var/lib/apt/lists/*
+
 # Copy only needed runtime artifacts
 COPY --from=build /app/package.json ./
 COPY --from=build /app/package-lock.json* ./
