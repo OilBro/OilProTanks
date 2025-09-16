@@ -207,6 +207,24 @@ function startServer() {
 
     // Resolve port with extended heuristics (health check failing on 4500)
     const resolvePort = () => {
+      const isProd = app.get('env') === 'production';
+      // In production (Cloud Run, etc.) only honor PORT (and optional FORCE_PORT) to avoid multi-port ambiguity
+      if (isProd) {
+        if (process.env.FORCE_PORT) {
+          const forced = Number(process.env.FORCE_PORT);
+          if (Number.isFinite(forced) && forced > 0) {
+            console.log('[startup] using FORCE_PORT=' + forced);
+            return { port: forced, source: 'FORCE_PORT' };
+          }
+        }
+        const envPort = Number(process.env.PORT);
+        if (Number.isFinite(envPort) && envPort > 0) {
+          return { port: envPort, source: 'PORT' };
+        }
+        // Cloud Run default fallback
+        return { port: 8080, source: 'default-8080' };
+      }
+      // Development / other environments keep permissive heuristic
       if (process.env.FORCE_PORT) {
         const forced = Number(process.env.FORCE_PORT);
         if (Number.isFinite(forced) && forced>0) {
@@ -221,7 +239,7 @@ function startServer() {
         { name: 'VITE_PORT', value: process.env.VITE_PORT },
         { name: 'APP_PORT', value: process.env.APP_PORT }
       ];
-      console.log('[startup] port candidates:', candidates.map(c => `${c.name}=${c.value || ''}`).join(' '));
+      console.log('[startup] dev port candidates:', candidates.map(c => `${c.name}=${c.value || ''}`).join(' '));
       for (const c of candidates) {
         if (!c.value) continue;
         const n = Number(c.value);
@@ -229,7 +247,6 @@ function startServer() {
           return { port: n, source: c.name };
         }
       }
-      // If platform health check expects 5000 and no env provided, use 5000 as standard
       return { port: 5000, source: 'fallback-5000' };
     };
     const { port, source: portSource } = resolvePort();
