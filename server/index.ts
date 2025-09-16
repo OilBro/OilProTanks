@@ -33,18 +33,36 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   // Enable XSS protection
   res.setHeader('X-XSS-Protection', '1; mode=block');
   
-  // Content Security Policy
-  res.setHeader('Content-Security-Policy', 
-    "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline'; " +
-    "style-src 'self' 'unsafe-inline'; " +
-    "img-src 'self' data:; " +
-    "connect-src 'self'; " +
-    "font-src 'self'; " +
-    "object-src 'none'; " +
-    "base-uri 'self'; " +
-    "form-action 'self'"
-  );
+  // Content Security Policy - relax in development for Vite HMR
+  const isDevelopment = app.get('env') === 'development';
+  
+  if (isDevelopment) {
+    // Permissive CSP for development to allow Vite HMR
+    res.setHeader('Content-Security-Policy', 
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: blob:; " +
+      "connect-src 'self' ws: wss: http: https: blob: data:; " +
+      "font-src 'self'; " +
+      "object-src 'none'; " +
+      "base-uri 'self'; " +
+      "form-action 'self'"
+    );
+  } else {
+    // Strict CSP for production
+    res.setHeader('Content-Security-Policy', 
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data:; " +
+      "connect-src 'self'; " +
+      "font-src 'self'; " +
+      "object-src 'none'; " +
+      "base-uri 'self'; " +
+      "form-action 'self'"
+    );
+  }
   
   // Referrer policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -55,13 +73,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Root endpoint for platform health checks (many deployment platforms hit '/')
-// This MUST respond immediately for successful deployments
-app.get('/', (_req: Request, res: Response) => {
-  // Set cache headers to prevent unnecessary requests during deployment
-  res.setHeader('Cache-Control', 'no-cache');
-  res.status(200).send('OK');
-});
+// Note: Root path '/' is handled by Vite/static serving for the frontend
+// Health checks should use /api/health or /api/ready endpoints
 
 // Basic liveness check (always returns success if process is running)
 // This endpoint is designed for deployment health checks and load balancers
