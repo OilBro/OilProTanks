@@ -14,6 +14,7 @@ import { Calculator, Upload, Download, AlertTriangle, CheckCircle2, Eye } from '
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
+import { ChartBlock } from '@/components/layout/ChartBlock';
 
 interface SettlementSurveyProps {
   reportId: number;
@@ -790,7 +791,7 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
         </DialogHeader>
         {selectedSurvey && plotMeasurements.length > 0 && (
           <div className="space-y-4">
-            <div className="h-96">
+            <ChartBlock height={400} className="h-96">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={plotMeasurements.map((m, idx) => ({
@@ -843,7 +844,7 @@ export function SettlementSurvey({ reportId }: SettlementSurveyProps) {
                   <ReferenceLine y={0} stroke="#6b7280" strokeDasharray="3 3" />
                 </LineChart>
               </ResponsiveContainer>
-            </div>
+            </ChartBlock>
             
             {plotMeasurements.length === 0 && (
               <Alert>

@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChartBlock } from '@/components/layout/ChartBlock';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Dot } from 'recharts';
@@ -274,79 +275,83 @@ export function SettlementCosineFit({
       </Card>
 
       {/* Settlement Profile Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Settlement Profile - Measured vs. Cosine Fit</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={400}>
-            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="angle" 
-                label={{ value: 'Angle (degrees)', position: 'insideBottom', offset: -5 }}
-                domain={[0, 360]}
-                ticks={[0, 45, 90, 135, 180, 225, 270, 315, 360]}
-              />
-              <YAxis 
-                label={{ value: 'Elevation (ft)', angle: -90, position: 'insideLeft' }}
-              />
-              <Tooltip formatter={(value: number) => value.toFixed(4)} />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="measured" 
-                stroke="#2563eb" 
-                strokeWidth={2}
-                dot={{ fill: '#2563eb', r: 4 }}
-                name="Measured"
-              />
-              <Line 
-                type="monotone" 
-                dataKey="cosineFit" 
-                stroke="#dc2626" 
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={false}
-                name="Cosine Fit"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      <ChartBlock height={420}>
+        <Card className="h-full flex flex-col">
+          <CardHeader className="pb-3">
+            <CardTitle>Settlement Profile - Measured vs. Cosine Fit</CardTitle>
+          </CardHeader>
+            <CardContent className="flex-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="angle" 
+                    label={{ value: 'Angle (degrees)', position: 'insideBottom', offset: -5 }}
+                    domain={[0, 360]}
+                    ticks={[0, 45, 90, 135, 180, 225, 270, 315, 360]}
+                  />
+                  <YAxis 
+                    label={{ value: 'Elevation (ft)', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip formatter={(value: number) => (value as number).toFixed(4)} />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="measured" 
+                    stroke="#2563eb" 
+                    strokeWidth={2}
+                    dot={{ fill: '#2563eb', r: 4 }}
+                    name="Measured"
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="cosineFit" 
+                    stroke="#dc2626" 
+                    strokeWidth={2}
+                    strokeDasharray="5 5"
+                    dot={false}
+                    name="Cosine Fit"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+        </Card>
+      </ChartBlock>
 
       {/* Out-of-Plane Deviations Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Out-of-Plane Deviations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="angle" 
-                label={{ value: 'Angle (degrees)', position: 'insideBottom', offset: -5 }}
-                domain={[0, 360]}
-                ticks={[0, 45, 90, 135, 180, 225, 270, 315, 360]}
-              />
-              <YAxis 
-                label={{ value: 'Deviation (ft)', angle: -90, position: 'insideLeft' }}
-              />
-              <Tooltip formatter={(value: number) => value.toFixed(4)} />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="outOfPlane" 
-                stroke="#f59e0b" 
-                strokeWidth={2}
-                dot={{ fill: '#f59e0b', r: 4 }}
-                name="Out-of-Plane"
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      <ChartBlock height={340}>
+        <Card className="h-full flex flex-col">
+          <CardHeader className="pb-3">
+            <CardTitle>Out-of-Plane Deviations</CardTitle>
+          </CardHeader>
+          <CardContent className="flex-1">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="angle" 
+                  label={{ value: 'Angle (degrees)', position: 'insideBottom', offset: -5 }}
+                  domain={[0, 360]}
+                  ticks={[0, 45, 90, 135, 180, 225, 270, 315, 360]}
+                />
+                <YAxis 
+                  label={{ value: 'Deviation (ft)', angle: -90, position: 'insideLeft' }}
+                />
+                <Tooltip formatter={(value: number) => (value as number).toFixed(4)} />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey="outOfPlane" 
+                  stroke="#f59e0b" 
+                  strokeWidth={2}
+                  dot={{ fill: '#f59e0b', r: 4 }}
+                  name="Out-of-Plane"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </ChartBlock>
     </div>
   );
 }

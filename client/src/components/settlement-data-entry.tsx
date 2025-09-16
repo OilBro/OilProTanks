@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ChartBlock } from '@/components/layout/ChartBlock';
 import { TrendingDown, Calculator, AlertTriangle } from "lucide-react";
 
 interface SettlementPoint {
@@ -256,37 +257,39 @@ export function SettlementDataEntry({ data, onDataChange }: SettlementDataEntryP
 
         {/* Settlement Chart */}
         {chartData.length > 0 && (
-          <div className="space-y-4">
-            <h4 className="font-medium">Settlement Profile</h4>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis 
-                    dataKey="angle" 
-                    label={{ value: 'Angle (degrees)', position: 'insideBottom', offset: -5 }}
-                  />
-                  <YAxis 
-                    label={{ value: 'Elevation (in)', angle: -90, position: 'insideLeft' }}
-                  />
-                  <Tooltip 
-                    formatter={(value, name) => [
-                      typeof value === 'number' ? value.toFixed(3) + '"' : value, 
-                      'Elevation'
-                    ]}
-                    labelFormatter={(label) => `Angle: ${label}°`}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="elevation" 
-                    stroke="#2563eb" 
-                    strokeWidth={2}
-                    dot={{ fill: '#2563eb', r: 4 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+          <ChartBlock height={300} className="mt-2">
+            <div className="space-y-4 h-full flex flex-col">
+              <h4 className="font-medium">Settlement Profile</h4>
+              <div className="flex-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+                      dataKey="angle" 
+                      label={{ value: 'Angle (degrees)', position: 'insideBottom', offset: -5 }}
+                    />
+                    <YAxis 
+                      label={{ value: 'Elevation (in)', angle: -90, position: 'insideLeft' }}
+                    />
+                    <Tooltip 
+                      formatter={(value, name) => [
+                        typeof value === 'number' ? (value as number).toFixed(3) + '"' : value, 
+                        'Elevation'
+                      ]}
+                      labelFormatter={(label) => `Angle: ${label}°`}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="elevation" 
+                      stroke="#2563eb" 
+                      strokeWidth={2}
+                      dot={{ fill: '#2563eb', r: 4 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-          </div>
+          </ChartBlock>
         )}
 
         {/* Guidelines */}

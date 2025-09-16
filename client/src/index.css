@@ -138,6 +138,16 @@
   }
 }
 
+/* Ensure stacked charts maintain separation even if parent spacing utilities are removed */
+.chart-block + .chart-block {
+  margin-top: 2.5rem; /* 40px (Tailwind ~mt-10) */
+}
+
+/* Defensive: if a parent wants to enforce spacing on multiple arbitrary direct children */
+.chart-stack > * + * {
+  margin-top: 2.5rem;
+}
+
 /* Form validation styles */
 .form-error {
   @apply border-red-500 bg-red-50;
