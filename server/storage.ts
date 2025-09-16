@@ -309,9 +309,7 @@ export class MemStorage implements IStorage {
   // Inspection Reports
   async getInspectionReports(originFilter?: string, options?: { limit?: number; offset?: number }): Promise<InspectionReport[]> {
     let all = Array.from(this.inspectionReports.values());
-    if (originFilter && originFilter !== 'all') {
-      all = all.filter(r => (r as any).origin === originFilter);
-    }
+    // Origin filter removed - column doesn't exist in schema
     const limit = options?.limit && options.limit > 0 ? options.limit : all.length;
     const offset = options?.offset && options.offset >= 0 ? options.offset : 0;
     return all.slice(offset, offset + limit);
@@ -729,9 +727,7 @@ export class DatabaseStorage implements IStorage {
     const limit = options?.limit && options.limit > 0 ? options.limit : undefined;
     const offset = options?.offset && options.offset >= 0 ? options.offset : undefined;
     let query = dbi.select().from(inspectionReports);
-    if (originFilter && originFilter !== 'all') {
-      query = query.where(eq(inspectionReports.origin as any, originFilter));
-    }
+    // Origin filter removed - column doesn't exist in schema
     query = query.orderBy(inspectionReports.updatedAt) as any;
     if (typeof limit === 'number') query = query.limit(limit) as any;
     if (typeof offset === 'number') query = query.offset(offset) as any;

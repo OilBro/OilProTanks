@@ -105,7 +105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let logId: number | undefined;
     let reportNumber: string | undefined;
     const filename = req.file?.originalname;
-    const origin = req.file?.originalname?.toLowerCase().endsWith('.pdf') ? 'pdf' : 'excel';
+    // Origin tracking removed - not in database schema
     try {
       if (!req.file) return res.status(400).json({ message: "No file uploaded" });
       const fileName = req.file.originalname.toLowerCase();
@@ -141,7 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         reportId: persisted.report.id,
         reportNumber: reportNumber,
-        origin: 'import',
+        // origin field removed
         measurementsCreated: persisted.measurementsCreated,
         checklistCreated: persisted.checklistCreated,
         warnings: persisted.warnings,
@@ -150,7 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         await db.insert(importLogs).values({
-          origin,
+          // origin field removed
             filename,
             status: 'success',
             reportNumber,
@@ -163,7 +163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Import failed (transaction rolled back):', e);
       try {
         await db.insert(importLogs).values({
-          origin,
+          // origin field removed
           filename,
           status: 'failed',
           reportNumber,
@@ -265,10 +265,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all reports with optional origin filter & pagination
+  // Get all reports with pagination
   app.get("/api/reports", async (req, res) => {
     try {
-      const origin = (req.query.origin as string | undefined)?.trim();
+      // Origin filter removed - column doesn't exist in schema
       const limitParam = req.query.limit as string | undefined;
       const offsetParam = req.query.offset as string | undefined;
       const limit = limitParam ? Math.min(Math.max(parseInt(limitParam,10),1), 200) : undefined;
@@ -277,10 +277,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch total count separately (without pagination) for header if pagination used
       let total: number | undefined;
       if (limit !== undefined || offset !== undefined) {
-        const all = await storage.getInspectionReports(origin); // unpaginated for count
+        const all = await storage.getInspectionReports(); // unpaginated for count
         total = all.length;
       }
-      const reports = await storage.getInspectionReports(origin, { limit, offset });
+      const reports = await storage.getInspectionReports(undefined, { limit, offset });
       if (typeof total === 'number') {
         res.setHeader('X-Total-Count', String(total));
       } else {
@@ -395,7 +395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Processed data for validation:', processedData);
       
       // Use the storage interface which handles validation
-  const newReport = await storage.createInspectionReport({ ...processedData, origin: reportData.origin || 'manual' });
+  const newReport = await storage.createInspectionReport(processedData);
       console.log(`Report created successfully with ID: ${newReport.id}`);
       
       res.status(201).json(newReport);
