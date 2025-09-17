@@ -73,8 +73,13 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Note: Root path '/' is handled by Vite/static serving for the frontend
-// Health checks should use /api/health or /api/ready endpoints
+// Root path health check for Cloud Run deployment health checks
+// This must be placed before static file serving to take precedence
+app.get('/', (_req: Request, res: Response) => {
+  // Cloud Run health checks expect a 200 response from the root path
+  res.setHeader('Cache-Control', 'no-cache');
+  res.json({ ok: true, ts: Date.now() });
+});
 
 // Basic liveness check (always returns success if process is running)
 // This endpoint is designed for deployment health checks and load balancers
@@ -222,7 +227,7 @@ function startServer() {
           return { port: envPort, source: 'PORT' };
         }
         // Cloud Run default fallback
-        return { port: 8080, source: 'default-8080' };
+        return { port: 80, source: 'default-80' };
       }
       // Development / other environments keep permissive heuristic
       if (process.env.FORCE_PORT) {
