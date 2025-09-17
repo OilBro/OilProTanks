@@ -1,4 +1,6 @@
-/* Tailwind base, components, and utilities should be imported via PostCSS or your build tool, not directly in browser-served CSS. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --background: hsl(0, 0%, 100%);
