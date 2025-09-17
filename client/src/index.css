@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind base, components, and utilities should be imported via PostCSS or your build tool, not directly in browser-served CSS. */
 
 :root {
   --background: hsl(0, 0%, 100%);
@@ -83,11 +81,17 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: var(--border);
+    border-width: 1px;
+    border-style: solid;
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--background);
+    color: var(--foreground);
   }
 }
 
@@ -98,15 +102,16 @@
 
 /* Status badge colors */
 .status-acceptable {
-  @apply bg-green-100 text-green-800;
+  background-color: #d1fae5; /* Tailwind bg-green-100 */
+  color: #065f46;           /* Tailwind text-green-800 */
 }
-
 .status-monitor {
-  @apply bg-yellow-100 text-yellow-800;
+  background-color: #fef3c7; /* Tailwind bg-yellow-100 */
+  color: #92400e;            /* Tailwind text-yellow-800 */
 }
-
 .status-action-required {
-  @apply bg-red-100 text-red-800;
+  background-color: #fee2e2; /* Tailwind bg-red-100 */
+  color: #991b1b;            /* Tailwind text-red-800 */
 }
 
 /* Print-friendly styles */
@@ -150,25 +155,29 @@
 
 /* Form validation styles */
 .form-error {
-  @apply border-red-500 bg-red-50;
+  border-color: #ef4444; /* Tailwind border-red-500 */
+  background-color: #fef2f2; /* Tailwind bg-red-50 */
 }
 
 .form-error:focus {
-  @apply ring-red-500 border-red-500;
+  outline: 2px solid #ef4444; /* Tailwind ring-red-500 */
+  border-color: #ef4444;      /* Tailwind border-red-500 */
 }
 
 /* Table row hover effects */
 .table-row-hover:hover {
-  @apply bg-gray-50;
+  background-color: #f9fafb; /* Tailwind bg-gray-50 */
 }
 
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
   .mobile-stack {
-    @apply flex-col space-y-2 space-x-0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem; /* space-y-2 in Tailwind is 0.5rem vertical gap */
   }
   
   .mobile-full-width {
-    @apply w-full;
+    width: 100%;
   }
 }
