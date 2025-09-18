@@ -226,8 +226,8 @@ function startServer() {
         if (Number.isFinite(envPort) && envPort > 0) {
           return { port: envPort, source: 'PORT' };
         }
-        // Cloud Run default fallback
-        return { port: 80, source: 'default-80' };
+        // Production default fallback - align with .replit port mapping (5000 -> 80)
+        return { port: 5000, source: 'default-5000' };
       }
       // Development / other environments keep permissive heuristic
       if (process.env.FORCE_PORT) {
