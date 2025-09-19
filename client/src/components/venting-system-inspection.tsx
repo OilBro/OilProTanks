@@ -200,7 +200,7 @@ export function VentingSystemInspection({ inspections, onInspectionsChange }: Ve
             <h4 className="font-medium">Recorded Inspections ({inspections.length})</h4>
             {inspections.map((inspection) => {
               const ventType = VENT_TYPES.find(t => t.value === inspection.ventType);
-              const conditionColor = getConditionColor(inspection.condition);
+              const conditionColor = getConditionColor(inspection.condition || 'good');
               
               return (
                 <div key={inspection.id} className="border rounded-lg p-4">
@@ -265,7 +265,7 @@ export function VentingSystemInspection({ inspections, onInspectionsChange }: Ve
 
                   <div className="flex justify-end mt-3 pt-3 border-t">
                     <div className="text-xs text-gray-400">
-                      Inspected: {new Date(inspection.createdAt).toLocaleDateString()}
+                      Inspected: {new Date(inspection.createdAt || '').toLocaleDateString()}
                     </div>
                   </div>
                 </div>

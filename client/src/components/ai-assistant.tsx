@@ -79,16 +79,14 @@ export function AiAssistant({ reportId, context }: AiAssistantProps) {
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
-      return apiRequest('/api/ai/chat', {
-        method: 'POST',
-        body: {
-          message,
-          reportId,
-          sessionId,
-          context,
-          conversationHistory: messages
-        }
+      const response = await apiRequest('POST', '/api/ai/chat', {
+        message,
+        reportId,
+        sessionId,
+        context,
+        conversationHistory: messages
       });
+      return response.json();
     },
     onSuccess: (response) => {
       const assistantMessage: Message = {
@@ -114,21 +112,19 @@ export function AiAssistant({ reportId, context }: AiAssistantProps) {
   const saveConversationMutation = useMutation({
     mutationFn: async () => {
       if (!reportId) return;
-      return apiRequest('/api/ai/conversations', {
-        method: 'POST',
-        body: {
-          reportId,
-          sessionId,
-          context: context?.section,
-          messages
-        }
+      const response = await apiRequest('POST', '/api/ai/conversations', {
+        reportId,
+        sessionId,
+        context: context?.section,
+        messages
       });
+      return response.json();
     }
   });
 
   useEffect(() => {
-    if (conversationHistory?.messages) {
-      setMessages(conversationHistory.messages);
+    if (conversationHistory && typeof conversationHistory === 'object' && 'messages' in conversationHistory) {
+      setMessages((conversationHistory as any).messages);
     }
   }, [conversationHistory]);
 
@@ -417,7 +413,7 @@ export function AiAssistant({ reportId, context }: AiAssistantProps) {
         <TabsContent value="guidance" className="flex-1 p-4">
           <ScrollArea className="h-full">
             <div className="space-y-3">
-              {guidanceTemplates?.map((item: GuidanceItem) => (
+              {Array.isArray(guidanceTemplates) && guidanceTemplates.map((item: GuidanceItem) => (
                 <Card key={item.id} className="cursor-pointer hover:bg-gray-50">
                   <CardContent className="p-3">
                     <div className="flex items-start gap-2">

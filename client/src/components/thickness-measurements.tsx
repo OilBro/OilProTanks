@@ -60,18 +60,17 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
 
   // Load measurements when data is fetched
   useEffect(() => {
-    if (existingMeasurements && existingMeasurements.length > 0) {
+    if (Array.isArray(existingMeasurements) && existingMeasurements.length > 0) {
       setMeasurements(existingMeasurements);
     }
   }, [existingMeasurements]);
 
   // Add measurement mutation
   const addMeasurementMutation = useMutation({
-    mutationFn: (data: any) => 
-      apiRequest(`/api/reports/${reportId}/measurements`, {
-        method: 'POST',
-        body: JSON.stringify(data)
-      }),
+    mutationFn: async (data: any) => {
+      const response = await apiRequest('POST', `/api/reports/${reportId}/measurements`, data);
+      return response.json();
+    },
     onSuccess: (newMeasurement) => {
       queryClient.invalidateQueries({ queryKey: [`/api/reports/${reportId}/measurements`] });
       toast({
@@ -101,9 +100,7 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
   // Delete measurement mutation
   const deleteMeasurementMutation = useMutation({
     mutationFn: (id: number) => 
-      apiRequest(`/api/measurements/${id}`, {
-        method: 'DELETE'
-      }),
+      apiRequest('DELETE', `/api/measurements/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/reports/${reportId}/measurements`] });
       toast({
@@ -113,7 +110,7 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
     }
   });
 
-  const yearsSinceLastInspection = report?.yearsSinceLastInspection || 5;
+  const yearsSinceLastInspection = (report as any)?.yearsSinceLastInspection || 5;
 
   const addMeasurement = () => {
     if (!newMeasurement.component || !newMeasurement.location || 
@@ -304,7 +301,7 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
                   {(() => {
                     const orig = parseFloat(newMeasurement.originalThickness || '0');
                     const curr = parseFloat(newMeasurement.currentThickness || '0');
-                    const years = report?.yearsSinceLastInspection || 5;
+                    const years = (report as any)?.yearsSinceLastInspection || 5;
                     if (orig > 0 && curr > 0 && years > 0) {
                       const metalLoss = orig - curr;
                       const rate = metalLoss / years;
@@ -317,7 +314,7 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
                   {(() => {
                     const orig = parseFloat(newMeasurement.originalThickness || '0');
                     const curr = parseFloat(newMeasurement.currentThickness || '0');
-                    const years = report?.yearsSinceLastInspection || 5;
+                    const years = (report as any)?.yearsSinceLastInspection || 5;
                     if (orig > 0 && curr > 0 && years > 0) {
                       const metalLoss = orig - curr;
                       const rate = metalLoss / years;

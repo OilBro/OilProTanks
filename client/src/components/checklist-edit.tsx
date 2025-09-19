@@ -119,7 +119,6 @@ export function ChecklistEdit({ reportId }: ChecklistEditProps) {
     addItemMutation.mutate({
       category,
       item: `New ${category} Item`,
-      status: 'satisfactory',
       notes: ''
     });
   };
@@ -209,21 +208,12 @@ export function ChecklistEdit({ reportId }: ChecklistEditProps) {
                               className="flex-1"
                               placeholder="Checklist item description"
                             />
-                            <Select 
-                              value={item.status || 'satisfactory'} 
-                              onValueChange={(value) => handleUpdateItem(item, 'status', value)}
-                            >
-                              <SelectTrigger className={`w-36 ${getStatusColor(item.status || '')}`}>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {STATUS_OPTIONS.map(opt => (
-                                  <SelectItem key={opt.value} value={opt.value}>
-                                    <span className={opt.color}>{opt.label}</span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <input
+                              type="checkbox"
+                              checked={item.checked || false}
+                              onChange={(e) => handleUpdateItem(item, 'checked', e.target.checked)}
+                              className="w-4 h-4"
+                            />
                             <Textarea
                               value={item.notes || ''}
                               onChange={(e) => handleUpdateItem(item, 'notes', e.target.value)}

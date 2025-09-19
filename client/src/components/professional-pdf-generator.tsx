@@ -418,7 +418,7 @@ function generateTankSpecifications(doc: jsPDF, report: InspectionReport, yPos: 
   doc.setFont('helvetica','bold');
     doc.text(spec.label, 20, yPos);
   doc.setFont('helvetica','normal');
-    doc.text(spec.value, 80, yPos);
+    doc.text(spec.value || '', 80, yPos);
     yPos += 8;
   });
 }
@@ -467,7 +467,7 @@ function generateExternalShellSection(doc: jsPDF, report: InspectionReport, meas
   doc.setFont('helvetica', 'bold');
   doc.text('Shell Condition Summary:', 20, yPos);
   yPos += 8;
-  doc.setFont(undefined, 'normal');
+  doc.setFont('helvetica', 'normal');
   doc.text(`• Total Measurements: ${measurements.length}`, 25, yPos);
   yPos += 6;
   
@@ -487,7 +487,7 @@ function generateExternalShellSection(doc: jsPDF, report: InspectionReport, meas
 
 function generateThicknessMeasurements(doc: jsPDF, measurements: ThicknessMeasurement[], yPos: number) {
   doc.setFontSize(16);
-  doc.setFont(undefined, 'bold');
+  doc.setFont('helvetica', 'bold');
   doc.text('Thickness Measurements', 20, yPos);
   yPos += 20;
 

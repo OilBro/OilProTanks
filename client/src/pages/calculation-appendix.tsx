@@ -9,17 +9,57 @@ import { SettlementSurvey } from "@/components/settlement-survey";
 import { Calculator, FileText, BarChart3, Building, Layers, Wrench } from "lucide-react";
 import { useLocation } from "wouter";
 
+// Import CMLRecord type
+interface CMLRecord {
+  id: number;
+  cmlId: string;
+  component: string;
+  location: string;
+  currentReading: number;
+  previousReading?: number;
+  practicalTmin: number;
+  corrosionRate: number; // mpy
+  remainingLife: number; // years
+  nextInspDate: string;
+  status: 'acceptable' | 'monitor' | 'action_required' | 'critical';
+}
+
 export default function CalculationAppendix() {
   const [, setLocation] = useLocation();
   
   // Component CML Data
-  const [componentCMLData, setComponentCMLData] = useState([]);
+  const [componentCMLData, setComponentCMLData] = useState<CMLRecord[]>([]);
   
   // Nozzle CML Data  
-  const [nozzleCMLData, setNozzleCMLData] = useState([]);
+  const [nozzleCMLData, setNozzleCMLData] = useState<CMLRecord[]>([]);
   
+interface ShellCourse {
+  course: number;
+  height: number; // feet
+  tOriginal: number; // inches - original thickness
+  tActual: number; // inches - actual measured thickness
+  tRequired: number; // inches - calculated required thickness
+  tMin: number; // inches - minimum allowable thickness
+  material: string;
+  stressValue: number; // psi
+  jointEfficiency: number;
+  corrosionRate: number; // mpy (mils per year)
+  remainingLife: number; // years
+  status: 'acceptable' | 'monitor' | 'action_required' | 'critical';
+}
+
+interface ShellCalculationData {
+  diameter: number; // feet
+  fillHeight: number; // feet
+  specificGravity: number;
+  corrosionAllowance: number; // inches
+  age: number; // years
+  courses: ShellCourse[];
+  notes: string;
+}
+
   // Shell Calculation Data
-  const [shellData, setShellData] = useState({
+  const [shellData, setShellData] = useState<ShellCalculationData>({
     diameter: 120,
     fillHeight: 48,
     specificGravity: 0.85,
@@ -29,12 +69,14 @@ export default function CalculationAppendix() {
       {
         course: 1,
         height: 8,
-        tNominal: 0.5,
+        tOriginal: 0.5,
         tActual: 0.425,
+        tRequired: 0.35,
+        tMin: 0.1,
         material: "A36",
         stressValue: 16000,
         jointEfficiency: 1.0,
-        tmin: 0.1,
+        corrosionRate: 2.5,
         remainingLife: 15.2,
         status: 'acceptable' as const
       }

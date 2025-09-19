@@ -52,8 +52,8 @@ export function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEdi
   });
 
   useEffect(() => {
-    if (report?.yearsSinceLastInspection) {
-      setYearsSince(report.yearsSinceLastInspection);
+    if ((report as any)?.yearsSinceLastInspection) {
+      setYearsSince((report as any).yearsSinceLastInspection);
     }
   }, [report]);
 

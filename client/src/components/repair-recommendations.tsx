@@ -45,6 +45,10 @@ export function RepairRecommendations({ recommendations, onRecommendationsChange
       id: Date.now(),
       reportId: 0,
       component: newRecommendation.component,
+      location: null,
+      description: newRecommendation.defectDescription,
+      repairType: null,
+      estimatedCompletion: null,
       defectDescription: newRecommendation.defectDescription,
       recommendation: newRecommendation.recommendation,
       priority: newRecommendation.priority,
@@ -188,10 +192,10 @@ export function RepairRecommendations({ recommendations, onRecommendationsChange
             {recommendations
               .sort((a, b) => {
                 const priorityOrder = { urgent: 0, high: 1, medium: 2, routine: 3 };
-                return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
+                return priorityOrder[(a.priority || 'routine') as keyof typeof priorityOrder] - priorityOrder[(b.priority || 'routine') as keyof typeof priorityOrder];
               })
               .map((rec) => {
-                const priorityInfo = getPriorityInfo(rec.priority);
+                const priorityInfo = getPriorityInfo(rec.priority || 'routine');
                 const PriorityIcon = priorityInfo.icon;
                 
                 return (
@@ -243,11 +247,11 @@ export function RepairRecommendations({ recommendations, onRecommendationsChange
                     <div className="flex justify-between items-center mt-4 pt-3 border-t">
                       <div className="flex gap-4 text-xs text-gray-500">
                         {rec.dueDate && (
-                          <span>Due: {new Date(rec.dueDate).toLocaleDateString()}</span>
+                          <span>Due: {new Date(rec.dueDate || '').toLocaleDateString()}</span>
                         )}
                       </div>
                       <div className="text-xs text-gray-400">
-                        Added: {new Date(rec.createdAt).toLocaleDateString()}
+                        Added: {new Date(rec.createdAt || '').toLocaleDateString()}
                       </div>
                     </div>
                   </div>

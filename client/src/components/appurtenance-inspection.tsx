@@ -82,7 +82,7 @@ export function AppurtenanceInspection({ inspections, onInspectionsChange }: App
     onInspectionsChange(inspections.filter(inspection => inspection.id !== id));
   };
 
-  const getConditionColor = (condition: string) => {
+  const getConditionColor = (condition: string | null) => {
     const conditionObj = CONDITIONS.find(c => c.value === condition);
     return conditionObj?.color || "gray";
   };
