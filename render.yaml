@@ -1,0 +1,32 @@
+services:
+  # Web service for the OilProTanks application
+  - type: web
+    name: oilprotanks-web
+    runtime: node
+    plan: starter  # Can be upgraded to standard or pro as needed
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render automatically sets PORT - our app will use it
+      - key: DATABASE_URL
+        fromDatabase:
+          name: oilprotanks-postgres
+          property: connectionString
+      # Client URL for CORS - construct from service host
+      - key: CLIENT_URL
+        value: https://oilprotanks-web.onrender.com
+      # Add these environment variables via Render dashboard:
+      # - JWT_SECRET (generate a secure random string)
+      # - OPENROUTER_API_KEY (if using AI features)
+      # - GOOGLE_APPLICATION_CREDENTIALS_JSON (if using Google Cloud Storage)
+
+databases:
+  # PostgreSQL database for the application
+  - name: oilprotanks-postgres
+    databaseName: oilprotanks
+    user: oilprotanks_user
+    plan: starter  # Can be upgraded as needed
+    postgresMajorVersion: 15
