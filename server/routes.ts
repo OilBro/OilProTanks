@@ -201,6 +201,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Random joke generator endpoint
+  // Fetches a random joke from a public API to provide some lighthearted content
+  app.get('/api/joke', async (req, res) => {
+    try {
+      // Try the official joke API first
+      let jokeResponse;
+      try {
+        jokeResponse = await fetch('https://official-joke-api.appspot.com/random_joke');
+        
+        if (!jokeResponse.ok) {
+          throw new Error(`API returned ${jokeResponse.status}`);
+        }
+        
+        const joke = await jokeResponse.json();
+        
+        // Return the joke in the expected format
+        res.json({
+          success: true,
+          joke: {
+            setup: joke.setup,
+            punchline: joke.punchline,
+            type: joke.type || 'general'
+          }
+        });
+        
+      } catch (officialApiError) {
+        // Fallback to JokeAPI if the official API fails
+        console.warn('Official joke API failed, trying fallback:', officialApiError);
+        
+        try {
+          jokeResponse = await fetch('https://v2.jokeapi.dev/joke/Any?blacklistFlags=nsfw,religious,political,racist,sexist,explicit&type=twopart');
+          
+          if (!jokeResponse.ok) {
+            throw new Error(`Fallback API returned ${jokeResponse.status}`);
+          }
+          
+          const jokeData = await jokeResponse.json();
+          
+          // Handle different joke formats from JokeAPI
+          if (jokeData.type === 'twopart') {
+            res.json({
+              success: true,
+              joke: {
+                setup: jokeData.setup,
+                punchline: jokeData.delivery,
+                type: jokeData.category || 'general'
+              }
+            });
+          } else if (jokeData.type === 'single') {
+            res.json({
+              success: true,
+              joke: {
+                setup: jokeData.joke,
+                punchline: '😄',
+                type: jokeData.category || 'general'
+              }
+            });
+          } else {
+            throw new Error('Unexpected joke format from fallback API');
+          }
+          
+        } catch (fallbackApiError) {
+          // Both APIs failed, return a friendly fallback joke
+          console.error('Both joke APIs failed:', { officialApiError, fallbackApiError });
+          
+          res.json({
+            success: true,
+            joke: {
+              setup: "Why don't scientists trust atoms?",
+              punchline: "Because they make up everything!",
+              type: "fallback"
+            }
+          });
+        }
+      }
+      
+    } catch (error) {
+      console.error('Joke endpoint error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Sorry, couldn't fetch a joke right now. Please try again later!" 
+      });
+    }
+  });
+
   // Admin: force (re)seed report templates (idempotent). Protected by optional ADMIN_SEED_SECRET.
   app.post('/api/admin/seed/templates', async (req, res) => {
     try {
