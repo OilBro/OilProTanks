@@ -120,12 +120,32 @@ function startServer() {
     console.error('[startup:fallback] Falling back to minimal server due to:', reason);
     const http = require('http');
     const fallbackServer = http.createServer(app);
+    
+    // Use consistent port resolution logic for fallback server
     const port = (() => {
-      if (process.env.FORCE_PORT) return Number(process.env.FORCE_PORT);
-      const cands = [process.env.PORT, process.env.NODE_PORT, process.env.SERVER_PORT, process.env.VITE_PORT, process.env.APP_PORT];
-      for (const v of cands) { const n = Number(v); if (Number.isFinite(n) && n>0) return n; }
-      return 5000; // align with primary fallback
+      if (process.env.FORCE_PORT) {
+        const forced = Number(process.env.FORCE_PORT);
+        if (Number.isFinite(forced) && forced > 0) return forced;
+      }
+      
+      // Prioritize PORT environment variable for deployment compatibility
+      const envPort = Number(process.env.PORT);
+      if (Number.isFinite(envPort) && envPort > 0) {
+        console.log('[startup:fallback] using PORT environment variable:', envPort);
+        return envPort;
+      }
+      
+      // Check other port environment variables
+      const cands = [process.env.NODE_PORT, process.env.SERVER_PORT, process.env.VITE_PORT, process.env.APP_PORT];
+      for (const v of cands) { 
+        const n = Number(v); 
+        if (Number.isFinite(n) && n > 0) return n; 
+      }
+      
+      console.log('[startup:fallback] no PORT set, using default 5000');
+      return 5000;
     })();
+    
     console.log('[startup:fallback] binding minimal server on port', port);
     fallbackServer.listen(port, '0.0.0.0', () => {
       readiness.started = true;
@@ -210,33 +230,39 @@ function startServer() {
       serveStatic(app);
     }
 
-    // Resolve port with extended heuristics (health check failing on 4500)
+    // Resolve port with enhanced production handling
     const resolvePort = () => {
       const isProd = app.get('env') === 'production';
-      // In production (Cloud Run, etc.) only honor PORT (and optional FORCE_PORT) to avoid multi-port ambiguity
-      if (isProd) {
-        if (process.env.FORCE_PORT) {
-          const forced = Number(process.env.FORCE_PORT);
-          if (Number.isFinite(forced) && forced > 0) {
-            console.log('[startup] using FORCE_PORT=' + forced);
-            return { port: forced, source: 'FORCE_PORT' };
-          }
-        }
-        const envPort = Number(process.env.PORT);
-        if (Number.isFinite(envPort) && envPort > 0) {
-          return { port: envPort, source: 'PORT' };
-        }
-        // Production default fallback - align with .replit port mapping (5000 -> 80)
-        return { port: 5000, source: 'default-5000' };
-      }
-      // Development / other environments keep permissive heuristic
+      console.log('[startup] resolving port for environment:', isProd ? 'production' : 'development');
+      
+      // FORCE_PORT always takes precedence in any environment
       if (process.env.FORCE_PORT) {
         const forced = Number(process.env.FORCE_PORT);
-        if (Number.isFinite(forced) && forced>0) {
+        if (Number.isFinite(forced) && forced > 0) {
           console.log('[startup] using FORCE_PORT=' + forced);
           return { port: forced, source: 'FORCE_PORT' };
         }
       }
+      
+      // In production, prioritize PORT environment variable for deployment compatibility
+      if (isProd) {
+        // Log all available port-related environment variables for debugging
+        const portVars = ['PORT', 'NODE_PORT', 'SERVER_PORT', 'VITE_PORT', 'APP_PORT'];
+        console.log('[startup] production port environment:', portVars.map(v => `${v}=${process.env[v] || 'unset'}`).join(' '));
+        
+        // Primary: Use PORT if set (deployment standard)
+        const envPort = Number(process.env.PORT);
+        if (Number.isFinite(envPort) && envPort > 0) {
+          console.log('[startup] using PORT environment variable for production:', envPort);
+          return { port: envPort, source: 'PORT' };
+        }
+        
+        // Fallback: Production default that aligns with .replit port mapping (5000 -> 80)
+        console.log('[startup] PORT not set in production, using default port 5000');
+        return { port: 5000, source: 'production-default' };
+      }
+      
+      // Development environment: permissive heuristic with multiple candidates
       const candidates: Array<{ name: string; value?: string }> = [
         { name: 'PORT', value: process.env.PORT },
         { name: 'NODE_PORT', value: process.env.NODE_PORT },
@@ -245,6 +271,7 @@ function startServer() {
         { name: 'APP_PORT', value: process.env.APP_PORT }
       ];
       console.log('[startup] dev port candidates:', candidates.map(c => `${c.name}=${c.value || ''}`).join(' '));
+      
       for (const c of candidates) {
         if (!c.value) continue;
         const n = Number(c.value);
@@ -252,7 +279,8 @@ function startServer() {
           return { port: n, source: c.name };
         }
       }
-      return { port: 5000, source: 'fallback-5000' };
+      
+      return { port: 5000, source: 'dev-fallback' };
     };
     const { port, source: portSource } = resolvePort();
     const host = '0.0.0.0';
