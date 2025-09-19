@@ -149,15 +149,19 @@ async function seedDatabase(): Promise<{ success: boolean; error?: string }> {
   }
 }
 
-// Execute only when run directly: `node server/seed.ts`
-if (import.meta.url === `file://${process.argv[1]}`) {
-  seedDatabase().then(() => {
-    console.log("Seed completed");
-    process.exit(0);
-  }).catch((error) => {
-    console.error("Seed failed:", error);
-    process.exit(1);
-  });
+// Execute only when run directly AND explicitly requested.
+// Bundlers can inline modules causing import.meta.url checks to behave unexpectedly.
+// To avoid accidental exits in production bundles, require RUN_SEED_SCRIPT=true.
+if (process.env.RUN_SEED_SCRIPT === 'true' && import.meta.url === `file://${process.argv[1]}`) {
+  seedDatabase()
+    .then((result) => {
+      console.log("Seed completed", result);
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error("Seed failed:", error);
+      process.exit(1);
+    });
 }
 
 export { seedDatabase };

@@ -1,5 +1,6 @@
 modules = ["nodejs-20", "web", "postgresql-16"]
-run = "npm run dev"
+# Force the app to bind on 5000 to match port mappings below
+run = "FORCE_PORT=5000 npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
@@ -9,7 +10,8 @@ packages = ["jq", "graphicsmagick", "imagemagick"]
 [deployment]
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
-run = ["npm", "run", "start"]
+# Ensure production server also binds to 5000 (mapped to external 80 below)
+run = ["bash", "-lc", "FORCE_PORT=5000 npm run start"]
 
 [[ports]]
 localPort = 4500
@@ -53,7 +55,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev"
+args = "FORCE_PORT=5000 npm run dev"
 waitForPort = 5000
 
 [agent]
