@@ -74,7 +74,7 @@ export default function Templates() {
               </div>
               <p className="text-gray-600 text-sm mb-4">{template.description}</p>
               
-              {template.defaultComponents && (
+              {template.defaultComponents && Array.isArray(template.defaultComponents) ? (
                 <div className="mb-4">
                   <p className="text-xs font-medium text-gray-700 mb-2">Includes components:</p>
                   <div className="flex flex-wrap gap-1">
@@ -90,7 +90,7 @@ export default function Templates() {
                     )}
                   </div>
                 </div>
-              )}
+              ) : null}
               
               <Button 
                 onClick={() => handleUseTemplate(template.id)}

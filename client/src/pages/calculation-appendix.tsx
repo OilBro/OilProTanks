@@ -271,8 +271,7 @@ interface ShellCalculationData {
 
         <TabsContent value="settlement" className="space-y-6">
           <SettlementSurvey
-            data={settlementData}
-            onDataChange={setSettlementData}
+            reportId={1}
           />
         </TabsContent>
       </Tabs>
