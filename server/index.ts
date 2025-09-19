@@ -73,14 +73,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Root path health check for Cloud Run deployment health checks
-// This must be placed before static file serving to take precedence
-app.get('/', (_req: Request, res: Response) => {
-  // Cloud Run health checks expect a 200 response from the root path
-  res.setHeader('Cache-Control', 'no-cache');
-  res.json({ ok: true, ts: Date.now() });
-});
-
 // Basic liveness check (always returns success if process is running)
 // This endpoint is designed for deployment health checks and load balancers
 app.get(['/api/health','/health'], (_req: Request, res: Response) => {
