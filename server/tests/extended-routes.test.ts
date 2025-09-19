@@ -21,6 +21,16 @@ describe('Extended Report Domain Routes', () => {
     assert.equal(res.body.ok, true);
   });
 
+  it('joke endpoint returns valid joke structure', async () => {
+    const res = await request(app).get('/api/joke');
+    assert.equal(res.status, 200, res.text);
+    assert.equal(res.body.success, true);
+    assert.ok(res.body.joke, 'should have joke object');
+    assert.ok(res.body.joke.setup, 'should have setup');
+    assert.ok(res.body.joke.punchline, 'should have punchline');
+    assert.ok(res.body.joke.type, 'should have type');
+  });
+
   let createdReportId: number;
 
   it('creates a report (prereq)', async () => {
