@@ -1,3 +1,4 @@
+---
 services:
   # Web service for the OilProTanks application
   - type: web
@@ -18,10 +19,10 @@ services:
       # Client URL for CORS - construct from service host
       - key: CLIENT_URL
         value: https://oilprotanks-web.onrender.com
-      # Add these environment variables via Render dashboard:
-      # - JWT_SECRET (generate a secure random string)
-      # - OPENROUTER_API_KEY (if using AI features)
-      # - GOOGLE_APPLICATION_CREDENTIALS_JSON (if using Google Cloud Storage)
+        # Add these environment variables via Render dashboard:
+        # - JWT_SECRET (generate a secure random string)
+        # - OPENROUTER_API_KEY (if using AI features)
+        # - GOOGLE_APPLICATION_CREDENTIALS_JSON (if using Google Cloud Storage)
 
 databases:
   # PostgreSQL database for the application
