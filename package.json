@@ -10,7 +10,9 @@
     "check": "tsc",
     "test": "node --loader ts-node/esm ./node_modules/mocha/bin/_mocha 'server/tests/**/*.test.ts'",
     "db:push": "drizzle-kit push",
-    "openapi:gen": "tsx server/scripts/generate-openapi.ts"
+    "openapi:gen": "tsx server/scripts/generate-openapi.ts",
+    "smoke": "bash scripts/smoke-test.sh",
+    "smoke:after-start": "bash -c 'sleep 2 && bash scripts/smoke-test.sh'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
