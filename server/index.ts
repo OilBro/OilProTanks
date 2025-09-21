@@ -6,7 +6,9 @@ import { requestLogger, errorHandler } from './middleware';
 import { startImageAnalysisWorker } from './imageAnalysisService';
 import { seedDatabase } from './seed';
 
+console.log('[bootstrap] starting server bootstrap...');
 const app = express();
+console.log('[bootstrap] express app created, NODE_ENV=' + (process.env.NODE_ENV || 'undefined'));
 let readiness: { started: boolean; seeded: boolean; startedAt: number; seedInProgress: boolean; seedError?: string } = {
   started: false,
   seeded: false,
@@ -31,18 +33,36 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   // Enable XSS protection
   res.setHeader('X-XSS-Protection', '1; mode=block');
   
-  // Content Security Policy
-  res.setHeader('Content-Security-Policy', 
-    "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline'; " +
-    "style-src 'self' 'unsafe-inline'; " +
-    "img-src 'self' data:; " +
-    "connect-src 'self'; " +
-    "font-src 'self'; " +
-    "object-src 'none'; " +
-    "base-uri 'self'; " +
-    "form-action 'self'"
-  );
+  // Content Security Policy - relax in development for Vite HMR
+  const isDevelopment = app.get('env') === 'development';
+  
+  if (isDevelopment) {
+    // Permissive CSP for development to allow Vite HMR
+    res.setHeader('Content-Security-Policy', 
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: blob:; " +
+      "connect-src 'self' ws: wss: http: https: blob: data:; " +
+      "font-src 'self'; " +
+      "object-src 'none'; " +
+      "base-uri 'self'; " +
+      "form-action 'self'"
+    );
+  } else {
+    // Strict CSP for production
+    res.setHeader('Content-Security-Policy', 
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data:; " +
+      "connect-src 'self'; " +
+      "font-src 'self'; " +
+      "object-src 'none'; " +
+      "base-uri 'self'; " +
+      "form-action 'self'"
+    );
+  }
   
   // Referrer policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -52,14 +72,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-// Root endpoint for platform health checks (many deployment platforms hit '/')
-// This MUST respond immediately for successful deployments
-app.get('/', (_req: Request, res: Response) => {
-  // Set cache headers to prevent unnecessary requests during deployment
-  res.setHeader('Cache-Control', 'no-cache');
-  res.status(200).send('OK');
-});
 
 // Basic liveness check (always returns success if process is running)
 // This endpoint is designed for deployment health checks and load balancers
@@ -101,43 +113,36 @@ function startServer() {
     const http = require('http');
     const fallbackServer = http.createServer(app);
     
-    // Use consistent port resolution logic
-    const resolvePort = () => {
+    // Use consistent port resolution logic for fallback server
+    const port = (() => {
       if (process.env.FORCE_PORT) {
         const forced = Number(process.env.FORCE_PORT);
-        if (Number.isFinite(forced) && forced > 0) {
-          return { port: forced, source: 'FORCE_PORT' };
-        }
+        if (Number.isFinite(forced) && forced > 0) return forced;
       }
-      const candidates = [
-        { name: 'PORT', value: process.env.PORT },
-        { name: 'NODE_PORT', value: process.env.NODE_PORT },
-        { name: 'SERVER_PORT', value: process.env.SERVER_PORT },
-        { name: 'VITE_PORT', value: process.env.VITE_PORT },
-        { name: 'APP_PORT', value: process.env.APP_PORT }
-      ];
-      for (const c of candidates) {
-        if (!c.value) continue;
-        const n = Number(c.value);
-        if (Number.isFinite(n) && n > 0) {
-          return { port: n, source: c.name };
-        }
+      
+      // Prioritize PORT environment variable for deployment compatibility
+      const envPort = Number(process.env.PORT);
+      if (Number.isFinite(envPort) && envPort > 0) {
+        console.log('[startup:fallback] using PORT environment variable:', envPort);
+        return envPort;
       }
-      return { port: 5000, source: 'fallback-5000' };
-    };
+      
+      // Check other port environment variables
+      const cands = [process.env.NODE_PORT, process.env.SERVER_PORT, process.env.VITE_PORT, process.env.APP_PORT];
+      for (const v of cands) { 
+        const n = Number(v); 
+        if (Number.isFinite(n) && n > 0) return n; 
+      }
+      
+      console.log('[startup:fallback] no PORT set, using default 5000');
+      return 5000;
+    })();
     
-    const { port, source } = resolvePort();
-    const host = '0.0.0.0';
-    
-    console.log(`[startup:fallback] binding minimal server on ${host}:${port} (source=${source})`);
-    fallbackServer.listen(port, host, () => {
+    console.log('[startup:fallback] binding minimal server on port', port);
+    fallbackServer.listen(port, '0.0.0.0', () => {
       readiness.started = true;
       listening = true;
-      console.log(`[startup:fallback] Minimal server listening on ${host}:${port}`);
-    });
-    
-    fallbackServer.on('error', (err: any) => {
-      console.error('[startup:fallback] server.listen error:', err?.code || err?.message || err);
+      console.log(`[startup:fallback] Minimal server listening on 0.0.0.0:${port}`);
     });
   };
 
@@ -217,8 +222,12 @@ function startServer() {
       serveStatic(app);
     }
 
-    // Resolve port with extended heuristics and consistent fallback logic
+    // Resolve port with enhanced production handling
     const resolvePort = () => {
+      const isProd = app.get('env') === 'production';
+      console.log('[startup] resolving port for environment:', isProd ? 'production' : 'development');
+      
+      // FORCE_PORT always takes precedence in any environment
       if (process.env.FORCE_PORT) {
         const forced = Number(process.env.FORCE_PORT);
         if (Number.isFinite(forced) && forced > 0) {
@@ -226,14 +235,35 @@ function startServer() {
           return { port: forced, source: 'FORCE_PORT' };
         }
       }
-      const candidates = [
+      
+      // In production, prioritize PORT environment variable for deployment compatibility
+      if (isProd) {
+        // Log all available port-related environment variables for debugging
+        const portVars = ['PORT', 'NODE_PORT', 'SERVER_PORT', 'VITE_PORT', 'APP_PORT'];
+        console.log('[startup] production port environment:', portVars.map(v => `${v}=${process.env[v] || 'unset'}`).join(' '));
+        
+        // Primary: Use PORT if set (deployment standard)
+        const envPort = Number(process.env.PORT);
+        if (Number.isFinite(envPort) && envPort > 0) {
+          console.log('[startup] using PORT environment variable for production:', envPort);
+          return { port: envPort, source: 'PORT' };
+        }
+        
+        // Fallback: Production default that aligns with .replit port mapping (5000 -> 80)
+        console.log('[startup] PORT not set in production, using default port 5000');
+        return { port: 5000, source: 'production-default' };
+      }
+      
+      // Development environment: permissive heuristic with multiple candidates
+      const candidates: Array<{ name: string; value?: string }> = [
         { name: 'PORT', value: process.env.PORT },
         { name: 'NODE_PORT', value: process.env.NODE_PORT },
         { name: 'SERVER_PORT', value: process.env.SERVER_PORT },
         { name: 'VITE_PORT', value: process.env.VITE_PORT },
         { name: 'APP_PORT', value: process.env.APP_PORT }
       ];
-      console.log('[startup] port candidates:', candidates.map(c => `${c.name}=${c.value || ''}`).join(' '));
+      console.log('[startup] dev port candidates:', candidates.map(c => `${c.name}=${c.value || ''}`).join(' '));
+      
       for (const c of candidates) {
         if (!c.value) continue;
         const n = Number(c.value);
@@ -241,12 +271,11 @@ function startServer() {
           return { port: n, source: c.name };
         }
       }
-      return { port: 5000, source: 'fallback-5000' };
+      
+      return { port: 5000, source: 'dev-fallback' };
     };
-    
     const { port, source: portSource } = resolvePort();
-    const host = "0.0.0.0";
-    
+    const host = '0.0.0.0';
     console.log(`[startup] binding server on ${host}:${port} (source=${portSource})`);
     server.listen({ port, host }, () => {
       readiness.started = true;
@@ -264,10 +293,7 @@ function startServer() {
             server.listen({ port: 5000, host });
           } catch (e) {
             console.error('[startup] fallback bind failed:', e);
-            startFallbackServer('main server bind failed');
           }
-        } else {
-          startFallbackServer('port 5000 bind failed');
         }
       }
     });

@@ -1,0 +1,5 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens / CSS variables are already declared in index.css :root, ensure layering order keeps Tailwind resets first */

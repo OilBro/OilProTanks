@@ -1,4 +1,4 @@
-import { db } from './db.ts';
+import { db } from './db';
 import { thicknessMeasurements, inspectionReports } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import {
@@ -53,7 +53,7 @@ async function fixBirlaCalculations() {
   
   // Group by shell ring
   const measurementsByRing: Record<string, typeof measurements> = {};
-  measurements.forEach(m => {
+  measurements.forEach((m: typeof measurements[0]) => {
     const ring = m.component || 'Unknown';
     if (!measurementsByRing[ring]) measurementsByRing[ring] = [];
     measurementsByRing[ring].push(m);
@@ -61,7 +61,7 @@ async function fixBirlaCalculations() {
   
   // Process each shell ring
   console.log('API 653 CALCULATION RESULTS:');
-  console.log('=' * 80);
+  console.log('='.repeat(80));
   
   for (let courseNum = 1; courseNum <= 4; courseNum++) {
     const ringName = `Shell Ring ${courseNum}`;
@@ -92,9 +92,9 @@ async function fixBirlaCalculations() {
     console.log(`  Fill Height from Bottom: ${fillHeightFromBottom.toFixed(1)} ft`);
     
     // Find minimum current thickness
-    const currentThicknesses = ringMeasurements.map(m => parseFloat(m.currentThickness || '0'));
+    const currentThicknesses = ringMeasurements.map((m: typeof measurements[0]) => parseFloat(m.currentThickness || '0'));
     const minCurrent = Math.min(...currentThicknesses);
-    const avgCurrent = currentThicknesses.reduce((a, b) => a + b, 0) / currentThicknesses.length;
+    const avgCurrent = currentThicknesses.reduce((a: number, b: number) => a + b, 0) / currentThicknesses.length;
     
     console.log(`  Current Thickness: Min=${minCurrent.toFixed(3)}", Avg=${avgCurrent.toFixed(3)}"`);
     
@@ -152,7 +152,7 @@ async function fixBirlaCalculations() {
     }
   }
   
-  console.log('\n' + '=' * 80);
+  console.log('\n' + '='.repeat(80));
   console.log('\nINSPECTION INTERVAL CALCULATION:');
   
   // Find the controlling (worst) shell ring

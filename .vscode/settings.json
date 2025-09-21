@@ -3,5 +3,7 @@
     "github.copilot.enable": {
         "scminput": true
     },
-    "remote.autoForwardPortsFallback": 0
+    "remote.autoForwardPortsFallback": 0,
+    "chat.edits2.enabled": true,
+    "github.copilot.chat.generateTests.codeLens": true
 }

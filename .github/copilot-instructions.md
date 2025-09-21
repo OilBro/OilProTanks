@@ -1,106 +1,43 @@
-# Copilot Instructions for OilProTanks
+# Copilot project instructions for OilProTanks
 
-Purpose: enable AI agents to make safe, useful changes fast. Prefer minimal diffs that follow existing patterns and files referenced below.
+Purpose: help AI coding agents be productive fast in this repo. Keep changes aligned with these patterns and files.
 
-## Architecture (big picture)
-- Full‑stack TypeScript: React 18 + Vite + Tailwind + shadcn/ui (client `client/`) and Express ESM server (server `server/`).
-- Single Node process; in dev serves client via Vite middleware (`server/vite.ts`), in prod serves built assets (`vite.config.ts`).
-- Shared types/models live in `shared/schema.ts` (Drizzle + Zod). DB is Postgres, migrations are raw SQL in `migrations/`. Config in `drizzle.config.ts`.
-- Core flow: Excel import → map/validate → persist → run API 653 calculations → generate templates/exports → optional AI image analysis.
+## Architecture at a glance
+- Full-stack TypeScript app: React client (Vite) + Express server + Drizzle ORM (Postgres/Neon) with shared types in `shared/`.
+- Server entry: `server/index.ts` bootstraps Express, sets security headers, health/ready endpoints, registers routes from `server/routes.ts`, enables Vite middleware in dev and serves built client in prod via `server/vite.ts`.
+- Data access abstraction: `server/storage.ts` exposes `IStorage` with two implementations:
+  - `MemStorage` (default when `DATABASE_URL` missing) – fast, in-memory dev/test path.
+  - `DatabaseStorage` (when `DATABASE_URL` set) – Drizzle queries against Postgres; schema/types in `shared/schema.ts`.
+- API surface: centralized in `server/routes.ts` (large), plus modular routes under `server/routes/*.routes.ts` (e.g., components, nozzles). Input validation via Zod schemas in `server/validation-schemas.ts`.
+- Feature flags/integration: image analysis worker in `server/imageAnalysisService.ts` (guarded by `VITE_AI_ANALYSIS_UI`), OpenAPI served from `openapi.json` when present.
 
-## Where things are
-- Client: pages `client/src/pages/*`, UI `client/src/components/*`, entry `client/src/App.tsx`, `client/src/main.tsx`. Aliases: `@`→`client/src`, `@shared`→`shared`, `@assets`→`attached_assets`.
-- Server: bootstrap `server/index.ts`, routes registry `server/routes.ts`, feature modules under `server/routes/*.ts` and `server/*.ts`.
-- Validation: `server/validation-schemas.ts`. Data: `shared/schema.ts`. Migrations: `migrations/000*.sql`.
+## Key workflows
+- Dev server: `npm run dev` (Node 20). Express serves API and proxies Vite HMR. Health checks: `/`, `/api/health`, `/api/ready`.
+- Build & run prod: `npm run build` (Vite client -> `dist/public`, esbuild bundles server), then `npm start` (serves from `dist`). If `dist/public` is missing, `serveStatic()` throws.
+- Tests: Mocha + ts-node. `npm test` runs `server/tests/**/*.test.ts` with Supertest available.
+- DB & migrations: Drizzle configured via `drizzle.config.ts` (schema at `shared/schema.ts`). Push schema: `npm run db:push`. SQL migrations live in `/migrations`.
+- OpenAPI docs: `npm run openapi:gen` to regenerate `openapi.json`; served at `/api/docs` if file exists.
 
-## Run, build, test
-- Dev (API+client): `npm run dev`.
-- Build: `npm run build` → client to `dist/public`, server bundled to `dist/index.js`; start: `npm start`.
-- Types: `npm run check`. Tests: `npm test` (Mocha via ts-node/esm). OpenAPI: `npm run openapi:gen`.
-- DB push: `npm run db:push` (requires `DATABASE_URL`).
-- Env essentials: set `DATABASE_URL`; `CLIENT_URL` adjusts CORS in dev.
-- Deploy: build then run `npm start`; see `test-deployment.mjs` for an example deployment script.
-- Seeding: `server/seed.ts`; initial seeding is orchestrated by `server/index.ts` on boot (see `seedDatabase`).
-  OpenAPI UI is served via `swagger-ui-express` in `server/routes.ts`.
-  Local Postgres example: `export DATABASE_URL="postgres://postgres:postgres@localhost:5432/oilpro"`
+## Project conventions to follow
+- Shared types-first schema: add/modify tables and insert schemas in `shared/schema.ts`; import inferred types and `insert*Schema` across server. Keep `MemStorage` and `DatabaseStorage` methods in sync when adding new entities.
+- Validation: use Zod schemas from `server/validation-schemas.ts` and the `validate()` middleware for POST/PUT/PATCH request bodies.
+- Route style: parse numeric URL params safely (see `parseId` in routes) and return JSON. Common response patterns use `{ success: true, data }` in modular routes; others return domain objects directly—match local style per endpoint.
+- Imports: server uses ESM with explicit `.ts` extensions (`allowImportingTsExtensions: true`). Aliases: `@` → `client/src`, `@shared` → `shared`, `@assets` → `attached_assets` (see `vite.config.ts` and `tsconfig.json`).
+- Storage switching: code should work with both `MemStorage` and `DatabaseStorage`. Avoid direct `db` access when possible; prefer `storage` unless the feature is clearly DB-only and mirrored later.
 
-## Conventions that matter
-- API responses: `{ success, data?, message?, errors? }` (see `API_REFERENCE.md`). Always validate request bodies with Zod schemas in `server/validation-schemas.ts`.
-- DB changes sequence:
-  1) Update `shared/schema.ts`
-  2) Add SQL in `migrations/000*.sql`
-  3) Update Zod in `server/validation-schemas.ts`
-  4) Update import/export/calculation paths if affected
-- Routes: wire in `server/routes.ts`; keep complex logic in separate modules for testability.
-- Client: use React Query via `client/src/lib/queryClient`; adhere to shadcn/ui patterns; prefer Tailwind utilities over inline styles.
+## Integration points and examples
+- Reports CRUD and related data: primary endpoints are in `server/routes.ts` (e.g., `/api/reports`, `/api/reports/:id`, measurements, checklists). Example: creating a measurement performs API 653 calcs before validation using helpers from `server/api653-calculations.ts`.
+- Components/Nozzles domain: see `server/routes/components.routes.ts` and matching Zod schemas; DB tables in `shared/schema.ts` (`reportComponents`, `reportNozzles`, `cmlPoints`, `reportShellCourses`, etc.).
+- Image analysis: enqueue via `POST /api/attachments/:attachmentId/analyze` when `VITE_AI_ANALYSIS_UI=true`. Worker writes to `image_analyses`, `image_labels`, `image_regions`.
+- Import/export: Excel/PDF import via `POST /api/reports/import` using `server/import-handler.ts` and `server/import-persist.ts`. Export CSV/ZIP via `server/exporter.ts` endpoints (`/api/reports/:id/export.csv`, `/api/reports/:id/packet.zip`).
+- Seeding: `server/seed.ts` seeds report templates; startup seeding is non-blocking and can be disabled with `SEED_TEMPLATES_DISABLE=true`. Admin reseed endpoint: `POST /api/admin/seed/templates` (optional `ADMIN_SEED_SECRET`).
 
-DB change example
-```ts
-// shared/schema.ts (add column)
-export const inspectionReports = pgTable("inspection_reports", { /* ... */, reviewer: text("reviewer") });
-```
-```sql
--- migrations/000X_add_reviewer.sql
-ALTER TABLE inspection_reports ADD COLUMN reviewer TEXT;
-```
+## Environment and deployment notes
+- Node 20.x required (see `package.json engines`). Ports resolved from `PORT` (prod) or fallbacks in dev; bind `0.0.0.0`.
+- Security headers and CSP are set in `server/index.ts` (dev CSP is permissive for Vite HMR; prod is strict). CORS origin defaults to `process.env.CLIENT_URL || true`.
+- Neon (serverless Postgres) is supported via `@neondatabase/serverless` and `drizzle-orm/neon-serverless`; WebSocket configured in `server/db.ts`.
 
-## Domain workflows (files to follow)
-- Excel import: `server/import-handler.ts` → `server/legacy-import-mapper.ts` → `server/import-persist.ts` (+ `cleanupOrphanedReportChildren`).
-- Calculations: `server/api653-calculator.ts`, `server/api653-calculations.ts`, fix scripts `server/fix-birla-*.ts`.
-- Templates/exports: `server/template-generator.ts`, `server/exporter.ts` (flat CSV + whole packet ZIP).
-- Image analysis (optional): `server/imageAnalysisService.ts`; tables via migrations `0004*`, `0005*`.
-- Other analyzers (optional): `server/ai-analyzer.ts`, `server/pdf-analyzer.ts`, `server/openrouter-analyzer.ts`.
-
-## Pitfalls and notes
-- ESM throughout; use import paths with `.ts` inside server code where present (see `server/routes.ts`).
-- Vite aliases must be used for cross‑package imports (`@`, `@shared`, `@assets`).
-- `drizzle.config.ts` throws if `DATABASE_URL` is missing; running `npm run dev` without it will fail early.
- - Smoke test after build: GET `/api/health` (liveness) and `/api/ready` (readiness with seed status).
-
-Examples to copy
-- Route pattern: `server/routes.ts` and feature routes under `server/routes/*.ts`.
-- Client data pages: `client/src/pages/report-view.tsx`, `client/src/pages/edit-report-full.tsx`.
-- Import→persist: `server/import-handler.ts` and `server/import-persist.ts`.
-
-Commit style: describe domain impact, e.g., "Add nozzle Tmin user override + migration".
-
----
-
-Local DB via Docker (optional)
-```bash
-docker run -d \
-  --name oilpro-postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_DB=oilpro \
-  -p 5432:5432 \
-  postgres:16
-
-# wait a few seconds, then set DATABASE_URL for this shell
-export DATABASE_URL="postgres://postgres:postgres@localhost:5432/oilpro"
-
-# verify connection (optional)
-psql "$DATABASE_URL" -c "select version();" || true
-```
-
-Compose alternative (Postgres + pgAdmin)
-```bash
-docker compose up -d
-export DATABASE_URL="postgres://postgres:postgres@localhost:5432/oilpro"
-# pgAdmin at http://localhost:5050 (admin@local / admin)
-```
-
-Smoke test after build/start
-```bash
-npm run build && npm start & sleep 2
-bash scripts/smoke-test.sh
-```
-
-Convenience scripts
-```bash
-# start Postgres (compose) and run dev server
-npm run dev:docker
-
-# retrying smoke test (waits up to 30s by default)
-npm run smoke:retry
-```
+## When adding features
+- Update `shared/schema.ts` (tables + insert schemas + types), then wire `MemStorage` and `DatabaseStorage` in `server/storage.ts`, and finally add routes with Zod validation.
+- Prefer `storage` for CRUD. If you must hit `db` directly, keep pagination and `eq(...)` filters like existing routes.
+- Keep OpenAPI in sync (regenerate) and add minimal Supertest coverage in `server/tests/` for new endpoints.

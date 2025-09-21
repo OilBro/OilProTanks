@@ -1,5 +1,5 @@
-import { db } from './db.ts';
-import { imageAnalyses, imageLabels, imageRegions, insertImageAnalysisSchema } from '../shared/schema.ts';
+import { db } from './db';
+import { imageAnalyses, imageLabels, imageRegions, insertImageAnalysisSchema } from '../shared/schema';
 import { eq } from 'drizzle-orm';
 
 // Simple in-memory queue for now

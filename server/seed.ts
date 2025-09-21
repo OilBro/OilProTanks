@@ -35,7 +35,7 @@ function withSafeTimeout<T>(promise: Promise<T>, timeoutMs: number, operation: s
  * Seed database with proper status reporting
  * @returns Object with success status and error message if applicable
  */
-async function seedDatabaseWithStatus(): Promise<{ success: boolean; error?: string }> {
+async function seedDatabase(): Promise<{ success: boolean; error?: string }> {
   const SEED_TIMEOUT = 10000; // 10 second timeout for each operation
   
   try {
@@ -149,45 +149,19 @@ async function seedDatabaseWithStatus(): Promise<{ success: boolean; error?: str
   }
 }
 
-/**
- * Simple wrapper that matches the original seedDatabase interface (returns void)
- * Used by the main server startup to avoid breaking the existing flow
- */
-async function seedDatabase(): Promise<void> {
-  try {
-    const result = await seedDatabaseWithStatus();
-    if (!result.success) {
-      throw new Error(result.error || 'Seeding failed');
-    }
-  } catch (error) {
-    console.error('[seed] Seeding failed:', error);
-    throw error;
-  }
-}
-
-// Execute only when run directly as a script: `node server/seed.ts` 
-// and NOT when bundled or imported as a module
-// Bundle detection: esbuild bundles don't have import.meta.url pointing to a file
-const isDirectExecution = typeof import.meta !== 'undefined' && 
-                          typeof import.meta.url === 'string' && 
-                          import.meta.url.startsWith('file://') &&
-                          import.meta.url === `file://${process.argv[1]}` &&
-                          process.env.NODE_ENV !== 'production' &&
-                          !process.env.npm_lifecycle_event; // not called via npm script
-
-if (isDirectExecution) {
-  seedDatabaseWithStatus().then((result) => {
-    if (result.success) {
-      console.log("Seed completed successfully");
+// Execute only when run directly AND explicitly requested.
+// Bundlers can inline modules causing import.meta.url checks to behave unexpectedly.
+// To avoid accidental exits in production bundles, require RUN_SEED_SCRIPT=true.
+if (process.env.RUN_SEED_SCRIPT === 'true' && import.meta.url === `file://${process.argv[1]}`) {
+  seedDatabase()
+    .then((result) => {
+      console.log("Seed completed", result);
       process.exit(0);
-    } else {
-      console.error("Seed failed:", result.error);
+    })
+    .catch((error) => {
+      console.error("Seed failed:", error);
       process.exit(1);
-    }
-  }).catch((error) => {
-    console.error("Seed failed:", error);
-    process.exit(1);
-  });
+    });
 }
 
 export { seedDatabase };

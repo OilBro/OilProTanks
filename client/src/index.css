@@ -83,11 +83,25 @@
 
 @layer base {
   * {
+<<<<<<< HEAD
     @apply border-border;
   }
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+=======
+    border-color: var(--border);
+    border-width: 1px;
+    border-style: solid;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--background);
+    color: var(--foreground);
+>>>>>>> origin/main
   }
 }
 
@@ -98,6 +112,7 @@
 
 /* Status badge colors */
 .status-acceptable {
+<<<<<<< HEAD
   @apply bg-green-100 text-green-800;
 }
 
@@ -107,6 +122,18 @@
 
 .status-action-required {
   @apply bg-red-100 text-red-800;
+=======
+  background-color: #d1fae5; /* Tailwind bg-green-100 */
+  color: #065f46;           /* Tailwind text-green-800 */
+}
+.status-monitor {
+  background-color: #fef3c7; /* Tailwind bg-yellow-100 */
+  color: #92400e;            /* Tailwind text-yellow-800 */
+}
+.status-action-required {
+  background-color: #fee2e2; /* Tailwind bg-red-100 */
+  color: #991b1b;            /* Tailwind text-red-800 */
+>>>>>>> origin/main
 }
 
 /* Print-friendly styles */
@@ -138,6 +165,7 @@
   }
 }
 
+<<<<<<< HEAD
 /* Form validation styles */
 .form-error {
   @apply border-red-500 bg-red-50;
@@ -145,20 +173,55 @@
 
 .form-error:focus {
   @apply ring-red-500 border-red-500;
+=======
+/* Ensure stacked charts maintain separation even if parent spacing utilities are removed */
+.chart-block + .chart-block {
+  margin-top: 2.5rem; /* 40px (Tailwind ~mt-10) */
+}
+
+/* Defensive: if a parent wants to enforce spacing on multiple arbitrary direct children */
+.chart-stack > * + * {
+  margin-top: 2.5rem;
+}
+
+/* Form validation styles */
+.form-error {
+  border-color: #ef4444; /* Tailwind border-red-500 */
+  background-color: #fef2f2; /* Tailwind bg-red-50 */
+}
+
+.form-error:focus {
+  outline: 2px solid #ef4444; /* Tailwind ring-red-500 */
+  border-color: #ef4444;      /* Tailwind border-red-500 */
+>>>>>>> origin/main
 }
 
 /* Table row hover effects */
 .table-row-hover:hover {
+<<<<<<< HEAD
   @apply bg-gray-50;
+=======
+  background-color: #f9fafb; /* Tailwind bg-gray-50 */
+>>>>>>> origin/main
 }
 
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
   .mobile-stack {
+<<<<<<< HEAD
     @apply flex-col space-y-2 space-x-0;
   }
   
   .mobile-full-width {
     @apply w-full;
+=======
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem; /* space-y-2 in Tailwind is 0.5rem vertical gap */
+  }
+  
+  .mobile-full-width {
+    width: 100%;
+>>>>>>> origin/main
   }
 }
