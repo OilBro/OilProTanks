@@ -12,7 +12,9 @@
     "db:push": "drizzle-kit push",
     "openapi:gen": "tsx server/scripts/generate-openapi.ts",
     "smoke": "bash scripts/smoke-test.sh",
-    "smoke:after-start": "bash -c 'sleep 2 && bash scripts/smoke-test.sh'"
+    "smoke:after-start": "bash -c 'sleep 2 && bash scripts/smoke-test.sh'",
+    "dev:docker": "bash scripts/dev-docker.sh",
+    "smoke:retry": "bash scripts/smoke-test-retry.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.37.0",
@@ -144,5 +146,5 @@
     "node": ">=20.0.0 <21",
     "npm": ">=10.8.0"
   },
-  "packageManager": "npm@>=10.8.0"
+  "packageManager": "npm@10.8.0"
 }

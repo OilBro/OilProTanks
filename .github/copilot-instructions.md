@@ -95,3 +95,12 @@ Smoke test after build/start
 npm run build && npm start & sleep 2
 bash scripts/smoke-test.sh
 ```
+
+Convenience scripts
+```bash
+# start Postgres (compose) and run dev server
+npm run dev:docker
+
+# retrying smoke test (waits up to 30s by default)
+npm run smoke:retry
+```
