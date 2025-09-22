@@ -417,6 +417,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // PDF Generation endpoint
+  app.get("/api/reports/:id/pdf", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.id);
+      
+      // Import the PDF generator
+      const { generateInspectionPDF } = await import('./pdf-generator.ts');
+      
+      // Generate PDF buffer
+      const pdfBuffer = await generateInspectionPDF(reportId);
+      
+      // Set headers for PDF download
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="inspection_report_${reportId}.pdf"`);
+      res.setHeader('Content-Length', pdfBuffer.length.toString());
+      
+      // Send PDF buffer
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      if (error instanceof Error && error.message === 'Report not found') {
+        res.status(404).json({ message: 'Report not found' });
+      } else {
+        res.status(500).json({ message: 'Failed to generate PDF report' });
+      }
+    }
+  });
+
   app.put("/api/reports/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
