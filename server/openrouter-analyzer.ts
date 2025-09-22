@@ -486,8 +486,8 @@ export async function processSpreadsheetWithAI(
     for (const measurement of analysis.thicknessMeasurements) {
       const processed = {
         ...measurement,
-        currentThickness: parseFloat(measurement.currentThickness) || 0,
-        originalThickness: measurement.originalThickness ? parseFloat(measurement.originalThickness) : null,
+        currentThickness: String(parseFloat(measurement.currentThickness) || 0),
+        originalThickness: measurement.originalThickness ? String(parseFloat(measurement.originalThickness)) : null,
         elevation: measurement.elevation || '0',
         location: measurement.location || 'Unknown',
         component: measurement.component || 'Shell',
@@ -553,10 +553,10 @@ export async function processSpreadsheetWithAI(
               const measurement = {
                 location: location,
                 elevation: rowObj['Elevation'] || rowObj['Height'] || '0',
-                currentThickness: value,
+                currentThickness: String(value),
                 component: determineComponent(sheetName, key),
                 measurementType: determineMeasurementType(sheetName, key),
-                originalThickness: rowObj['Original'] || rowObj['Nominal'] || '0.375',
+                originalThickness: String(rowObj['Original'] || rowObj['Nominal'] || '0.375'),
                 createdAt: new Date().toISOString()
               };
               

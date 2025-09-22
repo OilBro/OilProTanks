@@ -246,10 +246,10 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
               const measurement = {
                 location: location,
                 elevation: rowObj['Elevation'] || rowObj['Height'] || null,
-                currentThickness: value,
+                currentThickness: String(value),
                 component: 'Shell',
                 measurementType: 'shell',
-                originalThickness: rowObj['Original'] || rowObj['Nominal'] || null,
+                originalThickness: rowObj['Original'] || rowObj['Nominal'] ? String(rowObj['Original'] || rowObj['Nominal']) : null,
                 createdAt: new Date().toISOString(),
                 sourceSheet: sheetName,
                 sourceTankId: sheetTankId
@@ -416,10 +416,10 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
               const measurement = {
                 location: findFieldValue(rowObj, locationFields) || key || `Point ${thicknessMeasurements.length + 1}`,
                 elevation: rowObj['Elevation'] || rowObj['Course'] || '0',
-                currentThickness: numValue,
+                currentThickness: String(numValue),
                 component,
                 measurementType,
-                originalThickness: rowObj['Original Thickness'] || rowObj['Nominal Thickness'] || '0.375',
+                originalThickness: String(rowObj['Original Thickness'] || rowObj['Nominal Thickness'] || '0.375'),
                 createdAt: new Date().toISOString()
               };
 
@@ -478,10 +478,10 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
                 } catch {}
                 const measurementWithCalc = {
                   ...measurement,
-                  thicknessLoss: originalThicknessNum - currentThicknessNum,
-                  corrosionRate,
-                  corrosionRateMPY,
-                  remainingLife,
+                  thicknessLoss: String(originalThicknessNum - currentThicknessNum),
+                  corrosionRate: String(corrosionRate),
+                  corrosionRateMPY: String(corrosionRateMPY),
+                  remainingLife: String(remainingLife),
                   status
                 };
                 thicknessMeasurements.push(measurementWithCalc);
