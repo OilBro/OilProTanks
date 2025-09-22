@@ -41,9 +41,20 @@ export async function persistImportedReport(params: {
   if (!importedData.tankId) {
     throw new Error('Imported data missing tankId after parsing');
   }
-  // Generate reportNumber if absent
+  // Generate unique reportNumber if absent or check for duplicates
   if (!importedData.reportNumber) {
     importedData.reportNumber = `IMP-${Date.now()}`;
+  } else {
+    // Check if report number already exists and append timestamp if it does
+    const existing = await db.select({ id: inspectionReports.id })
+      .from(inspectionReports)
+      .where(eq(inspectionReports.reportNumber, importedData.reportNumber))
+      .limit(1);
+    
+    if (existing.length > 0) {
+      console.log(`Report number ${importedData.reportNumber} already exists, generating unique version`);
+      importedData.reportNumber = `${importedData.reportNumber}-${Date.now()}`;
+    }
   }
 
   // Normalize numeric-ish fields expected as strings in schema (diameter/height/originalThickness)
