@@ -266,13 +266,27 @@ export async function generateInspectionPDF(reportId: number): Promise<Buffer> {
   }
   
   // Extend recommendations
-  const extendedRecommendations: ExtendedRepairRecommendation[] = recommendations.map(r => ({
-    ...r,
-    timing: r.priority === 'critical' ? 'Immediate' : 
-            r.priority === 'high' ? 'Within 3 months' : 
-            r.priority === 'medium' ? 'Within 1 year' : 'Next turnaround',
-    estimatedCost: 5000 // Placeholder value
-  }));
+  const extendedRecommendations: ExtendedRepairRecommendation[] = recommendations.map(r => {
+    // Estimate costs based on priority and type
+    let cost = null;
+    if (r.priority === 'critical') {
+      cost = 50000; // Critical repairs typically expensive
+    } else if (r.priority === 'high') {
+      cost = 25000; // High priority repairs
+    } else if (r.priority === 'medium') {
+      cost = 10000; // Medium priority repairs
+    } else {
+      cost = 5000; // Routine maintenance
+    }
+    
+    return {
+      ...r,
+      timing: r.priority === 'critical' ? 'Immediate' : 
+              r.priority === 'high' ? 'Within 3 months' : 
+              r.priority === 'medium' ? 'Within 1 year' : 'Next turnaround',
+      estimatedCost: cost
+    };
+  });
   
   // These don't exist yet, so we'll use empty arrays for now
   const secondaryContainments: SecondaryContainment[] = [];
@@ -309,6 +323,9 @@ class ProfessionalPDFGenerator {
   private warningColor: [number, number, number] = [255, 193, 7];
   private currentPage: number = 1;
   private totalPages: number = 0;
+  private sectionNumber: number = 0;
+  private subsectionNumber: number = 0;
+  private tableOfContents: Array<{title: string, page: number, level: number}> = [];
 
   constructor() {
     this.pdf = new jsPDF({
@@ -636,7 +653,7 @@ class ProfessionalPDFGenerator {
 
   private addTableOfContents() {
     this.currentY = 40;
-    this.addSectionHeader('TABLE OF CONTENTS', false);
+    this.addSectionHeader('TABLE OF CONTENTS', false, false);
     
     const sections = [
       { title: 'Executive Summary', page: 3 },
@@ -685,7 +702,7 @@ class ProfessionalPDFGenerator {
 
   private addEnhancedExecutiveSummary(report: InspectionReport, measurements: ExtendedThicknessMeasurement[], analysisData: AnalysisData) {
     this.currentY = 40;
-    this.addSectionHeader('EXECUTIVE SUMMARY');
+    this.addSectionHeader('1.0 EXECUTIVE SUMMARY', true, true);
     
     const { kpiMetrics } = analysisData;
     
@@ -737,6 +754,15 @@ class ProfessionalPDFGenerator {
     const spacing = 5;
     const startX = this.margin;
     
+    // Validate and format values with null checking
+    const overallStatus = kpiMetrics.overallStatus || 'PENDING';
+    const completionPercent = kpiMetrics.percentTMLsComplete !== null && kpiMetrics.percentTMLsComplete !== undefined 
+      ? kpiMetrics.percentTMLsComplete : 0;
+    const criticalFindings = kpiMetrics.criticalFindings || 0;
+    const majorFindings = kpiMetrics.majorFindings || 0;
+    const minRemainingLife = kpiMetrics.minRemainingLife !== null && kpiMetrics.minRemainingLife !== undefined 
+      ? kpiMetrics.minRemainingLife : 999;
+    
     // Overall Status Box
     let currentX = startX;
     this.drawKPIBox(
@@ -745,8 +771,8 @@ class ProfessionalPDFGenerator {
       boxWidth,
       boxHeight,
       'OVERALL STATUS',
-      kpiMetrics.overallStatus,
-      this.getStatusColor(kpiMetrics.overallStatus)
+      overallStatus,
+      this.getStatusColor(overallStatus)
     );
     
     // Completion Percentage
@@ -757,8 +783,9 @@ class ProfessionalPDFGenerator {
       boxWidth,
       boxHeight,
       'COMPLETION',
-      `${kpiMetrics.percentTMLsComplete.toFixed(0)}%`,
-      kpiMetrics.percentTMLsComplete >= 95 ? this.accentColor : this.warningColor
+      `${completionPercent.toFixed(0)}%`,
+      completionPercent >= 95 ? this.accentColor : 
+      completionPercent >= 80 ? this.warningColor : this.secondaryColor
     );
     
     // Critical Findings
@@ -769,21 +796,24 @@ class ProfessionalPDFGenerator {
       boxWidth,
       boxHeight,
       'CRITICAL',
-      kpiMetrics.criticalFindings.toString(),
-      kpiMetrics.criticalFindings > 0 ? this.secondaryColor : this.accentColor
+      criticalFindings.toString(),
+      criticalFindings > 0 ? this.secondaryColor : this.accentColor
     );
     
     // Min Remaining Life
     currentX += boxWidth + spacing;
+    const remainingLifeText = minRemainingLife === 999 ? 'N/A' : 
+                             minRemainingLife === 0 ? 'IMMEDIATE' :
+                             `${minRemainingLife.toFixed(1)} yrs`;
     this.drawKPIBox(
       currentX,
       this.currentY,
       boxWidth,
       boxHeight,
       'MIN. LIFE',
-      `${kpiMetrics.minRemainingLife.toFixed(1)} yrs`,
-      kpiMetrics.minRemainingLife < 5 ? this.secondaryColor : 
-        kpiMetrics.minRemainingLife < 10 ? this.warningColor : this.accentColor
+      remainingLifeText,
+      minRemainingLife < 2 ? this.secondaryColor : 
+        minRemainingLife < 5 ? this.warningColor : this.accentColor
     );
     
     this.currentY += boxHeight + 10;
@@ -825,7 +855,7 @@ class ProfessionalPDFGenerator {
 
   private addComprehensiveTankInformation(report: InspectionReport) {
     this.currentY = 40;
-    this.addSectionHeader('TANK INFORMATION');
+    this.addSectionHeader('2.0 TANK INFORMATION', true, true);
     
     // Basic Information
     this.pdf.setFont('helvetica', 'bold');
@@ -914,7 +944,7 @@ class ProfessionalPDFGenerator {
 
   private addAPI653CalculationAnalysis(analysisData: AnalysisData, measurements: ExtendedThicknessMeasurement[]) {
     this.currentY = 40;
-    this.addSectionHeader('API 653 CALCULATION ANALYSIS');
+    this.addSectionHeader('3.0 API 653 CALCULATION ANALYSIS', true, true);
     
     // Summary of calculations
     this.pdf.setFont('helvetica', 'normal');
@@ -1023,7 +1053,7 @@ class ProfessionalPDFGenerator {
 
   private addCorrosionRateAnalysis(measurements: ExtendedThicknessMeasurement[], analysisData: AnalysisData) {
     this.currentY = 40;
-    this.addSectionHeader('CORROSION RATE ANALYSIS');
+    this.addSectionHeader('4.0 CORROSION RATE ANALYSIS', true, true);
     
     // Corrosion rate trends by component
     this.pdf.setFont('helvetica', 'bold');
@@ -1127,7 +1157,7 @@ class ProfessionalPDFGenerator {
 
   private addEnhancedThicknessMeasurements(measurements: ExtendedThicknessMeasurement[], analysisData: AnalysisData) {
     this.currentY = 40;
-    this.addSectionHeader('THICKNESS MEASUREMENTS');
+    this.addSectionHeader('5.0 THICKNESS MEASUREMENTS', true, true);
     
     // Group measurements by component - use measurementType for better filtering
     const shellMeasurements = measurements.filter(m => 
@@ -1251,7 +1281,7 @@ class ProfessionalPDFGenerator {
 
   private addMinimumThicknessCompliance(measurements: ExtendedThicknessMeasurement[], analysisData: AnalysisData) {
     this.currentY = 40;
-    this.addSectionHeader('MINIMUM THICKNESS COMPLIANCE');
+    this.addSectionHeader('6.0 MINIMUM THICKNESS COMPLIANCE', true, true);
     
     // Compliance summary
     const compliantCount = measurements.filter(m => {
@@ -1264,12 +1294,14 @@ class ProfessionalPDFGenerator {
     const complianceRate = measurements.length > 0 ? (compliantCount / measurements.length) * 100 : 0;
     
     // Compliance overview box
-    this.pdf.setFillColor(complianceRate === 100 ? 240, 255, 240 : 255, 245, 245);
+    const bgColor = complianceRate === 100 ? [240, 255, 240] : [255, 245, 245];
+    this.pdf.setFillColor(...bgColor);
     this.pdf.rect(this.margin, this.currentY, this.pageWidth - 2 * this.margin, 30, 'F');
     
     this.pdf.setFont('helvetica', 'bold');
     this.pdf.setFontSize(12);
-    this.pdf.setTextColor(complianceRate === 100 ? ...this.accentColor : ...this.secondaryColor);
+    const textColor = complianceRate === 100 ? this.accentColor : this.secondaryColor;
+    this.pdf.setTextColor(...textColor);
     this.pdf.text(`COMPLIANCE RATE: ${complianceRate.toFixed(1)}%`, this.margin + 10, this.currentY + 10);
     
     this.pdf.setFont('helvetica', 'normal');
@@ -1332,7 +1364,7 @@ class ProfessionalPDFGenerator {
 
   private addRemainingLifeAnalysis(measurements: ExtendedThicknessMeasurement[], analysisData: AnalysisData) {
     this.currentY = 40;
-    this.addSectionHeader('REMAINING LIFE ANALYSIS');
+    this.addSectionHeader('7.0 REMAINING LIFE ANALYSIS', true, true);
     
     // Criticality Matrix
     this.pdf.setFont('helvetica', 'bold');
@@ -1432,7 +1464,7 @@ class ProfessionalPDFGenerator {
 
   private addNDETestLocations(ndeTestLocations: NdeTestLocation[]) {
     this.currentY = 40;
-    this.addSectionHeader('NDE TEST LOCATIONS');
+    this.addSectionHeader('8.0 NDE TEST LOCATIONS', true, true);
     
     const ndeData = ndeTestLocations.map(location => [
       location.location || 'N/A',
@@ -1463,7 +1495,7 @@ class ProfessionalPDFGenerator {
 
   private addEnhancedInspectionChecklist(checklists: ExtendedInspectionChecklist[]) {
     this.currentY = 40;
-    this.addSectionHeader('INSPECTION CHECKLIST');
+    this.addSectionHeader('9.0 INSPECTION CHECKLIST', true, true);
     
     // Group by category
     const categories = ['external', 'internal', 'foundation', 'appurtenances', 'safety'];
@@ -1538,7 +1570,7 @@ class ProfessionalPDFGenerator {
 
   private addEnhancedAppurtenances(appurtenances: ExtendedAppurtenanceInspection[]) {
     this.currentY = 40;
-    this.addSectionHeader('APPURTENANCE INSPECTIONS');
+    this.addSectionHeader('10.0 APPURTENANCE INSPECTIONS', true, true);
     
     const appurtenanceData = appurtenances.map(item => [
       item.component || 'N/A',
@@ -1574,7 +1606,7 @@ class ProfessionalPDFGenerator {
 
   private addEnhancedVentingSystem(ventingInspections: ExtendedVentingSystemInspection[]) {
     this.currentY = 40;
-    this.addSectionHeader('VENTING SYSTEM INSPECTION');
+    this.addSectionHeader('11.0 VENTING SYSTEM INSPECTION', true, true);
     
     const ventingData = ventingInspections.map(item => [
       item.component || 'N/A',
@@ -1607,7 +1639,7 @@ class ProfessionalPDFGenerator {
 
   private addEnhancedSettlementAnalysis(survey: ExtendedAdvancedSettlementSurvey) {
     this.currentY = 40;
-    this.addSectionHeader('SETTLEMENT ANALYSIS');
+    this.addSectionHeader('12.0 SETTLEMENT ANALYSIS', true, true);
     
     // Settlement Summary
     this.pdf.setFont('helvetica', 'bold');
@@ -1815,7 +1847,7 @@ class ProfessionalPDFGenerator {
 
   private addSecondaryContainmentAnalysis(containments: SecondaryContainment[], report: InspectionReport) {
     this.currentY = 40;
-    this.addSectionHeader('SECONDARY CONTAINMENT ANALYSIS');
+    this.addSectionHeader('13.0 SECONDARY CONTAINMENT', true, true);
     
     const containment = containments[0]; // Use first containment if multiple
     
@@ -1902,7 +1934,7 @@ class ProfessionalPDFGenerator {
   private addDetailedFindings(measurements: ExtendedThicknessMeasurement[], checklists: ExtendedInspectionChecklist[], 
                              appurtenances: ExtendedAppurtenanceInspection[], analysisData: AnalysisData) {
     this.currentY = 40;
-    this.addSectionHeader('DETAILED FINDINGS');
+    this.addSectionHeader('14.0 DETAILED FINDINGS', true, true);
     
     // Critical Findings
     this.pdf.setFont('helvetica', 'bold');
@@ -2023,7 +2055,7 @@ class ProfessionalPDFGenerator {
 
   private addComprehensiveRecommendations(recommendations: ExtendedRepairRecommendation[], analysisData: AnalysisData) {
     this.currentY = 40;
-    this.addSectionHeader('RECOMMENDATIONS');
+    this.addSectionHeader('15.0 RECOMMENDATIONS', true, true);
     
     // Priority matrix
     const critical = recommendations.filter(r => r.priority === 'critical');
@@ -2139,7 +2171,7 @@ class ProfessionalPDFGenerator {
 
   private addNextInspectionIntervals(analysisData: AnalysisData, report: InspectionReport) {
     this.currentY = 40;
-    this.addSectionHeader('NEXT INSPECTION INTERVALS');
+    this.addSectionHeader('16.0 NEXT INSPECTION INTERVALS', true, true);
     
     const { externalInterval, internalInterval, criticalCourse } = analysisData.tankInspectionIntervals;
     
@@ -2225,7 +2257,7 @@ class ProfessionalPDFGenerator {
 
   private addConclusion(report: InspectionReport, analysisData: AnalysisData) {
     this.currentY = 40;
-    this.addSectionHeader('CONCLUSION');
+    this.addSectionHeader('17.0 CONCLUSION', true, true);
     
     this.pdf.setFont('helvetica', 'normal');
     this.pdf.setFontSize(11);
@@ -2357,10 +2389,26 @@ class ProfessionalPDFGenerator {
     }
   }
 
-  private addSectionHeader(title: string, withBackground: boolean = true) {
+  private addSectionHeader(title: string, withBackground: boolean = true, addToTOC: boolean = false) {
+    // Add to table of contents if requested
+    if (addToTOC) {
+      const level = title.match(/\d+\.\d+/) ? 2 : 1; // Check if subsection
+      this.tableOfContents.push({
+        title: title.replace(/^\d+\.\d*\s+/, ''), // Remove numbering for TOC
+        page: this.currentPage,
+        level: level
+      });
+    }
+    
     if (withBackground) {
+      // Add gradient-like background for better visual appeal
       this.pdf.setFillColor(...this.primaryColor);
-      this.pdf.rect(0, this.currentY - 10, this.pageWidth, 20, 'F');
+      this.pdf.rect(0, this.currentY - 10, this.pageWidth, 25, 'F');
+      
+      // Add subtle accent line
+      this.pdf.setDrawColor(...this.accentColor);
+      this.pdf.setLineWidth(2);
+      this.pdf.line(0, this.currentY + 14, 5, this.currentY + 14);
       
       this.pdf.setTextColor(255, 255, 255);
       this.pdf.setFontSize(14);
@@ -2368,7 +2416,7 @@ class ProfessionalPDFGenerator {
       this.pdf.text(title, this.margin, this.currentY);
       
       this.pdf.setTextColor(0, 0, 0);
-      this.currentY += 25;
+      this.currentY += 30; // More spacing
     } else {
       this.pdf.setTextColor(...this.primaryColor);
       this.pdf.setFontSize(16);
@@ -2381,7 +2429,7 @@ class ProfessionalPDFGenerator {
       this.pdf.line(this.margin, this.currentY + 2, this.pageWidth - this.margin, this.currentY + 2);
       
       this.pdf.setTextColor(0, 0, 0);
-      this.currentY += 15;
+      this.currentY += 20; // More spacing
     }
   }
 }

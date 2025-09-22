@@ -1,0 +1,17 @@
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Vary: Origin
+Access-Control-Allow-Credentials: true
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-XSS-Protection: 1; mode=block
+Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' ws: wss: http: https: blob: data:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'
+Referrer-Policy: strict-origin-when-cross-origin
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="inspection_report_102.pdf"
+Content-Length: 111714
+ETag: W/"1b462-2C+nRADUBtFutRH0YPb1+Od51tk"
+Date: Mon, 22 Sep 2025 08:27:58 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
