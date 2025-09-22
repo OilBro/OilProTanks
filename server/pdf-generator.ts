@@ -1294,13 +1294,13 @@ class ProfessionalPDFGenerator {
     const complianceRate = measurements.length > 0 ? (compliantCount / measurements.length) * 100 : 0;
     
     // Compliance overview box
-    const bgColor = complianceRate === 100 ? [240, 255, 240] : [255, 245, 245];
+    const bgColor: [number, number, number] = complianceRate === 100 ? [240, 255, 240] : [255, 245, 245];
     this.pdf.setFillColor(...bgColor);
     this.pdf.rect(this.margin, this.currentY, this.pageWidth - 2 * this.margin, 30, 'F');
     
     this.pdf.setFont('helvetica', 'bold');
     this.pdf.setFontSize(12);
-    const textColor = complianceRate === 100 ? this.accentColor : this.secondaryColor;
+    const textColor: [number, number, number] = complianceRate === 100 ? this.accentColor : this.secondaryColor;
     this.pdf.setTextColor(...textColor);
     this.pdf.text(`COMPLIANCE RATE: ${complianceRate.toFixed(1)}%`, this.margin + 10, this.currentY + 10);
     
