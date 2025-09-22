@@ -426,7 +426,7 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
               // Check if this measurement already exists
               const exists = thicknessMeasurements.some(m =>
                 m.location === measurement.location &&
-                Math.abs(m.currentThickness - measurement.currentThickness) < 0.001 &&
+                Math.abs(parseFloat(m.currentThickness) - parseFloat(measurement.currentThickness)) < 0.001 &&
                 m.component === measurement.component
               );
 

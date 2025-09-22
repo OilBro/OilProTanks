@@ -1,4 +1,13 @@
-import { componentSchema, componentPatchSchema, nozzleSchema, nozzlePatchSchema, cmlPointSchema, cmlPointPatchSchema, cmlBulkSchema, shellCoursesPutSchema, appendixSchema, tminOverrideSchema, writeupPutSchema, validate } from './validation-schemas.ts';
+import { 
+  componentSchema, componentPatchSchema, nozzleSchema, nozzlePatchSchema, cmlPointSchema, 
+  cmlPointPatchSchema, cmlBulkSchema, shellCoursesPutSchema, appendixSchema, 
+  tminOverrideSchema, writeupPutSchema, validate,
+  checklistItemSchema, checklistItemPatchSchema,
+  appurtenanceSchema, appurtenancePatchSchema,
+  recommendationSchema, recommendationPatchSchema,
+  ventingSystemSchema, ventingSystemPatchSchema,
+  settlementSurveySchema, settlementSurveyPatchSchema
+} from './validation-schemas.ts';
 import { registerComponentRoutes, registerNozzleRoutes } from './routes/components.routes.ts';
 import swaggerUi from 'swagger-ui-express';
 import { readFileSync } from 'fs';
@@ -770,6 +779,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/reports/:reportId/checklist", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const dataWithReportId = {
+        ...req.body,
+        reportId
+      };
+      const validatedData = checklistItemSchema.parse(dataWithReportId);
+      const checklist = await storage.createInspectionChecklist(validatedData);
+      res.status(201).json(checklist);
+    } catch (error) {
+      console.error('Checklist creation error:', error);
+      res.status(400).json({ message: "Invalid checklist data", error });
+    }
+  });
+
+  app.put("/api/reports/:reportId/checklist/:id", validate(checklistItemPatchSchema), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const checklist = await storage.updateInspectionChecklist(id, req.body);
+      res.json(checklist);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update checklist", error });
+    }
+  });
+
+  app.patch("/api/reports/:reportId/checklist/:id", validate(checklistItemPatchSchema), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const checklist = await storage.updateInspectionChecklist(id, req.body);
+      res.json(checklist);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update checklist", error });
+    }
+  });
+
+  app.delete("/api/reports/:reportId/checklist/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteInspectionChecklist(id);
+      if (!success) {
+        return res.status(404).json({ message: "Checklist item not found" });
+      }
+      res.json({ message: "Checklist item deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete checklist item" });
+    }
+  });
+
   app.post("/api/reports/:reportId/checklists", async (req, res) => {
     try {
       const reportId = parseInt(req.params.reportId);
@@ -806,7 +864,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/reports/:reportId/appurtenances", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const dataWithReportId = {
+        ...req.body,
+        reportId
+      };
+      const validatedData = appurtenanceSchema.parse(dataWithReportId);
+      const appurtenance = await storage.createAppurtenanceInspection(validatedData);
+      res.status(201).json(appurtenance);
+    } catch (error) {
+      console.error('Appurtenance creation error:', error);
+      res.status(400).json({ message: "Invalid appurtenance data", error });
+    }
+  });
+
+  app.put("/api/reports/:reportId/appurtenances/:id", validate(appurtenancePatchSchema), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const appurtenance = await storage.updateAppurtenanceInspection(id, req.body);
+      res.json(appurtenance);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update appurtenance", error });
+    }
+  });
+
+  app.patch("/api/reports/:reportId/appurtenances/:id", validate(appurtenancePatchSchema), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const appurtenance = await storage.updateAppurtenanceInspection(id, req.body);
+      res.json(appurtenance);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update appurtenance", error });
+    }
+  });
+
+  app.delete("/api/reports/:reportId/appurtenances/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteAppurtenanceInspection(id);
+      if (!success) {
+        return res.status(404).json({ message: "Appurtenance inspection not found" });
+      }
+      res.json({ message: "Appurtenance inspection deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete appurtenance inspection" });
+    }
+  });
+
   // Repair Recommendations
+  app.get("/api/reports/:reportId/recommendations", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const recommendations = await storage.getRepairRecommendations(reportId);
+      res.json(recommendations);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch repair recommendations" });
+    }
+  });
+
+  app.post("/api/reports/:reportId/recommendations", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const dataWithReportId = {
+        ...req.body,
+        reportId
+      };
+      const validatedData = recommendationSchema.parse(dataWithReportId);
+      const recommendation = await storage.createRepairRecommendation(validatedData);
+      res.status(201).json(recommendation);
+    } catch (error) {
+      console.error('Recommendation creation error:', error);
+      res.status(400).json({ message: "Invalid recommendation data", error });
+    }
+  });
+
+  app.put("/api/reports/:reportId/recommendations/:id", validate(recommendationPatchSchema), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const recommendation = await storage.updateRepairRecommendation(id, req.body);
+      res.json(recommendation);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update recommendation", error });
+    }
+  });
+
+  app.patch("/api/reports/:reportId/recommendations/:id", validate(recommendationPatchSchema), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const recommendation = await storage.updateRepairRecommendation(id, req.body);
+      res.json(recommendation);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update recommendation", error });
+    }
+  });
+
+  app.delete("/api/reports/:reportId/recommendations/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteRepairRecommendation(id);
+      if (!success) {
+        return res.status(404).json({ message: "Recommendation not found" });
+      }
+      res.json({ message: "Recommendation deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete recommendation" });
+    }
+  });
+
+  // Legacy repair endpoint for backwards compatibility
   app.get("/api/reports/:reportId/repairs", async (req, res) => {
     try {
       const reportId = parseInt(req.params.reportId);
@@ -825,6 +992,184 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Venting System Inspections
   app.get("/api/reports/:reportId/venting", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const ventingSystems = await storage.getVentingSystemInspections(reportId);
+      res.json(ventingSystems);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch venting system inspections" });
+    }
+  });
+
+  app.post("/api/reports/:reportId/venting", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const dataWithReportId = {
+        ...req.body,
+        reportId
+      };
+      const validatedData = ventingSystemSchema.parse(dataWithReportId);
+      const ventingSystem = await storage.createVentingSystemInspection(validatedData);
+      res.status(201).json(ventingSystem);
+    } catch (error) {
+      console.error('Venting system creation error:', error);
+      res.status(400).json({ message: "Invalid venting system data", error });
+    }
+  });
+
+  app.put("/api/reports/:reportId/venting/:id", validate(ventingSystemPatchSchema), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ventingSystem = await storage.updateVentingSystemInspection(id, req.body);
+      res.json(ventingSystem);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update venting system", error });
+    }
+  });
+
+  app.patch("/api/reports/:reportId/venting/:id", validate(ventingSystemPatchSchema), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const ventingSystem = await storage.updateVentingSystemInspection(id, req.body);
+      res.json(ventingSystem);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update venting system", error });
+    }
+  });
+
+  app.delete("/api/reports/:reportId/venting/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteVentingSystemInspection(id);
+      if (!success) {
+        return res.status(404).json({ message: "Venting system inspection not found" });
+      }
+      res.json({ message: "Venting system inspection deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete venting system inspection" });
+    }
+  });
+
+  // Calculations endpoint
+  app.get("/api/reports/:reportId/calculations", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const report = await storage.getInspectionReport(reportId);
+      if (!report) {
+        return res.status(404).json({ message: "Report not found" });
+      }
+
+      const measurements = await storage.getThicknessMeasurements(reportId);
+      
+      // Calculate summary statistics
+      const corrosionRates = measurements
+        .filter(m => m.corrosionRate !== null && m.corrosionRate !== undefined)
+        .map(m => parseFloat(m.corrosionRate as string));
+      
+      const remainingLifeValues = measurements
+        .filter(m => m.remainingLife !== null && m.remainingLife !== undefined)
+        .map(m => parseFloat(m.remainingLife as string));
+      
+      const statusCounts = measurements.reduce((acc, m) => {
+        const status = m.status || 'unknown';
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const calculations = {
+        reportId,
+        measurementCount: measurements.length,
+        averageCorrosionRate: corrosionRates.length > 0 
+          ? (corrosionRates.reduce((a, b) => a + b, 0) / corrosionRates.length).toFixed(4)
+          : null,
+        maxCorrosionRate: corrosionRates.length > 0 
+          ? Math.max(...corrosionRates).toFixed(4)
+          : null,
+        minRemainingLife: remainingLifeValues.length > 0
+          ? Math.min(...remainingLifeValues).toFixed(1)
+          : null,
+        statusSummary: statusCounts,
+        criticalComponents: measurements
+          .filter(m => m.status === 'action_required' || m.status === 'critical')
+          .map(m => ({
+            id: m.id,
+            component: m.component,
+            location: m.location,
+            currentThickness: m.currentThickness,
+            corrosionRate: m.corrosionRate,
+            remainingLife: m.remainingLife,
+            status: m.status
+          }))
+      };
+
+      res.json(calculations);
+    } catch (error) {
+      console.error('Error calculating report summary:', error);
+      res.status(500).json({ message: "Failed to calculate report summary" });
+    }
+  });
+
+  // Settlement Survey endpoints
+  app.get("/api/reports/:reportId/settlement", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const surveys = await storage.getAdvancedSettlementSurveys(reportId);
+      res.json(surveys);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch settlement surveys" });
+    }
+  });
+
+  app.post("/api/reports/:reportId/settlement", async (req, res) => {
+    try {
+      const reportId = parseInt(req.params.reportId);
+      const dataWithReportId = {
+        ...req.body,
+        reportId
+      };
+      const validatedData = settlementSurveySchema.parse(dataWithReportId);
+      const survey = await storage.createAdvancedSettlementSurvey(validatedData);
+      
+      // If measurements are provided, create them
+      if (req.body.measurements && req.body.measurements.length > 0) {
+        await Promise.all(
+          req.body.measurements.map((m: any) => 
+            storage.createAdvancedSettlementMeasurement({
+              ...m,
+              surveyId: survey.id
+            })
+          )
+        );
+      }
+      
+      res.status(201).json(survey);
+    } catch (error) {
+      res.status(400).json({ message: "Invalid settlement survey data", error });
+    }
+  });
+
+  app.put("/api/reports/:reportId/settlement/:id", validate(settlementSurveyPatchSchema), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const survey = await storage.updateAdvancedSettlementSurvey(id, req.body);
+      res.json(survey);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update settlement survey", error });
+    }
+  });
+
+  app.patch("/api/reports/:reportId/settlement/:id", validate(settlementSurveyPatchSchema), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const survey = await storage.updateAdvancedSettlementSurvey(id, req.body);
+      res.json(survey);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update settlement survey", error });
+    }
+  });
+
+  // Continue with existing venting route
+  app.get("/api/reports/:reportId/venting-legacy", async (req, res) => {
     try {
       const reportId = parseInt(req.params.reportId);
       const venting = await storage.getVentingSystemInspections(reportId);

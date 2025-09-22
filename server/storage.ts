@@ -76,6 +76,7 @@ export interface IStorage {
   getInspectionChecklists(reportId: number): Promise<InspectionChecklist[]>;
   createInspectionChecklist(checklist: InsertInspectionChecklist): Promise<InspectionChecklist>;
   updateInspectionChecklist(id: number, checklist: Partial<InsertInspectionChecklist>): Promise<InspectionChecklist>;
+  deleteInspectionChecklist(id: number): Promise<boolean>;
   
   // Report Templates
   getReportTemplates(): Promise<ReportTemplate[]>;
@@ -85,6 +86,8 @@ export interface IStorage {
   // Appurtenance Inspections
   getAppurtenanceInspections(reportId: number): Promise<AppurtenanceInspection[]>;
   createAppurtenanceInspection(inspection: InsertAppurtenanceInspection): Promise<AppurtenanceInspection>;
+  updateAppurtenanceInspection(id: number, inspection: Partial<InsertAppurtenanceInspection>): Promise<AppurtenanceInspection>;
+  deleteAppurtenanceInspection(id: number): Promise<boolean>;
   
   // Report Attachments
   getReportAttachments(reportId: number): Promise<ReportAttachment[]>;
@@ -94,16 +97,21 @@ export interface IStorage {
   // Repair Recommendations
   getRepairRecommendations(reportId: number): Promise<RepairRecommendation[]>;
   createRepairRecommendation(recommendation: InsertRepairRecommendation): Promise<RepairRecommendation>;
+  updateRepairRecommendation(id: number, recommendation: Partial<InsertRepairRecommendation>): Promise<RepairRecommendation>;
+  deleteRepairRecommendation(id: number): Promise<boolean>;
   
   // Venting System Inspections
   getVentingSystemInspections(reportId: number): Promise<VentingSystemInspection[]>;
   createVentingSystemInspection(inspection: InsertVentingSystemInspection): Promise<VentingSystemInspection>;
+  updateVentingSystemInspection(id: number, inspection: Partial<InsertVentingSystemInspection>): Promise<VentingSystemInspection>;
+  deleteVentingSystemInspection(id: number): Promise<boolean>;
   
   // Advanced Settlement Surveys
   getAdvancedSettlementSurveys(reportId: number): Promise<AdvancedSettlementSurvey[]>;
   getAdvancedSettlementSurvey(id: number): Promise<AdvancedSettlementSurvey | undefined>;
   createAdvancedSettlementSurvey(survey: InsertAdvancedSettlementSurvey): Promise<AdvancedSettlementSurvey>;
   updateAdvancedSettlementSurvey(id: number, survey: Partial<InsertAdvancedSettlementSurvey>): Promise<AdvancedSettlementSurvey>;
+  deleteAdvancedSettlementSurvey(id: number): Promise<boolean>;
   
   // Advanced Settlement Measurements
   getAdvancedSettlementMeasurements(surveyId: number): Promise<AdvancedSettlementMeasurement[]>;
@@ -477,6 +485,10 @@ export class MemStorage implements IStorage {
     return updated;
   }
 
+  async deleteInspectionChecklist(id: number): Promise<boolean> {
+    return this.inspectionChecklists.delete(id);
+  }
+
   // Report Templates
   async getReportTemplates(): Promise<ReportTemplate[]> {
     return Array.from(this.reportTemplates.values());
@@ -512,6 +524,20 @@ export class MemStorage implements IStorage {
     } as AppurtenanceInspection;
     this.appurtenanceInspections.set(id, newInspection);
     return newInspection;
+  }
+
+  async updateAppurtenanceInspection(id: number, inspection: Partial<InsertAppurtenanceInspection>): Promise<AppurtenanceInspection> {
+    const existing = this.appurtenanceInspections.get(id);
+    if (!existing) {
+      throw new Error(`Appurtenance inspection with id ${id} not found`);
+    }
+    const updated: AppurtenanceInspection = { ...existing, ...inspection };
+    this.appurtenanceInspections.set(id, updated);
+    return updated;
+  }
+
+  async deleteAppurtenanceInspection(id: number): Promise<boolean> {
+    return this.appurtenanceInspections.delete(id);
   }
 
   async getReportAttachments(reportId: number): Promise<ReportAttachment[]> {
@@ -550,6 +576,20 @@ export class MemStorage implements IStorage {
     return newRecommendation;
   }
 
+  async updateRepairRecommendation(id: number, recommendation: Partial<InsertRepairRecommendation>): Promise<RepairRecommendation> {
+    const existing = this.repairRecommendations.get(id);
+    if (!existing) {
+      throw new Error(`Repair recommendation with id ${id} not found`);
+    }
+    const updated: RepairRecommendation = { ...existing, ...recommendation };
+    this.repairRecommendations.set(id, updated);
+    return updated;
+  }
+
+  async deleteRepairRecommendation(id: number): Promise<boolean> {
+    return this.repairRecommendations.delete(id);
+  }
+
   async getVentingSystemInspections(reportId: number): Promise<VentingSystemInspection[]> {
     return Array.from(this.ventingSystemInspections.values())
       .filter(inspection => inspection.reportId === reportId);
@@ -564,6 +604,20 @@ export class MemStorage implements IStorage {
     } as VentingSystemInspection;
     this.ventingSystemInspections.set(id, newInspection);
     return newInspection;
+  }
+
+  async updateVentingSystemInspection(id: number, inspection: Partial<InsertVentingSystemInspection>): Promise<VentingSystemInspection> {
+    const existing = this.ventingSystemInspections.get(id);
+    if (!existing) {
+      throw new Error(`Venting system inspection with id ${id} not found`);
+    }
+    const updated: VentingSystemInspection = { ...existing, ...inspection };
+    this.ventingSystemInspections.set(id, updated);
+    return updated;
+  }
+
+  async deleteVentingSystemInspection(id: number): Promise<boolean> {
+    return this.ventingSystemInspections.delete(id);
   }
 
   // Advanced Settlement Survey implementations
@@ -600,6 +654,10 @@ export class MemStorage implements IStorage {
     } as AdvancedSettlementSurvey;
     this.advancedSettlementSurveys.set(id, updated);
     return updated;
+  }
+
+  async deleteAdvancedSettlementSurvey(id: number): Promise<boolean> {
+    return this.advancedSettlementSurveys.delete(id);
   }
 
   async getAdvancedSettlementMeasurements(surveyId: number): Promise<AdvancedSettlementMeasurement[]> {
@@ -840,6 +898,12 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
+  async deleteInspectionChecklist(id: number): Promise<boolean> {
+    const dbi = await ensureDb();
+    const result = await dbi.delete(inspectionChecklists).where(eq(inspectionChecklists.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
   async getReportTemplates(): Promise<ReportTemplate[]> {
     const dbi = await ensureDb();
     return await dbi.select().from(reportTemplates);
@@ -879,6 +943,25 @@ export class DatabaseStorage implements IStorage {
     return newInspection;
   }
 
+  async updateAppurtenanceInspection(id: number, inspection: Partial<InsertAppurtenanceInspection>): Promise<AppurtenanceInspection> {
+    const dbi = await ensureDb();
+    const [updated] = await dbi
+      .update(appurtenanceInspections)
+      .set(inspection)
+      .where(eq(appurtenanceInspections.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error(`Appurtenance inspection with id ${id} not found`);
+    }
+    return updated;
+  }
+
+  async deleteAppurtenanceInspection(id: number): Promise<boolean> {
+    const dbi = await ensureDb();
+    const result = await dbi.delete(appurtenanceInspections).where(eq(appurtenanceInspections.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
   // Report Attachments
   async getReportAttachments(reportId: number): Promise<ReportAttachment[]> {
     const dbi = await ensureDb();
@@ -915,6 +998,25 @@ export class DatabaseStorage implements IStorage {
     return newRecommendation;
   }
 
+  async updateRepairRecommendation(id: number, recommendation: Partial<InsertRepairRecommendation>): Promise<RepairRecommendation> {
+    const dbi = await ensureDb();
+    const [updated] = await dbi
+      .update(repairRecommendations)
+      .set(recommendation)
+      .where(eq(repairRecommendations.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error(`Repair recommendation with id ${id} not found`);
+    }
+    return updated;
+  }
+
+  async deleteRepairRecommendation(id: number): Promise<boolean> {
+    const dbi = await ensureDb();
+    const result = await dbi.delete(repairRecommendations).where(eq(repairRecommendations.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
   // Venting System Inspections
   async getVentingSystemInspections(reportId: number): Promise<VentingSystemInspection[]> {
     const dbi = await ensureDb();
@@ -925,9 +1027,31 @@ export class DatabaseStorage implements IStorage {
     const dbi = await ensureDb();
     const [newInspection] = await dbi
       .insert(ventingSystemInspections)
-      .values(inspection)
+      .values({
+        ...inspection,
+        createdAt: new Date().toISOString()
+      })
       .returning();
     return newInspection;
+  }
+
+  async updateVentingSystemInspection(id: number, inspection: Partial<InsertVentingSystemInspection>): Promise<VentingSystemInspection> {
+    const dbi = await ensureDb();
+    const [updated] = await dbi
+      .update(ventingSystemInspections)
+      .set(inspection)
+      .where(eq(ventingSystemInspections.id, id))
+      .returning();
+    if (!updated) {
+      throw new Error(`Venting system inspection with id ${id} not found`);
+    }
+    return updated;
+  }
+
+  async deleteVentingSystemInspection(id: number): Promise<boolean> {
+    const dbi = await ensureDb();
+    const result = await dbi.delete(ventingSystemInspections).where(eq(ventingSystemInspections.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Advanced Settlement Surveys
@@ -967,6 +1091,12 @@ export class DatabaseStorage implements IStorage {
       .where(eq(advancedSettlementSurveys.id, id))
       .returning();
     return updated;
+  }
+
+  async deleteAdvancedSettlementSurvey(id: number): Promise<boolean> {
+    const dbi = await ensureDb();
+    const result = await dbi.delete(advancedSettlementSurveys).where(eq(advancedSettlementSurveys.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 
   // Advanced Settlement Measurements

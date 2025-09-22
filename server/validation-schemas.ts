@@ -122,6 +122,78 @@ export type CmlPointInput = z.infer<typeof cmlPointSchema>;
 export type ShellCourseInput = z.infer<typeof shellCourseSchema>;
 export type ShellCoursePatchInput = z.infer<typeof shellCoursePatchSchema>;
 
+// --- Checklist validation schemas ---
+export const checklistItemSchema = z.object({
+  reportId: z.number(),
+  item: z.string().min(1),
+  status: z.enum(['ok', 'deficient', 'not_applicable']),
+  notes: z.string().optional().nullable(),
+  severity: z.enum(['low', 'medium', 'high', 'critical']).optional().nullable(),
+  requiresFollowUp: z.boolean().optional()
+});
+export const checklistItemPatchSchema = checklistItemSchema.partial().omit({ reportId: true });
+
+// --- Appurtenances validation schemas ---
+export const appurtenanceSchema = z.object({
+  reportId: z.number(),
+  appurtenanceType: z.string().min(1),
+  appurtenanceId: z.string().min(1),
+  location: z.string().optional().nullable(),
+  condition: z.enum(['good', 'fair', 'poor', 'defective']),
+  findings: z.string().optional().nullable(),
+  recommendations: z.string().optional().nullable(),
+  priority: z.enum(['urgent', 'high', 'medium', 'routine']).optional().nullable(),
+  photosAttached: z.boolean().optional()
+});
+export const appurtenancePatchSchema = appurtenanceSchema.partial().omit({ reportId: true });
+
+// --- Repair Recommendations validation schemas ---
+export const recommendationSchema = z.object({
+  reportId: z.number(),
+  type: z.enum(['corrosion', 'structural', 'coating', 'foundation', 'other']),
+  description: z.string().min(1),
+  priority: z.enum(['urgent', 'high', 'medium', 'routine']),
+  estimatedCost: z.number().optional().nullable(),
+  timeframe: z.string().optional().nullable(),
+  api653Reference: z.string().optional().nullable(),
+  affectedComponent: z.string().optional().nullable()
+});
+export const recommendationPatchSchema = recommendationSchema.partial().omit({ reportId: true });
+
+// --- Venting System validation schemas ---
+export const ventingSystemSchema = z.object({
+  reportId: z.number(),
+  ventType: z.string().min(1),
+  ventId: z.string().optional().nullable(), // Added ventId to match database schema
+  ventSize: z.string().optional().nullable(),
+  ventCount: z.number().optional().nullable(),
+  condition: z.enum(['good', 'fair', 'poor', 'defective']),
+  obstructions: z.boolean().optional(),
+  findings: z.string().optional().nullable(),
+  recommendations: z.string().optional().nullable(),
+  compliesWithAPI: z.boolean().optional()
+});
+export const ventingSystemPatchSchema = ventingSystemSchema.partial().omit({ reportId: true });
+
+// --- Settlement Survey validation schemas ---
+export const settlementSurveySchema = z.object({
+  reportId: z.number(),
+  surveyDate: z.string(),
+  surveyMethod: z.string().optional().nullable(),
+  maxSettlement: z.number().optional().nullable(),
+  settlementLocation: z.string().optional().nullable(),
+  uniform: z.boolean().optional(),
+  differential: z.boolean().optional(),
+  compliesWithAPI653: z.boolean().optional(),
+  measurements: z.array(z.object({
+    pointNumber: z.number(),
+    angle: z.number(),
+    elevation: z.number(),
+    settlementValue: z.number().optional().nullable()
+  })).optional()
+});
+export const settlementSurveyPatchSchema = settlementSurveySchema.partial().omit({ reportId: true });
+
 // --- Express validation middleware helper ---
 export function validate<T extends z.ZodTypeAny>(schema: T) {
   return (req: any, res: any, next: any) => {
