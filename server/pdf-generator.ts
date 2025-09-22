@@ -30,7 +30,8 @@ import type {
   AppurtenanceInspection,
   RepairRecommendation,
   VentingSystemInspection,
-  AdvancedSettlementSurvey
+  AdvancedSettlementSurvey,
+  AdvancedSettlementMeasurement
 } from '../shared/schema.ts';
 
 // Extend jsPDF with autoTable types and missing methods
@@ -86,10 +87,10 @@ interface ExtendedAdvancedSettlementSurvey extends AdvancedSettlementSurvey {
   surveyMethod?: string;
   measurementType?: string;
   referenceDatum?: string;
-  maxSettlement?: number;
-  maxTilt?: number;
-  outOfPlaneSettlement?: number;
   settlementRecommendations?: string;
+  measurements?: AdvancedSettlementMeasurement[];
+  calculatedTilt?: number;
+  uniformSettlement?: number;
 }
 
 interface ExtendedRepairRecommendation extends RepairRecommendation {
@@ -170,6 +171,17 @@ export async function generateInspectionPDF(reportId: number): Promise<Buffer> {
     storage.getAdvancedSettlementSurveys(reportId)
   ]);
   
+  // Fetch settlement measurements for each survey
+  const settlementMeasurementsMap = new Map<number, AdvancedSettlementMeasurement[]>();
+  if (settlementSurveys && settlementSurveys.length > 0) {
+    for (const survey of settlementSurveys) {
+      if (survey.id) {
+        const measurements = await storage.getAdvancedSettlementMeasurements(survey.id);
+        settlementMeasurementsMap.set(survey.id, measurements);
+      }
+    }
+  }
+  
   // Calculate minimum required thickness for measurements
   const extendedMeasurements: ExtendedThicknessMeasurement[] = measurements.map(m => {
     const diameter = parseFloat(String(report.diameter || 100));
@@ -216,17 +228,42 @@ export async function generateInspectionPDF(reportId: number): Promise<Buffer> {
     notes: v.findings || ''
   }));
   
-  // Extend settlement survey
-  const extendedSettlementSurvey: ExtendedAdvancedSettlementSurvey | null = settlementSurveys?.[0] ? {
-    ...settlementSurveys[0],
-    surveyMethod: 'Optical level',
-    measurementType: settlementSurveys[0].surveyType || 'Elevation',
-    referenceDatum: 'Tank bottom',
-    maxSettlement: 0.5, // Placeholder value
-    maxTilt: 0.002, // Placeholder value
-    outOfPlaneSettlement: 0.3, // Placeholder value
-    settlementRecommendations: settlementSurveys[0].annexReference || 'Continue monitoring'
-  } : null;
+  // Extend settlement survey with actual data
+  let extendedSettlementSurvey: ExtendedAdvancedSettlementSurvey | null = null;
+  if (settlementSurveys?.[0]) {
+    const survey = settlementSurveys[0];
+    const surveyMeasurements = survey.id ? settlementMeasurementsMap.get(survey.id) || [] : [];
+    
+    // Calculate tilt from measurements if not stored
+    let calculatedTilt = 0;
+    let uniformSettlement = 0;
+    
+    if (surveyMeasurements.length > 0) {
+      const elevations = surveyMeasurements.map(m => parseFloat(String(m.measuredElevation || 0)));
+      const minElev = Math.min(...elevations);
+      const maxElev = Math.max(...elevations);
+      
+      // Calculate uniform settlement (average settlement)
+      uniformSettlement = elevations.reduce((sum, e) => sum + e, 0) / elevations.length;
+      
+      // Calculate tilt as max difference divided by tank diameter
+      const tankDiameter = parseFloat(String(survey.tankDiameter || 100));
+      if (tankDiameter > 0) {
+        calculatedTilt = (maxElev - minElev) / tankDiameter;
+      }
+    }
+    
+    extendedSettlementSurvey = {
+      ...survey,
+      surveyMethod: survey.calculationMethod || 'Optical level',
+      measurementType: survey.surveyType || 'Elevation',
+      referenceDatum: 'Tank bottom',
+      settlementRecommendations: survey.annexReference || 'Continue monitoring',
+      measurements: surveyMeasurements,
+      calculatedTilt: calculatedTilt,
+      uniformSettlement: uniformSettlement
+    };
+  }
   
   // Extend recommendations
   const extendedRecommendations: ExtendedRepairRecommendation[] = recommendations.map(r => ({
@@ -1558,15 +1595,24 @@ class ProfessionalPDFGenerator {
     this.pdf.text('SETTLEMENT SURVEY RESULTS', this.margin, this.currentY);
     this.currentY += 8;
     
+    // Use actual values from the database
+    const maxOutOfPlane = parseFloat(String(survey.maxOutOfPlane || 0));
+    const cosineAmplitude = parseFloat(String(survey.cosineAmplitude || 0));
+    const cosinePhase = parseFloat(String(survey.cosinePhase || 0));
+    const rSquared = parseFloat(String(survey.rSquared || 0));
+    const allowableSettlement = parseFloat(String(survey.allowableSettlement || 0));
+    const actualTilt = survey.calculatedTilt || 0;
+    const uniformSettlement = survey.uniformSettlement || 0;
+    
     const summaryData = [
       ['Survey Date', survey.surveyDate || 'N/A'],
       ['Survey Method', survey.surveyMethod || 'Optical level'],
       ['Measurement Type', survey.measurementType || 'N/A'],
-      ['Number of Points', survey.numberOfPoints?.toString() || 'N/A'],
+      ['Number of Points', survey.numberOfPoints?.toString() || survey.measurements?.length.toString() || 'N/A'],
       ['Reference Datum', survey.referenceDatum || 'Tank bottom'],
-      ['Maximum Settlement', `${(survey.maxSettlement || 0).toFixed(3)} inches`],
-      ['Maximum Tilt', `${(survey.maxTilt || 0).toFixed(4)} in/ft`],
-      ['Out of Plane Settlement', `${(survey.outOfPlaneSettlement || 0).toFixed(3)} inches`],
+      ['Uniform Settlement', `${uniformSettlement.toFixed(3)} inches`],
+      ['Maximum Tilt', `${actualTilt.toFixed(4)} in/ft`],
+      ['Max Out of Plane', `${maxOutOfPlane.toFixed(3)} inches`],
       ['Settlement Acceptance', survey.settlementAcceptance || 'PENDING']
     ];
     
@@ -1587,21 +1633,109 @@ class ProfessionalPDFGenerator {
     
     this.currentY = this.pdf.lastAutoTable.finalY + 10;
     
+    // Individual Measurement Points Table
+    if (survey.measurements && survey.measurements.length > 0) {
+      this.pdf.setFont('helvetica', 'bold');
+      this.pdf.setFontSize(11);
+      this.pdf.text('ELEVATION MEASUREMENT POINTS', this.margin, this.currentY);
+      this.currentY += 8;
+      
+      const measurementData = survey.measurements.map(m => [
+        m.pointNumber?.toString() || 'N/A',
+        parseFloat(String(m.angle || 0)).toFixed(1),
+        parseFloat(String(m.measuredElevation || 0)).toFixed(3),
+        parseFloat(String(m.cosineFitElevation || 0)).toFixed(3),
+        parseFloat(String(m.outOfPlane || 0)).toFixed(3)
+      ]);
+      
+      (this.pdf as any).autoTable({
+        head: [['Point #', 'Angle (°)', 'Measured (in)', 'Cosine Fit (in)', 'Out of Plane (in)']],
+        body: measurementData,
+        startY: this.currentY,
+        theme: 'striped',
+        headStyles: {
+          fillColor: this.primaryColor,
+          fontSize: 9,
+          fontStyle: 'bold'
+        },
+        bodyStyles: {
+          fontSize: 8
+        },
+        columnStyles: {
+          0: { halign: 'center', cellWidth: 20 },
+          1: { halign: 'right', cellWidth: 25 },
+          2: { halign: 'right', cellWidth: 35 },
+          3: { halign: 'right', cellWidth: 35 },
+          4: { halign: 'right', cellWidth: 35 }
+        },
+        margin: { left: this.margin }
+      });
+      
+      this.currentY = this.pdf.lastAutoTable.finalY + 10;
+    }
+    
+    // Cosine Fit Analysis
+    if (rSquared > 0) {
+      this.pdf.setFont('helvetica', 'bold');
+      this.pdf.setFontSize(11);
+      this.pdf.text('COSINE FIT ANALYSIS', this.margin, this.currentY);
+      this.currentY += 8;
+      
+      // Cosine fit equation
+      this.pdf.setFont('helvetica', 'normal');
+      this.pdf.setFontSize(10);
+      const equation = `U(θ) = ${cosineAmplitude.toFixed(3)} × cos(θ - ${(cosinePhase * 180 / Math.PI).toFixed(1)}°)`;
+      this.pdf.text(`Equation: ${equation}`, this.margin + 5, this.currentY);
+      this.currentY += 6;
+      
+      const cosineFitData = [
+        ['Cosine Amplitude (A)', `${cosineAmplitude.toFixed(4)} inches`],
+        ['Phase Angle (B)', `${(cosinePhase * 180 / Math.PI).toFixed(2)} degrees`],
+        ['R² Value', `${rSquared.toFixed(4)}`],
+        ['R² Requirement', '≥ 0.90 (API 653 Appendix B)'],
+        ['Cosine Fit Status', rSquared >= 0.90 ? '✓ ACCEPTABLE' : '✗ REVIEW REQUIRED']
+      ];
+      
+      (this.pdf as any).autoTable({
+        body: cosineFitData,
+        startY: this.currentY,
+        theme: 'plain',
+        styles: {
+          fontSize: 9,
+          cellPadding: 2
+        },
+        columnStyles: {
+          0: { cellWidth: 60, fontStyle: 'bold', textColor: [60, 60, 60] },
+          1: { cellWidth: 'auto' }
+        },
+        didDrawCell: (data: any) => {
+          if (data.row.index === 4 && data.column.index === 1) {
+            if (data.cell.raw.includes('✓')) {
+              data.cell.styles.textColor = this.accentColor;
+              data.cell.styles.fontStyle = 'bold';
+            } else if (data.cell.raw.includes('✗')) {
+              data.cell.styles.textColor = this.secondaryColor;
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+        },
+        margin: { left: this.margin }
+      });
+      
+      this.currentY = this.pdf.lastAutoTable.finalY + 10;
+    }
+    
     // API 653 Compliance
     this.pdf.setFont('helvetica', 'bold');
     this.pdf.setFontSize(11);
     this.pdf.text('API 653 APPENDIX B COMPLIANCE', this.margin, this.currentY);
     this.currentY += 8;
     
-    const maxSettlement = survey.maxSettlement || 0;
-    const maxTilt = survey.maxTilt || 0;
-    const outOfPlane = survey.outOfPlaneSettlement || 0;
-    
     const complianceData = [
       ['Criteria', 'Measured', 'Allowable', 'Status'],
-      ['Uniform Settlement', `${maxSettlement.toFixed(3)}"`, 'No limit', '✓ ACCEPTABLE'],
-      ['Tilt', `${maxTilt.toFixed(4)} in/ft`, '0.015 in/ft', maxTilt <= 0.015 ? '✓ ACCEPTABLE' : '✗ EXCEEDS'],
-      ['Out-of-Plane', `${outOfPlane.toFixed(3)}"`, 'L²/130H', outOfPlane <= 2.0 ? '✓ ACCEPTABLE' : '✗ REVIEW']
+      ['Uniform Settlement', `${uniformSettlement.toFixed(3)}"`, 'No limit', '✓ ACCEPTABLE'],
+      ['Tilt', `${actualTilt.toFixed(4)} in/ft`, '0.015 in/ft', actualTilt <= 0.015 ? '✓ ACCEPTABLE' : '✗ EXCEEDS'],
+      ['Out-of-Plane', `${maxOutOfPlane.toFixed(3)}"`, `${allowableSettlement > 0 ? allowableSettlement.toFixed(3) + '"' : 'L²/130H'}`, maxOutOfPlane <= (allowableSettlement || 2.0) ? '✓ ACCEPTABLE' : '✗ REVIEW']
     ];
     
     (this.pdf as any).autoTable({
