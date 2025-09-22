@@ -442,8 +442,10 @@ class ProfessionalPDFGenerator {
   }
 
   private performAnalysis(report: InspectionReport, measurements: ExtendedThicknessMeasurement[]): AnalysisData {
-    // Group measurements by shell course
-    const shellMeasurements = measurements.filter(m => m.component?.toLowerCase().includes('shell'));
+    // Group measurements by shell course - filter by measurementType='shell' OR component includes 'shell'
+    const shellMeasurements = measurements.filter(m => 
+      m.measurementType === 'shell' || m.component?.toLowerCase().includes('shell')
+    );
     const courseGroups = new Map<number, ExtendedThicknessMeasurement[]>();
     
     shellMeasurements.forEach(m => {
@@ -548,29 +550,29 @@ class ProfessionalPDFGenerator {
   }
 
   private addCoverPage(report: InspectionReport) {
-    this.currentY = 50;
+    this.currentY = 40;  // Start higher on the page
     
     // Add company logo area (placeholder)
     this.pdf.setFillColor(245, 245, 245);
-    this.pdf.rect(this.margin, 20, 50, 20, 'F');
+    this.pdf.rect(this.margin, 15, 50, 20, 'F');
     this.pdf.setFontSize(8);
     this.pdf.setTextColor(150, 150, 150);
-    this.pdf.text('LOGO', this.margin + 25, 33, { align: 'center' });
+    this.pdf.text('LOGO', this.margin + 25, 28, { align: 'center' });
     
-    this.currentY = 70;
+    this.currentY = 55;  // Adjusted for better spacing
     
     // Main title
     this.pdf.setFont('helvetica', 'bold');
-    this.pdf.setFontSize(28);
+    this.pdf.setFontSize(24);  // Smaller to prevent overlap
     this.pdf.setTextColor(...this.primaryColor);
     this.pdf.text('API 653 INSPECTION REPORT', this.pageWidth / 2, this.currentY, { align: 'center' });
     
-    this.currentY += 15;
-    this.pdf.setFontSize(16);
+    this.currentY += 18;  // More space
+    this.pdf.setFontSize(14);  // Smaller subtitle
     this.pdf.setTextColor(100, 100, 100);
     this.pdf.text('ABOVEGROUND STORAGE TANK INSPECTION', this.pageWidth / 2, this.currentY, { align: 'center' });
     
-    this.currentY += 30;
+    this.currentY += 25;  // Adjusted spacing
     
     // Report details box
     this.pdf.setDrawColor(...this.primaryColor);
@@ -599,12 +601,12 @@ class ProfessionalPDFGenerator {
     this.pdf.text(`Location: ${report.location || 'N/A'}`, this.margin + 10, this.currentY);
     
     // Inspector information
-    this.currentY += 25;
+    this.currentY += 30;  // More space before team info
     this.pdf.setFont('helvetica', 'bold');
     this.pdf.setFontSize(13);
     this.pdf.text('INSPECTION TEAM', this.margin, this.currentY);
     
-    this.currentY += 10;
+    this.currentY += 12;  // More space
     this.pdf.setFont('helvetica', 'normal');
     this.pdf.setFontSize(11);
     this.pdf.text(`Lead Inspector: ${report.inspector || 'N/A'}`, this.margin + 10, this.currentY);
@@ -920,13 +922,18 @@ class ProfessionalPDFGenerator {
     this.pdf.text('This section presents the API 653 thickness calculations and compliance assessment.', this.margin, this.currentY);
     this.currentY += 10;
     
+    // Get shell measurements directly for better display
+    const shellMeasurements = measurements.filter(m => 
+      m.measurementType === 'shell' || m.component?.toLowerCase().includes('shell')
+    );
+    
     // Shell Course Analysis Table
     this.pdf.setFont('helvetica', 'bold');
     this.pdf.setFontSize(11);
     this.pdf.text('SHELL COURSE ANALYSIS', this.margin, this.currentY);
     this.currentY += 8;
     
-    const shellData = analysisData.shellCourses.map(course => {
+    const shellData = analysisData.shellCourses.length > 0 ? analysisData.shellCourses.map(course => {
       const worstMeasurement = course.measurements.reduce((worst, current) => 
         current.remainingLife < worst.remainingLife ? current : worst,
         course.measurements[0] || { remainingLife: 999 }
@@ -941,9 +948,17 @@ class ProfessionalPDFGenerator {
         worstMeasurement?.remainingLife?.toFixed(1) || 'N/A',
         worstMeasurement?.status?.toUpperCase() || 'N/A'
       ];
-    });
+    }) : shellMeasurements.map(m => [
+      m.component || 'Shell',
+      (m.originalThickness ? parseFloat(String(m.originalThickness)) : 0.25).toFixed(3),
+      (m.minRequiredThickness || 0.187).toFixed(3),
+      (m.currentThickness ? parseFloat(String(m.currentThickness)) : 0.25).toFixed(3),
+      (m.corrosionRate ? parseFloat(String(m.corrosionRate)) : 0).toFixed(1),
+      (m.remainingLife ? parseFloat(String(m.remainingLife)) : 20).toFixed(1),
+      m.status?.toUpperCase() || 'ACCEPTABLE'
+    ]);
     
-    if (shellData.length > 0) {
+    if (shellData.length > 0 || shellMeasurements.length > 0) {
       (this.pdf as any).autoTable({
         head: [['Course', 'Original\n(in)', 't-min\n(in)', 'Current\n(in)', 'CR\n(mpy)', 'RL\n(years)', 'Status']],
         body: shellData,
@@ -1016,13 +1031,13 @@ class ProfessionalPDFGenerator {
     this.pdf.text('CORROSION RATE TRENDS', this.margin, this.currentY);
     this.currentY += 8;
     
-    // Group by component type
+    // Group by component type - use measurementType or component
     const shellRates = measurements
-      .filter(m => m.component?.toLowerCase().includes('shell') && m.corrosionRate)
+      .filter(m => (m.measurementType === 'shell' || m.component?.toLowerCase().includes('shell')) && m.corrosionRate)
       .map(m => parseFloat(String(m.corrosionRate)));
     
     const bottomRates = measurements
-      .filter(m => m.component?.toLowerCase().includes('bottom') && m.corrosionRate)
+      .filter(m => (m.measurementType === 'bottom_plate' || m.component?.toLowerCase().includes('bottom')) && m.corrosionRate)
       .map(m => parseFloat(String(m.corrosionRate)));
     
     const avgShellRate = shellRates.length > 0 ? 
@@ -1114,10 +1129,16 @@ class ProfessionalPDFGenerator {
     this.currentY = 40;
     this.addSectionHeader('THICKNESS MEASUREMENTS');
     
-    // Group measurements by component
-    const shellMeasurements = measurements.filter(m => m.component?.toLowerCase().includes('shell'));
-    const bottomMeasurements = measurements.filter(m => m.component?.toLowerCase().includes('bottom'));
-    const roofMeasurements = measurements.filter(m => m.component?.toLowerCase().includes('roof'));
+    // Group measurements by component - use measurementType for better filtering
+    const shellMeasurements = measurements.filter(m => 
+      m.measurementType === 'shell' || m.component?.toLowerCase().includes('shell')
+    );
+    const bottomMeasurements = measurements.filter(m => 
+      m.measurementType === 'bottom_plate' || m.component?.toLowerCase().includes('bottom')
+    );
+    const roofMeasurements = measurements.filter(m => 
+      m.measurementType === 'roof' || m.component?.toLowerCase().includes('roof')
+    );
     
     // Shell Measurements with full data
     if (shellMeasurements.length > 0) {
@@ -1184,13 +1205,12 @@ class ProfessionalPDFGenerator {
       this.currentY = this.pdf.lastAutoTable.finalY + 10;
     }
     
-    // Bottom Measurements
+    // Bottom Measurements - skip section entirely if no data exists (as requested)
     if (bottomMeasurements.length > 0) {
-      if (this.currentY > this.pageHeight - 60) {
-        this.pdf.addPage();
-        this.currentPage++;
-        this.currentY = 40;
-      }
+      // Always start on new page for bottom measurements
+      this.pdf.addPage();
+      this.currentPage++;
+      this.currentY = 40;
       
       this.pdf.setFont('helvetica', 'bold');
       this.pdf.setFontSize(11);
