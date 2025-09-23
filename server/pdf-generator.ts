@@ -182,109 +182,85 @@ export async function generateInspectionPDF(reportId: number): Promise<Buffer> {
     }
   }
   
-  // Calculate minimum required thickness for measurements
+  // Extended measurements - use server-computed values
   const extendedMeasurements: ExtendedThicknessMeasurement[] = measurements.map(m => {
-    const diameter = parseFloat(String(report.diameter || 100));
-    const specificGravity = parseFloat(String(report.specificGravity || '0.85'));
-    const courseMatch = m.component?.match(/course\s*(\d+)/i);
-    const courseNumber = courseMatch ? parseInt(courseMatch[1]) : 1;
-    
-    const minRequired = calculateMinimumRequiredThickness(
-      courseNumber,
-      diameter,
-      specificGravity,
-      parseFloat(String(report.height || 40)) * 0.9, // 90% fill height
-      0.85 // joint efficiency
-    );
-    
+    // Do NOT calculate locally - use server values or mark as unavailable
+    // The server should have already computed minimum thickness based on:
+    // - Actual measurement type (shell, bottom, roof, etc.)
+    // - Actual operating parameters from the report
+    // - Proper API 653 formulas for each component type
     return {
       ...m,
-      minRequiredThickness: minRequired
+      // Use minRequiredThickness if it exists in the measurement data from server
+      // Otherwise leave undefined - don't calculate locally
+      minRequiredThickness: undefined
     };
   });
   
-  // Add severity to checklists (based on the checked status)
+  // Extended checklists - use actual data without generating severity
   const extendedChecklists: ExtendedInspectionChecklist[] = checklists.map(c => ({
     ...c,
-    severity: !c.checked && c.notes ? 'major' : 'normal'
+    // Don't generate severity - use only what's in the data
+    severity: undefined
   }));
   
-  // Map appurtenances with additional fields
+  // Map appurtenances - use actual data without defaults
   const extendedAppurtenances: ExtendedAppurtenanceInspection[] = appurtenances.map(a => ({
     ...a,
-    component: a.appurtenanceType || 'Unknown',
-    action: a.recommendations || 'Monitor',
-    severity: a.priority === 'high' ? 'major' : 'normal',
-    notes: a.findings || ''
+    component: a.appurtenanceType,
+    action: a.recommendations,
+    severity: undefined, // Don't derive from priority
+    notes: a.findings
   }));
   
-  // Map venting inspections with additional fields
+  // Map venting inspections - use actual data without defaults
   const extendedVentingInspections: ExtendedVentingSystemInspection[] = ventingInspections.map(v => ({
     ...v,
-    component: v.ventId || 'Vent',
-    type: v.ventType || 'Unknown',
-    size: v.setpoint || 'N/A',
-    operationalStatus: v.testResults || 'Unknown',
-    notes: v.findings || ''
+    component: v.ventId,
+    type: v.ventType,
+    size: v.setpoint,
+    operationalStatus: v.testResults,
+    notes: v.findings
   }));
   
-  // Extend settlement survey with actual data
+  // Use actual settlement survey data - no local calculations
   let extendedSettlementSurvey: ExtendedAdvancedSettlementSurvey | null = null;
-  if (settlementSurveys?.[0]) {
-    const survey = settlementSurveys[0];
-    const surveyMeasurements = survey.id ? settlementMeasurementsMap.get(survey.id) || [] : [];
-    
-    // Calculate tilt from measurements if not stored
-    let calculatedTilt = 0;
-    let uniformSettlement = 0;
-    
-    if (surveyMeasurements.length > 0) {
-      const elevations = surveyMeasurements.map(m => parseFloat(String(m.measuredElevation || 0)));
-      const minElev = Math.min(...elevations);
-      const maxElev = Math.max(...elevations);
-      
-      // Calculate uniform settlement (average settlement)
-      uniformSettlement = elevations.reduce((sum, e) => sum + e, 0) / elevations.length;
-      
-      // Calculate tilt as max difference divided by tank diameter
-      const tankDiameter = parseFloat(String(survey.tankDiameter || 100));
-      if (tankDiameter > 0) {
-        calculatedTilt = (maxElev - minElev) / tankDiameter;
-      }
-    }
+  
+  // Find the most recent or relevant survey (could be based on status or date)
+  // For now use the last one in the array as it's likely the most recent
+  const latestSurvey = settlementSurveys && settlementSurveys.length > 0 
+    ? settlementSurveys[settlementSurveys.length - 1] 
+    : null;
+  
+  if (latestSurvey) {
+    const surveyMeasurements = latestSurvey.id ? settlementMeasurementsMap.get(latestSurvey.id) || [] : [];
     
     extendedSettlementSurvey = {
-      ...survey,
-      surveyMethod: survey.calculationMethod || 'Optical level',
-      measurementType: survey.surveyType || 'Elevation',
-      referenceDatum: 'Tank bottom',
-      settlementRecommendations: survey.annexReference || 'Continue monitoring',
+      ...latestSurvey,
+      // Use actual survey data - don't provide defaults
+      surveyMethod: latestSurvey.calculationMethod,
+      measurementType: latestSurvey.surveyType,
+      // Don't hardcode reference datum - use what's in the data
+      referenceDatum: undefined,
+      // Use actual recommendations from survey
+      settlementRecommendations: latestSurvey.annexReference,
       measurements: surveyMeasurements,
-      calculatedTilt: calculatedTilt,
-      uniformSettlement: uniformSettlement
+      // Use server-calculated values if they exist
+      calculatedTilt: latestSurvey.cosineAmplitude, // Server should calculate this
+      uniformSettlement: undefined // Server should provide if needed
     };
   }
   
-  // Extend recommendations
+  // Extended recommendations - use actual data only
   const extendedRecommendations: ExtendedRepairRecommendation[] = recommendations.map(r => {
-    // Estimate costs based on priority and type
-    let cost = null;
-    if (r.priority === 'critical') {
-      cost = 50000; // Critical repairs typically expensive
-    } else if (r.priority === 'high') {
-      cost = 25000; // High priority repairs
-    } else if (r.priority === 'medium') {
-      cost = 10000; // Medium priority repairs
-    } else {
-      cost = 5000; // Routine maintenance
-    }
-    
+    // DO NOT generate cost estimates or timing
+    // Only use what's actually in the recommendation data
     return {
       ...r,
-      timing: r.priority === 'critical' ? 'Immediate' : 
-              r.priority === 'high' ? 'Within 3 months' : 
-              r.priority === 'medium' ? 'Within 1 year' : 'Next turnaround',
-      estimatedCost: cost
+      // Only use timing if it's in the actual data (e.g., from dueDate or estimatedCompletion)
+      timing: r.dueDate || r.estimatedCompletion,
+      // Don't estimate costs - leave undefined if not provided
+      estimatedCost: undefined
     };
   });
   
@@ -529,35 +505,52 @@ class ProfessionalPDFGenerator {
       }
     });
 
-    // Analyze each shell course
+    // Analyze each shell course - use actual report values without defaults
     const shellCourses: ShellCourseData[] = [];
-    const diameter = parseFloat(String(report.diameter || 100));
-    const height = parseFloat(String(report.height || 40));
-    const specificGravity = parseFloat(String(report.specificGravity || '0.85'));
-    const ageInYears = report.yearsSinceLastInspection || 5;
     
-    courseGroups.forEach((courseMeasurements, courseNumber) => {
-      const courseData = analyzeShellCourse(
-        {
-          courseNumber,
-          height: 8, // Assume 8 feet per course as default
-          originalThickness: parseFloat(String(courseMeasurements[0]?.originalThickness || 0.25)),
-          measurements: courseMeasurements.map(m => ({
-            location: m.location || '',
-            currentThickness: parseFloat(String(m.currentThickness || 0))
-          }))
-        },
-        {
-          diameter,
-          totalHeight: height,
-          specificGravity,
-          maxFillHeight: height * 0.9, // 90% fill
-          jointEfficiency: 0.85,
-          ageInYears
+    // Convert units if needed and parse values
+    const diameter = report.diameter ? parseFloat(String(report.diameter)) : NaN;
+    const height = report.height ? parseFloat(String(report.height)) : NaN;
+    const specificGravity = report.specificGravity ? parseFloat(String(report.specificGravity)) : NaN;
+    const ageInYears = report.yearsSinceLastInspection || 0;
+    
+    // Only perform analysis if we have the required data
+    if (!isNaN(diameter) && !isNaN(height) && !isNaN(specificGravity)) {
+      courseGroups.forEach((courseMeasurements, courseNumber) => {
+        if (courseMeasurements.length > 0) {
+          const firstMeasurement = courseMeasurements[0];
+          const originalThickness = firstMeasurement?.originalThickness 
+            ? parseFloat(String(firstMeasurement.originalThickness))
+            : NaN;
+          
+          // Only analyze if we have valid original thickness
+          if (!isNaN(originalThickness)) {
+            const courseData = analyzeShellCourse(
+              {
+                courseNumber,
+                height: 8, // This should come from actual course height data
+                originalThickness,
+                measurements: courseMeasurements.map(m => ({
+                  location: m.location || '',
+                  currentThickness: m.currentThickness 
+                    ? parseFloat(String(m.currentThickness))
+                    : 0
+                }))
+              },
+              {
+                diameter,
+                totalHeight: height,
+                specificGravity,
+                maxFillHeight: height, // Use actual height, not assumed 90%
+                jointEfficiency: 1.0, // Should come from actual data
+                ageInYears
+              }
+            );
+            shellCourses.push(courseData);
+          }
         }
-      );
-      shellCourses.push(courseData);
-    });
+      });
+    }
 
     // Calculate tank inspection intervals
     const tankInspectionIntervals = shellCourses.length > 0 
@@ -590,22 +583,26 @@ class ProfessionalPDFGenerator {
     };
 
     // Perform enhanced API 653 evaluation
-    const components: ComponentThickness[] = measurements.map(m => ({
-      component: m.component || 'Unknown',
-      nominalThickness: parseFloat(String(m.originalThickness || 0.25)),
-      currentThickness: parseFloat(String(m.currentThickness || 0.25)),
-      corrosionAllowance: 0.0625,
-      dateCurrent: new Date(),
-      datePrevious: new Date(new Date().setFullYear(new Date().getFullYear() - ageInYears))
-    }));
+    const components: ComponentThickness[] = measurements
+      .filter(m => m.originalThickness && m.currentThickness) // Only include valid measurements
+      .map(m => ({
+        component: m.component || '',
+        nominalThickness: parseFloat(String(m.originalThickness)),
+        currentThickness: parseFloat(String(m.currentThickness)),
+        corrosionAllowance: 0, // Should come from design specifications
+        dateCurrent: report.inspectionDate ? new Date(report.inspectionDate) : new Date(),
+        datePrevious: report.lastInternalInspection 
+          ? new Date(report.lastInternalInspection)
+          : new Date(new Date().setFullYear(new Date().getFullYear() - ageInYears))
+      }));
 
     const tankParams: TankParameters = {
-      diameter,
-      height,
-      specificGravity,
-      jointEfficiency: 0.85,
-      yieldStrength: 35000,
-      designStress: 23200,
+      diameter: isNaN(diameter) ? 0 : diameter,
+      height: isNaN(height) ? 0 : height,
+      specificGravity: isNaN(specificGravity) ? 1.0 : specificGravity,
+      jointEfficiency: 1.0, // Should come from actual tank design data
+      yieldStrength: 35000, // Should come from shellMaterial specs
+      designStress: 23200, // Should come from design code
       yearsInService: ageInYears
     };
 
@@ -908,11 +905,11 @@ class ProfessionalPDFGenerator {
     this.currentY += 8;
     
     const basicInfo = [
-      ['Tank ID', report.tankId || 'N/A'],
-      ['Customer', report.customer || 'N/A'],
-      ['Location', report.location || 'N/A'],
-      ['Service/Product', report.service || 'N/A'],
-      ['Current Status', report.status || 'In Service']
+      ['Tank ID', report.tankId || 'Not provided'],
+      ['Customer', report.customer || 'Not provided'],
+      ['Location', report.location || 'Not provided'],
+      ['Service/Product', report.service || 'Not provided'],
+      ['Current Status', report.status || 'Not provided']
     ];
     
     this.addInfoTable(basicInfo);
@@ -925,17 +922,17 @@ class ProfessionalPDFGenerator {
     this.currentY += 8;
     
     const designInfo = [
-      ['Diameter', `${report.diameter || 'N/A'} ${report.diameterUnit || 'ft'}`],
-      ['Height', `${report.height || 'N/A'} ${report.heightUnit || 'ft'}`],
-      ['Capacity', `${report.capacity || 'N/A'} ${report.capacityUnit || 'bbls'}`],
-      ['Year Built', report.yearBuilt || 'N/A'],
-      ['Construction Standard', report.constructionStandard || 'API 650'],
-      ['Design Code', report.designCode || 'N/A'],
-      ['Shell Material', report.shellMaterial || 'A36 Carbon Steel'],
-      ['Original Shell Thickness', `${report.originalThickness || 'N/A'} in`],
-      ['Specific Gravity', report.specificGravity || '0.85'],
-      ['Foundation Type', report.foundationType || 'Concrete Ringwall'],
-      ['Roof Type', report.roofType || 'Cone Roof']
+      ['Diameter', report.diameter ? `${report.diameter}${report.diameterUnit ? ' ' + report.diameterUnit : ''}` : 'Not provided'],
+      ['Height', report.height ? `${report.height}${report.heightUnit ? ' ' + report.heightUnit : ''}` : 'Not provided'],
+      ['Capacity', report.capacity ? `${report.capacity}${report.capacityUnit ? ' ' + report.capacityUnit : ''}` : 'Not provided'],
+      ['Year Built', report.yearBuilt || 'Not provided'],
+      ['Construction Standard', report.constructionStandard || 'Not provided'],
+      ['Design Code', report.designCode || 'Not provided'],
+      ['Shell Material', report.shellMaterial || 'Not provided'],
+      ['Original Shell Thickness', report.originalThickness ? `${report.originalThickness} in` : 'Not provided'],
+      ['Specific Gravity', report.specificGravity || 'Not provided'],
+      ['Foundation Type', report.foundationType || 'Not provided'],
+      ['Roof Type', report.roofType || 'Not provided']
     ];
     
     this.addInfoTable(designInfo);
@@ -948,13 +945,13 @@ class ProfessionalPDFGenerator {
     this.currentY += 8;
     
     const historyInfo = [
-      ['Current Inspection Date', report.inspectionDate || 'N/A'],
-      ['Last Internal Inspection', report.lastInternalInspection || 'N/A'],
-      ['Years Since Last Inspection', String(report.yearsSinceLastInspection || 'N/A')],
-      ['Tank Age', `${report.tankAge || 'N/A'} years`],
-      ['Inspector', report.inspector || 'N/A'],
-      ['API 653 Certification', report.inspectorCertification || 'N/A'],
-      ['Reviewer', report.reviewer || 'N/A']
+      ['Current Inspection Date', report.inspectionDate || 'Not provided'],
+      ['Last Internal Inspection', report.lastInternalInspection || 'Not provided'],
+      ['Years Since Last Inspection', report.yearsSinceLastInspection !== null && report.yearsSinceLastInspection !== undefined ? String(report.yearsSinceLastInspection) : 'Not provided'],
+      ['Tank Age', report.tankAge !== null && report.tankAge !== undefined ? `${report.tankAge} years` : 'Not provided'],
+      ['Inspector', report.inspector || 'Not provided'],
+      ['API 653 Certification', report.inspectorCertification || 'Not provided'],
+      ['Reviewer', report.reviewer || 'Not provided']
     ];
     
     this.addInfoTable(historyInfo);
@@ -1019,12 +1016,12 @@ class ProfessionalPDFGenerator {
         worstMeasurement?.status?.toUpperCase() || 'N/A'
       ];
     }) : shellMeasurements.map(m => [
-      m.component || 'Shell',
-      (m.originalThickness ? parseFloat(String(m.originalThickness)) : 0.25).toFixed(3),
-      (m.minRequiredThickness || 0.187).toFixed(3),
-      (m.currentThickness ? parseFloat(String(m.currentThickness)) : 0.25).toFixed(3),
-      (m.corrosionRate ? parseFloat(String(m.corrosionRate)) : 0).toFixed(1),
-      (m.remainingLife ? parseFloat(String(m.remainingLife)) : 20).toFixed(1),
+      m.component || 'Not specified',
+      m.originalThickness ? parseFloat(String(m.originalThickness)).toFixed(3) : 'Not provided',
+      m.minRequiredThickness ? m.minRequiredThickness.toFixed(3) : 'Not calculated',
+      m.currentThickness ? parseFloat(String(m.currentThickness)).toFixed(3) : 'Not measured',
+      m.corrosionRate ? parseFloat(String(m.corrosionRate)).toFixed(1) : 'Not calculated',
+      m.remainingLife ? parseFloat(String(m.remainingLife)).toFixed(1) : 'Not calculated',
       m.status?.toUpperCase() || 'ACCEPTABLE'
     ]);
     
@@ -1681,11 +1678,11 @@ class ProfessionalPDFGenerator {
       this.currentY += 8;
       
       const measurementData = survey.measurements.map(m => [
-        m.pointNumber?.toString() || 'N/A',
-        parseFloat(String(m.angle || 0)).toFixed(1),
-        parseFloat(String(m.measuredElevation || 0)).toFixed(3),
-        parseFloat(String(m.cosineFitElevation || 0)).toFixed(3),
-        parseFloat(String(m.outOfPlane || 0)).toFixed(3)
+        m.pointNumber?.toString() || '',
+        m.angle !== null && m.angle !== undefined ? parseFloat(String(m.angle)).toFixed(1) : '',
+        m.measuredElevation !== null && m.measuredElevation !== undefined ? parseFloat(String(m.measuredElevation)).toFixed(3) : 'Not provided',
+        m.cosineFitElevation !== null && m.cosineFitElevation !== undefined ? parseFloat(String(m.cosineFitElevation)).toFixed(3) : '',
+        m.outOfPlane !== null && m.outOfPlane !== undefined ? parseFloat(String(m.outOfPlane)).toFixed(3) : ''
       ]);
       
       this.addTableFlow({
@@ -1837,13 +1834,13 @@ class ProfessionalPDFGenerator {
       this.currentY += 8;
       
       const capacityData = [
-        ['Tank Capacity', `${tankVolume.toFixed(0)} ${report.capacityUnit || 'bbls'}`],
-        ['Dike Type', containment.dikeType || 'Earthen'],
-        ['Dike Height', `${containment.dikeHeight || 'N/A'} ft`],
-        ['Dike Capacity', `${dikeCapacity.toFixed(0)} bbls`],
-        ['Adequacy Ratio', `${adequacyRatio.toFixed(1)}%`],
+        ['Tank Capacity', tankVolume > 0 ? `${tankVolume.toFixed(0)} ${report.capacityUnit || ''}` : 'Not provided'],
+        ['Dike Type', containment.dikeType || 'Not provided'],
+        ['Dike Height', containment.dikeHeight ? `${containment.dikeHeight} ft` : 'Not provided'],
+        ['Dike Capacity', dikeCapacity > 0 ? `${dikeCapacity.toFixed(0)} bbls` : 'Not provided'],
+        ['Adequacy Ratio', dikeCapacity > 0 && tankVolume > 0 ? `${adequacyRatio.toFixed(1)}%` : 'Cannot calculate'],
         ['EPA Requirement', '110% of tank capacity'],
-        ['Compliance', adequacyRatio >= 110 ? '✓ COMPLIANT' : '✗ NON-COMPLIANT']
+        ['Compliance', dikeCapacity > 0 && tankVolume > 0 ? (adequacyRatio >= 110 ? '✓ COMPLIANT' : '✗ NON-COMPLIANT') : 'Insufficient data']
       ];
       
       this.addTableFlow({
@@ -1876,11 +1873,11 @@ class ProfessionalPDFGenerator {
       this.currentY += 8;
       
       const conditionData = [
-        ['Dike Condition', containment.dikeCondition || 'N/A'],
-        ['Liner Type', containment.linerType || 'None'],
-        ['Liner Condition', containment.linerCondition || 'N/A'],
-        ['Drainage System', containment.drainageSystem || 'Gravity'],
-        ['Drainage Valves', containment.drainValvesSealed ? 'Sealed' : 'Not sealed']
+        ['Dike Condition', containment.dikeCondition || 'Not provided'],
+        ['Liner Type', containment.linerType || 'Not provided'],
+        ['Liner Condition', containment.linerCondition || 'Not provided'],
+        ['Drainage System', containment.drainageSystem || 'Not provided'],
+        ['Drainage Valves', containment.drainValvesSealed !== undefined ? (containment.drainValvesSealed ? 'Sealed' : 'Not sealed') : 'Not provided']
       ];
       
       this.addTableFlow({
@@ -1917,7 +1914,8 @@ class ProfessionalPDFGenerator {
     // Check thickness measurements
     measurements.forEach(m => {
       if (m.status === 'critical') {
-        criticalFindings.push(`• ${m.location}: Thickness below minimum required (${m.currentThickness}" < ${m.minRequiredThickness || 0.1}")`);
+        const minReq = m.minRequiredThickness ? `${m.minRequiredThickness}"` : 'Not calculated';
+        criticalFindings.push(`• ${m.location || 'Unknown location'}: Thickness below minimum required (${m.currentThickness || 'Not measured'}" < ${minReq})`);
       }
     });
     
@@ -1988,7 +1986,10 @@ class ProfessionalPDFGenerator {
     
     measurements.forEach(m => {
       if (m.status === 'monitor') {
-        minorFindings.push(`• ${m.location}: Monitor corrosion rate (${m.corrosionRate} mpy)`);
+        const corrosionInfo = m.corrosionRate !== null && m.corrosionRate !== undefined 
+          ? ` (${m.corrosionRate} mpy)` 
+          : '';
+        minorFindings.push(`• ${m.location || 'Location not specified'}: Monitor corrosion rate${corrosionInfo}`);
       }
     });
     
@@ -2028,10 +2029,10 @@ class ProfessionalPDFGenerator {
       this.currentY += 8;
       
       const criticalData = critical.map(r => [
-        r.component || 'N/A',
-        r.description || 'N/A',
-        r.timing || 'Immediate',
-        r.estimatedCost ? `$${r.estimatedCost.toLocaleString()}` : 'TBD'
+        r.component || 'Not specified',
+        r.description || 'Not provided',
+        r.timing || 'Not specified',
+        r.estimatedCost ? `$${r.estimatedCost.toLocaleString()}` : 'Not provided'
       ]);
       
       this.addTableFlow({
@@ -2057,15 +2058,15 @@ class ProfessionalPDFGenerator {
       this.pdf.setFont('helvetica', 'bold');
       this.pdf.setFontSize(11);
       this.pdf.setTextColor(...this.warningColor);
-      this.pdf.text('HIGH PRIORITY - WITHIN 6 MONTHS', this.margin, this.currentY);
+      this.pdf.text('HIGH PRIORITY', this.margin, this.currentY);
       this.pdf.setTextColor(0, 0, 0);
       this.currentY += 8;
       
       const highData = high.map(r => [
-        r.component || 'N/A',
-        r.description || 'N/A',
-        r.timing || '6 months',
-        r.estimatedCost ? `$${r.estimatedCost.toLocaleString()}` : 'TBD'
+        r.component || 'Not specified',
+        r.description || 'Not provided',
+        r.timing || 'Not specified',
+        r.estimatedCost ? `$${r.estimatedCost.toLocaleString()}` : 'Not provided'
       ]);
       
       this.addTableFlow({
@@ -2096,9 +2097,9 @@ class ProfessionalPDFGenerator {
       
       this.pdf.setFont('helvetica', 'normal');
       this.pdf.setFontSize(10);
-      this.pdf.text(`• Medium Priority Items: ${medium.length} (within 1 year)`, this.margin, this.currentY);
+      this.pdf.text(`• Medium Priority Items: ${medium.length}`, this.margin, this.currentY);
       this.currentY += 6;
-      this.pdf.text(`• Low Priority Items: ${low.length} (next turnaround)`, this.margin, this.currentY);
+      this.pdf.text(`• Low Priority Items: ${low.length}`, this.margin, this.currentY);
       this.currentY += 6;
       
       const totalCost = [...medium, ...low].reduce((sum, r) => 
@@ -2146,12 +2147,12 @@ class ProfessionalPDFGenerator {
     this.currentY += 8;
     
     const basisData = [
-      ['Tank Classification', 'Class II (standard service)'],
-      ['Corrosion Rate Basis', `${analysisData.kpiMetrics.minRemainingLife < 10 ? 'Short-term' : 'Long-term'} rate governs`],
-      ['Limiting Component', criticalCourse ? `Shell Course ${criticalCourse}` : 'Bottom plates'],
+      ['Tank Classification', 'Not specified'],
+      ['Corrosion Rate Basis', analysisData.kpiMetrics.minRemainingLife !== null && analysisData.kpiMetrics.minRemainingLife !== undefined && analysisData.kpiMetrics.minRemainingLife < 10 ? 'Short-term rate' : 'Long-term rate'],
+      ['Limiting Component', criticalCourse ? `Shell Course ${criticalCourse}` : 'Not determined'],
       ['API 653 Reference', 'Table 6.1 and Section 6.4.2'],
-      ['RBI Applied', 'No'],
-      ['Special Considerations', report.coatingCondition === 'poor' ? 'Coating degradation noted' : 'None']
+      ['RBI Applied', 'Not specified'],
+      ['Special Considerations', report.coatingCondition ? report.coatingCondition : 'Not provided']
     ];
     
     this.addTableFlow({
@@ -2177,14 +2178,21 @@ class ProfessionalPDFGenerator {
     this.pdf.setFont('helvetica', 'normal');
     this.pdf.setFontSize(10);
     
-    const additionalReqs = [
-      '• Cathodic Protection Survey: Annual',
-      '• Settlement Survey: Every 5 years',
-      '• Coating Inspection: With external inspection',
-      '• Foundation Inspection: With external inspection',
-      '• Roof Inspection: Every 5 years or with internal',
-      '• Emergency Venting: Annual operational test'
-    ];
+    // These should come from actual inspection requirements data
+    const additionalReqs = [];
+    
+    // Only add if we have actual data about these requirements
+    if (report.nextExternalInspection) {
+      additionalReqs.push(`• Next External Inspection: ${report.nextExternalInspection}`);
+    }
+    if (report.nextInternalInspection) {
+      additionalReqs.push(`• Next Internal Inspection: ${report.nextInternalInspection}`);
+    }
+    
+    // If no specific requirements, indicate that
+    if (additionalReqs.length === 0) {
+      additionalReqs.push('• No additional requirements specified');
+    }
     
     additionalReqs.forEach(req => {
       this.pdf.text(req, this.margin, this.currentY);
