@@ -321,6 +321,15 @@ class ProfessionalPDFGenerator {
     });
   }
 
+  // Helper method to render numbers safely without NaN
+  private renderNumber(value: any, decimals: number = 1, fallbackLabel: string = 'Not calculated'): string {
+    const numValue = parseFloat(String(value));
+    if (isNaN(numValue) || !isFinite(numValue)) {
+      return fallbackLabel;
+    }
+    return numValue.toFixed(decimals);
+  }
+
   // Layout engine helper methods
   private ensurePageBreak(requiredHeight: number = 50): void {
     if (this.currentY + requiredHeight > this.pageHeight - this.bottomMargin) {
@@ -520,7 +529,7 @@ class ProfessionalPDFGenerator {
     const diameter = report.diameter ? parseFloat(String(report.diameter)) : NaN;
     const height = report.height ? parseFloat(String(report.height)) : NaN;
     const specificGravity = report.specificGravity ? parseFloat(String(report.specificGravity)) : NaN;
-    const ageInYears = report.yearsSinceLastInspection || 0;
+    const ageInYears = report.yearsSinceLastInspection || null;
     
     // Only perform analysis if we have ALL required data
     // Skip analysis entirely if we don't have real course height data
@@ -573,31 +582,40 @@ class ProfessionalPDFGenerator {
         : null // Don't calculate date without valid interval
     };
 
-    // Perform enhanced API 653 evaluation
-    const components: ComponentThickness[] = measurements
-      .filter(m => m.originalThickness && m.currentThickness) // Only include valid measurements
-      .map(m => ({
-        component: m.component || '',
-        nominalThickness: parseFloat(String(m.originalThickness)),
-        currentThickness: parseFloat(String(m.currentThickness)),
-        corrosionAllowance: 0, // Should come from design specifications
-        dateCurrent: report.inspectionDate ? new Date(report.inspectionDate) : new Date(),
-        datePrevious: report.lastInternalInspection 
-          ? new Date(report.lastInternalInspection)
-          : new Date(new Date().setFullYear(new Date().getFullYear() - ageInYears))
-      }));
+    // Perform enhanced API 653 evaluation only if we have design parameters
+    // Skip evaluation if critical design values are missing
+    let calculationResults: CalculationResults[] = [];
+    const hasDesignData = report.jointEfficiency !== undefined && report.jointEfficiency !== null &&
+                          report.yieldStrength !== undefined && report.yieldStrength !== null &&
+                          report.designStress !== undefined && report.designStress !== null;
+    
+    if (hasDesignData && ageInYears !== null && report.lastInternalInspection) {
+      const components: ComponentThickness[] = measurements
+        .filter(m => m.originalThickness && m.currentThickness) // Only include valid measurements
+        .map(m => ({
+          component: m.component || '',
+          nominalThickness: parseFloat(String(m.originalThickness)),
+          currentThickness: parseFloat(String(m.currentThickness)),
+          corrosionAllowance: 0, // Should come from design specifications
+          dateCurrent: report.inspectionDate ? new Date(report.inspectionDate) : new Date(),
+          datePrevious: new Date(report.lastInternalInspection)
+        }));
 
-    const tankParams: TankParameters = {
-      diameter: isNaN(diameter) ? 0 : diameter,
-      height: isNaN(height) ? 0 : height,
-      specificGravity: isNaN(specificGravity) ? 1.0 : specificGravity,
-      jointEfficiency: 1.0, // Should come from actual tank design data
-      yieldStrength: 35000, // Should come from shellMaterial specs
-      designStress: 23200, // Should come from design code
-      yearsInService: ageInYears
-    };
+      const tankParams: TankParameters = {
+        diameter: isNaN(diameter) ? 0 : diameter,
+        height: isNaN(height) ? 0 : height,
+        specificGravity: isNaN(specificGravity) ? 1.0 : specificGravity,
+        jointEfficiency: parseFloat(String(report.jointEfficiency)),
+        yieldStrength: parseFloat(String(report.yieldStrength)),
+        designStress: parseFloat(String(report.designStress)),
+        yearsInService: ageInYears
+      };
 
-    const calculationResults = performAPI653Evaluation(components, tankParams);
+      calculationResults = performAPI653Evaluation(components, tankParams);
+    } else {
+      // Log why evaluation was skipped
+      console.log('API 653 evaluation skipped - missing design parameters or inspection dates');
+    }
 
     return {
       shellCourses,
@@ -756,11 +774,11 @@ class ProfessionalPDFGenerator {
       ``,
       `KEY FINDINGS:`,
       `• Overall Status: ${kpiMetrics.overallStatus}`,
-      `• Inspection Completion: ${kpiMetrics.percentTMLsComplete.toFixed(1)}%`,
+      `• Inspection Completion: ${this.renderNumber(kpiMetrics.percentTMLsComplete, 1, 'Not calculated')}%`,
       `• Critical Findings: ${kpiMetrics.criticalFindings}`,
       `• Major Findings: ${kpiMetrics.majorFindings}`,
       `• Minor Findings: ${kpiMetrics.minorFindings}`,
-      `• Minimum Remaining Life: ${kpiMetrics.minRemainingLife.toFixed(1)} years`,
+      `• Minimum Remaining Life: ${this.renderNumber(kpiMetrics.minRemainingLife, 1, 'Not calculated')} years`,
       ``,
       `IMMEDIATE ACTIONS REQUIRED: ${kpiMetrics.criticalFindings > 0 ? 'YES - See recommendations section' : 'None'}`,
       ``,
@@ -816,7 +834,7 @@ class ProfessionalPDFGenerator {
       boxWidth,
       boxHeight,
       'COMPLETION',
-      `${completionPercent.toFixed(0)}%`,
+      `${this.renderNumber(completionPercent, 0, 'N/A')}%`,
       completionPercent >= 95 ? this.accentColor : 
       completionPercent >= 80 ? this.warningColor : this.secondaryColor
     );
@@ -835,9 +853,9 @@ class ProfessionalPDFGenerator {
     
     // Min Remaining Life
     currentX += boxWidth + spacing;
-    const remainingLifeText = minRemainingLife === 999 ? 'N/A' : 
+    const remainingLifeText = minRemainingLife === 999 || isNaN(minRemainingLife) || !isFinite(minRemainingLife) ? 'N/A' : 
                              minRemainingLife === 0 ? 'IMMEDIATE' :
-                             `${minRemainingLife.toFixed(1)} yrs`;
+                             `${this.renderNumber(minRemainingLife, 1, 'N/A')} yrs`;
     this.drawKPIBox(
       currentX,
       this.currentY,
@@ -1001,8 +1019,8 @@ class ProfessionalPDFGenerator {
         // Show raw measurements only
         const shellData = shellMeasurements.map(m => [
           m.component || 'Not specified',
-          m.originalThickness ? parseFloat(String(m.originalThickness)).toFixed(3) : 'Not provided',
-          m.currentThickness ? parseFloat(String(m.currentThickness)).toFixed(3) : 'Not measured',
+          m.originalThickness ? this.renderNumber(m.originalThickness, 3, 'Not provided') : 'Not provided',
+          m.currentThickness ? this.renderNumber(m.currentThickness, 3, 'Not measured') : 'Not measured',
           'Not calculated', // min required
           'Not calculated', // corrosion rate
           'Not calculated', // remaining life
@@ -1050,20 +1068,20 @@ class ProfessionalPDFGenerator {
       
       return [
         `Course ${course.courseNumber}`,
-        course.originalThickness.toFixed(3),
-        course.minimumRequired.toFixed(3),
-        worstMeasurement?.currentThickness?.toFixed(3) || 'N/A',
-        worstMeasurement?.corrosionRateMPY?.toFixed(1) || 'N/A',
-        worstMeasurement?.remainingLife?.toFixed(1) || 'N/A',
+        this.renderNumber(course.originalThickness, 3, 'N/A'),
+        this.renderNumber(course.minimumRequired, 3, 'N/A'),
+        worstMeasurement?.currentThickness ? this.renderNumber(worstMeasurement.currentThickness, 3, 'N/A') : 'N/A',
+        worstMeasurement?.corrosionRateMPY ? this.renderNumber(worstMeasurement.corrosionRateMPY, 1, 'N/A') : 'N/A',
+        worstMeasurement?.remainingLife ? this.renderNumber(worstMeasurement.remainingLife, 1, 'N/A') : 'N/A',
         worstMeasurement?.status?.toUpperCase() || 'N/A'
       ];
     }) : shellMeasurements.map(m => [
       m.component || 'Not specified',
-      m.originalThickness ? parseFloat(String(m.originalThickness)).toFixed(3) : 'Not provided',
-      m.minRequiredThickness ? m.minRequiredThickness.toFixed(3) : 'Not calculated',
-      m.currentThickness ? parseFloat(String(m.currentThickness)).toFixed(3) : 'Not measured',
-      m.corrosionRate ? parseFloat(String(m.corrosionRate)).toFixed(1) : 'Not calculated',
-      m.remainingLife ? parseFloat(String(m.remainingLife)).toFixed(1) : 'Not calculated',
+      m.originalThickness ? this.renderNumber(m.originalThickness, 3, 'Not provided') : 'Not provided',
+      m.minRequiredThickness ? this.renderNumber(m.minRequiredThickness, 3, 'Not calculated') : 'Not calculated',
+      m.currentThickness ? this.renderNumber(m.currentThickness, 3, 'Not measured') : 'Not measured',
+      m.corrosionRate ? this.renderNumber(m.corrosionRate, 1, 'Not calculated') : 'Not calculated',
+      m.remainingLife ? this.renderNumber(m.remainingLife, 1, 'Not calculated') : 'Not calculated',
       m.status?.toUpperCase() || 'ACCEPTABLE'
     ]);
     
@@ -1154,10 +1172,10 @@ class ProfessionalPDFGenerator {
     const maxBottomRate = bottomRates.length > 0 ? Math.max(...bottomRates) : 0;
     
     const rateData = [
-      ['Shell - Average', avgShellRate.toFixed(2), this.getCorrosionCategory(avgShellRate)],
-      ['Shell - Maximum', maxShellRate.toFixed(2), this.getCorrosionCategory(maxShellRate)],
-      ['Bottom - Average', avgBottomRate.toFixed(2), this.getCorrosionCategory(avgBottomRate)],
-      ['Bottom - Maximum', maxBottomRate.toFixed(2), this.getCorrosionCategory(maxBottomRate)]
+      ['Shell - Average', this.renderNumber(avgShellRate, 2, 'Not calculated'), this.getCorrosionCategory(avgShellRate)],
+      ['Shell - Maximum', this.renderNumber(maxShellRate, 2, 'Not calculated'), this.getCorrosionCategory(maxShellRate)],
+      ['Bottom - Average', this.renderNumber(avgBottomRate, 2, 'Not calculated'), this.getCorrosionCategory(avgBottomRate)],
+      ['Bottom - Maximum', this.renderNumber(maxBottomRate, 2, 'Not calculated'), this.getCorrosionCategory(maxBottomRate)]
     ];
     
     this.addTableFlow({
@@ -1186,8 +1204,8 @@ class ProfessionalPDFGenerator {
     
     const predictions = [
       `Based on current corrosion rates:`,
-      `• Shell will reach minimum thickness in ${analysisData.kpiMetrics.minRemainingLife.toFixed(1)} years`,
-      `• Projected thickness loss over next 5 years: ${(maxShellRate * 5 / 1000).toFixed(3)} inches`,
+      `• Shell will reach minimum thickness in ${this.renderNumber(analysisData.kpiMetrics.minRemainingLife, 1, 'Not calculated')} years`,
+      `• Projected thickness loss over next 5 years: ${this.renderNumber(maxShellRate * 5 / 1000, 3, 'Not calculated')} inches`,
       `• Recommended corrosion mitigation if rate exceeds 5 mpy`,
       ``,
       `Corrosion Environment Assessment:`,
@@ -1251,11 +1269,11 @@ class ProfessionalPDFGenerator {
       const shellData = shellMeasurements.map(m => [
         m.location || 'N/A',
         m.component || 'N/A',
-        m.originalThickness ? parseFloat(String(m.originalThickness)).toFixed(3) : 'N/A',
-        m.currentThickness ? parseFloat(String(m.currentThickness)).toFixed(3) : 'N/A',
-        m.minRequiredThickness ? m.minRequiredThickness.toFixed(3) : 'N/A',
-        m.corrosionRate ? parseFloat(String(m.corrosionRate)).toFixed(1) : 'N/A',
-        m.remainingLife ? parseFloat(String(m.remainingLife)).toFixed(1) : 'N/A',
+        m.originalThickness ? this.renderNumber(m.originalThickness, 3, 'N/A') : 'N/A',
+        m.currentThickness ? this.renderNumber(m.currentThickness, 3, 'N/A') : 'N/A',
+        m.minRequiredThickness ? this.renderNumber(m.minRequiredThickness, 3, 'N/A') : 'N/A',
+        m.corrosionRate ? this.renderNumber(m.corrosionRate, 1, 'N/A') : 'N/A',
+        m.remainingLife ? this.renderNumber(m.remainingLife, 1, 'N/A') : 'N/A',
         m.status?.toUpperCase() || 'N/A'
       ]);
       
@@ -1755,10 +1773,10 @@ class ProfessionalPDFGenerator {
       
       const measurementData = survey.measurements.map(m => [
         m.pointNumber?.toString() || '',
-        m.angle !== null && m.angle !== undefined ? parseFloat(String(m.angle)).toFixed(1) : '',
-        m.measuredElevation !== null && m.measuredElevation !== undefined ? parseFloat(String(m.measuredElevation)).toFixed(3) : 'Not provided',
-        m.cosineFitElevation !== null && m.cosineFitElevation !== undefined ? parseFloat(String(m.cosineFitElevation)).toFixed(3) : '',
-        m.outOfPlane !== null && m.outOfPlane !== undefined ? parseFloat(String(m.outOfPlane)).toFixed(3) : ''
+        m.angle !== null && m.angle !== undefined ? this.renderNumber(m.angle, 1, '') : '',
+        m.measuredElevation !== null && m.measuredElevation !== undefined ? this.renderNumber(m.measuredElevation, 3, 'Not provided') : 'Not provided',
+        m.cosineFitElevation !== null && m.cosineFitElevation !== undefined ? this.renderNumber(m.cosineFitElevation, 3, '') : '',
+        m.outOfPlane !== null && m.outOfPlane !== undefined ? this.renderNumber(m.outOfPlane, 3, '') : ''
       ]);
       
       this.addTableFlow({
@@ -1794,14 +1812,14 @@ class ProfessionalPDFGenerator {
       // Cosine fit equation
       this.pdf.setFont('helvetica', 'normal');
       this.pdf.setFontSize(10);
-      const equation = `U(θ) = ${cosineAmplitude.toFixed(3)} × cos(θ - ${(cosinePhase * 180 / Math.PI).toFixed(1)}°)`;
+      const equation = `U(θ) = ${this.renderNumber(cosineAmplitude, 3, 'N/A')} × cos(θ - ${this.renderNumber(cosinePhase * 180 / Math.PI, 1, 'N/A')}°)`;
       this.pdf.text(`Equation: ${equation}`, this.margin + 5, this.currentY);
       this.currentY += 6;
       
       const cosineFitData = [
-        ['Cosine Amplitude (A)', `${cosineAmplitude.toFixed(4)} inches`],
-        ['Phase Angle (B)', `${(cosinePhase * 180 / Math.PI).toFixed(2)} degrees`],
-        ['R² Value', `${rSquared.toFixed(4)}`],
+        ['Cosine Amplitude (A)', `${this.renderNumber(cosineAmplitude, 4, 'Not calculated')} inches`],
+        ['Phase Angle (B)', `${this.renderNumber(cosinePhase * 180 / Math.PI, 2, 'Not calculated')} degrees`],
+        ['R² Value', `${this.renderNumber(rSquared, 4, 'Not calculated')}`],
         ['R² Requirement', '≥ 0.90 (API 653 Appendix B)'],
         ['Cosine Fit Status', rSquared >= 0.90 ? '✓ ACCEPTABLE' : '✗ REVIEW REQUIRED']
       ];
@@ -1840,9 +1858,9 @@ class ProfessionalPDFGenerator {
     
     const complianceData = [
       ['Criteria', 'Measured', 'Allowable', 'Status'],
-      ['Uniform Settlement', `${uniformSettlement.toFixed(3)}"`, 'No limit', '✓ ACCEPTABLE'],
-      ['Tilt', `${actualTilt.toFixed(4)} in/ft`, '0.015 in/ft', actualTilt <= 0.015 ? '✓ ACCEPTABLE' : '✗ EXCEEDS'],
-      ['Out-of-Plane', `${maxOutOfPlane.toFixed(3)}"`, `${allowableSettlement > 0 ? allowableSettlement.toFixed(3) + '"' : 'L²/130H'}`, maxOutOfPlane <= (allowableSettlement || 2.0) ? '✓ ACCEPTABLE' : '✗ REVIEW']
+      ['Uniform Settlement', `${this.renderNumber(uniformSettlement, 3, 'N/A')}"`, 'No limit', !isNaN(uniformSettlement) ? '✓ ACCEPTABLE' : 'Not calculated'],
+      ['Tilt', `${this.renderNumber(actualTilt, 4, 'N/A')} in/ft`, '0.015 in/ft', !isNaN(actualTilt) ? (actualTilt <= 0.015 ? '✓ ACCEPTABLE' : '✗ EXCEEDS') : 'Not calculated'],
+      ['Out-of-Plane', `${this.renderNumber(maxOutOfPlane, 3, 'N/A')}"`, `${allowableSettlement > 0 ? this.renderNumber(allowableSettlement, 3, 'L²/130H') + '"' : 'L²/130H'}`, !isNaN(maxOutOfPlane) ? (maxOutOfPlane <= (allowableSettlement || 2.0) ? '✓ ACCEPTABLE' : '✗ REVIEW') : 'Not calculated']
     ];
     
     this.addTableFlow({
@@ -1910,11 +1928,11 @@ class ProfessionalPDFGenerator {
       this.currentY += 8;
       
       const capacityData = [
-        ['Tank Capacity', tankVolume > 0 ? `${tankVolume.toFixed(0)} ${report.capacityUnit || ''}` : 'Not provided'],
+        ['Tank Capacity', tankVolume > 0 && isFinite(tankVolume) ? `${this.renderNumber(tankVolume, 0, 'Not provided')} ${report.capacityUnit || ''}` : 'Not provided'],
         ['Dike Type', containment.dikeType || 'Not provided'],
         ['Dike Height', containment.dikeHeight ? `${containment.dikeHeight} ft` : 'Not provided'],
-        ['Dike Capacity', dikeCapacity > 0 ? `${dikeCapacity.toFixed(0)} bbls` : 'Not provided'],
-        ['Adequacy Ratio', dikeCapacity > 0 && tankVolume > 0 ? `${adequacyRatio.toFixed(1)}%` : 'Cannot calculate'],
+        ['Dike Capacity', dikeCapacity > 0 && isFinite(dikeCapacity) ? `${this.renderNumber(dikeCapacity, 0, 'Not provided')} bbls` : 'Not provided'],
+        ['Adequacy Ratio', dikeCapacity > 0 && tankVolume > 0 && isFinite(adequacyRatio) ? `${this.renderNumber(adequacyRatio, 1, 'Cannot calculate')}%` : 'Cannot calculate'],
         ['EPA Requirement', '110% of tank capacity'],
         ['Compliance', dikeCapacity > 0 && tankVolume > 0 ? (adequacyRatio >= 110 ? '✓ COMPLIANT' : '✗ NON-COMPLIANT') : 'Insufficient data']
       ];
