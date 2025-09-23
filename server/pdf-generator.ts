@@ -226,10 +226,18 @@ export async function generateInspectionPDF(reportId: number): Promise<Buffer> {
   // Use actual settlement survey data - no local calculations
   let extendedSettlementSurvey: ExtendedAdvancedSettlementSurvey | null = null;
   
-  // Find the most recent or relevant survey (could be based on status or date)
-  // For now use the last one in the array as it's likely the most recent
+  // Find the most recent survey by surveyDate
   const latestSurvey = settlementSurveys && settlementSurveys.length > 0 
-    ? settlementSurveys[settlementSurveys.length - 1] 
+    ? settlementSurveys.reduce((latest, current) => {
+        // If either survey doesn't have a date, prefer the one that does
+        if (!latest.surveyDate) return current;
+        if (!current.surveyDate) return latest;
+        
+        // Compare dates - use the most recent
+        const latestDate = new Date(latest.surveyDate);
+        const currentDate = new Date(current.surveyDate);
+        return currentDate > latestDate ? current : latest;
+      }, settlementSurveys[0])
     : null;
   
   if (latestSurvey) {
@@ -514,48 +522,27 @@ class ProfessionalPDFGenerator {
     const specificGravity = report.specificGravity ? parseFloat(String(report.specificGravity)) : NaN;
     const ageInYears = report.yearsSinceLastInspection || 0;
     
-    // Only perform analysis if we have the required data
+    // Only perform analysis if we have ALL required data
+    // Skip analysis entirely if we don't have real course height data
+    // Since we don't have actual course height data, we should NOT perform the analysis
+    // This prevents generating incorrect calculations with hardcoded values
     if (!isNaN(diameter) && !isNaN(height) && !isNaN(specificGravity)) {
-      courseGroups.forEach((courseMeasurements, courseNumber) => {
-        if (courseMeasurements.length > 0) {
-          const firstMeasurement = courseMeasurements[0];
-          const originalThickness = firstMeasurement?.originalThickness 
-            ? parseFloat(String(firstMeasurement.originalThickness))
-            : NaN;
-          
-          // Only analyze if we have valid original thickness
-          if (!isNaN(originalThickness)) {
-            const courseData = analyzeShellCourse(
-              {
-                courseNumber,
-                height: 8, // This should come from actual course height data
-                originalThickness,
-                measurements: courseMeasurements.map(m => ({
-                  location: m.location || '',
-                  currentThickness: m.currentThickness 
-                    ? parseFloat(String(m.currentThickness))
-                    : 0
-                }))
-              },
-              {
-                diameter,
-                totalHeight: height,
-                specificGravity,
-                maxFillHeight: height, // Use actual height, not assumed 90%
-                jointEfficiency: 1.0, // Should come from actual data
-                ageInYears
-              }
-            );
-            shellCourses.push(courseData);
-          }
-        }
-      });
+      // NOTE: Shell course analysis is disabled because actual course height data is not available.
+      // Without real course heights, any calculations would produce incorrect results.
+      // The analyzeShellCourse function requires accurate course height for API 653 compliance.
+      
+      // Log that analysis was skipped
+      console.log('Shell course analysis skipped - missing actual course height data');
+      
+      // Do not analyze shell courses without proper data
+      // courseGroups.forEach((courseMeasurements, courseNumber) => { ... });
     }
 
-    // Calculate tank inspection intervals
+    // Calculate tank inspection intervals only if we have proper analysis data
+    // Without shell course analysis, we cannot determine proper intervals
     const tankInspectionIntervals = shellCourses.length > 0 
       ? calculateTankInspectionIntervals(shellCourses)
-      : { externalInterval: 5, internalInterval: 10 };
+      : { externalInterval: NaN, internalInterval: NaN }; // Don't provide default values
 
     // Calculate KPI metrics
     const totalMeasurements = measurements.length;
@@ -574,12 +561,16 @@ class ProfessionalPDFGenerator {
 
     const kpiMetrics: KPIMetrics = {
       percentTMLsComplete: totalMeasurements > 0 ? (completedMeasurements / totalMeasurements) * 100 : 0,
-      minRemainingLife,
+      minRemainingLife: minRemainingLife === 999 ? NaN : minRemainingLife, // Use NaN for no data
       criticalFindings,
       majorFindings,
       minorFindings,
-      overallStatus: criticalFindings > 0 ? 'NO-GO' : majorFindings > 0 ? 'CONDITIONAL' : 'GO',
-      nextInspectionDue: new Date(new Date().setFullYear(new Date().getFullYear() + tankInspectionIntervals.internalInterval))
+      overallStatus: totalMeasurements === 0 ? 'INSUFFICIENT DATA' : 
+                    criticalFindings > 0 ? 'NO-GO' : 
+                    majorFindings > 0 ? 'CONDITIONAL' : 'GO',
+      nextInspectionDue: !isNaN(tankInspectionIntervals.internalInterval) 
+        ? new Date(new Date().setFullYear(new Date().getFullYear() + tankInspectionIntervals.internalInterval))
+        : null // Don't calculate date without valid interval
     };
 
     // Perform enhanced API 653 evaluation
@@ -986,6 +977,57 @@ class ProfessionalPDFGenerator {
     // Summary of calculations
     this.pdf.setFont('helvetica', 'normal');
     this.pdf.setFontSize(10);
+    
+    // Check if we have valid analysis data
+    if (analysisData.shellCourses.length === 0) {
+      this.pdf.setTextColor(100, 100, 100);
+      this.pdf.text('API 653 thickness calculations could not be performed due to missing data.', this.margin, this.currentY);
+      this.currentY += 8;
+      this.pdf.text('Shell course analysis requires accurate course height data which is not available.', this.margin, this.currentY);
+      this.currentY += 15;
+      
+      // Show what measurements we do have without calculations
+      const shellMeasurements = measurements.filter(m => 
+        m.measurementType === 'shell' || m.component?.toLowerCase().includes('shell')
+      );
+      
+      if (shellMeasurements.length > 0) {
+        this.pdf.setFont('helvetica', 'bold');
+        this.pdf.setFontSize(11);
+        this.pdf.setTextColor(0, 0, 0);
+        this.pdf.text('SHELL THICKNESS MEASUREMENTS (WITHOUT ANALYSIS)', this.margin, this.currentY);
+        this.currentY += 8;
+        
+        // Show raw measurements only
+        const shellData = shellMeasurements.map(m => [
+          m.component || 'Not specified',
+          m.originalThickness ? parseFloat(String(m.originalThickness)).toFixed(3) : 'Not provided',
+          m.currentThickness ? parseFloat(String(m.currentThickness)).toFixed(3) : 'Not measured',
+          'Not calculated', // min required
+          'Not calculated', // corrosion rate
+          'Not calculated', // remaining life
+          'Requires analysis' // status
+        ]);
+        
+        this.addTableFlow({
+          head: [['Component', 'Original (in)', 'Current (in)', 't-min (in)', 'CR (mpy)', 'RL (yrs)', 'Status']],
+          body: shellData,
+          theme: 'striped',
+          headStyles: {
+            fillColor: this.primaryColor,
+            fontSize: 9,
+            fontStyle: 'bold'
+          },
+          bodyStyles: {
+            fontSize: 9,
+            textColor: [100, 100, 100]
+          },
+          margin: { left: this.margin }
+        }, 10);
+      }
+      return;
+    }
+    
     this.pdf.text('This section presents the API 653 thickness calculations and compliance assessment.', this.margin, this.currentY);
     this.currentY += 10;
     
@@ -1000,7 +1042,7 @@ class ProfessionalPDFGenerator {
     this.pdf.text('SHELL COURSE ANALYSIS', this.margin, this.currentY);
     this.currentY += 8;
     
-    const shellData = analysisData.shellCourses.length > 0 ? analysisData.shellCourses.map(course => {
+    const shellData = analysisData.shellCourses.map(course => {
       const worstMeasurement = course.measurements.reduce((worst, current) => 
         current.remainingLife < worst.remainingLife ? current : worst,
         course.measurements[0] || { remainingLife: 999 }
@@ -1275,7 +1317,7 @@ class ProfessionalPDFGenerator {
         m.location || 'N/A',
         m.currentThickness ? parseFloat(String(m.currentThickness)).toFixed(3) : 'N/A',
         m.originalThickness ? parseFloat(String(m.originalThickness)).toFixed(3) : 'N/A',
-        '0.100', // API 653 minimum for bottom
+        m.minRequiredThickness ? m.minRequiredThickness.toFixed(3) : 'Not calculated', // Use actual min required, not hardcoded
         m.corrosionRate ? parseFloat(String(m.corrosionRate)).toFixed(1) : 'N/A',
         m.remainingLife ? parseFloat(String(m.remainingLife)).toFixed(1) : 'N/A',
         m.status?.toUpperCase() || 'N/A'
@@ -1303,15 +1345,32 @@ class ProfessionalPDFGenerator {
   private addMinimumThicknessCompliance(measurements: ExtendedThicknessMeasurement[], analysisData: AnalysisData) {
     this.addSectionHeader('6.0 MINIMUM THICKNESS COMPLIANCE', true, true);
     
-    // Compliance summary
-    const compliantCount = measurements.filter(m => {
-      const current = parseFloat(String(m.currentThickness || 0));
-      const min = m.minRequiredThickness || 0.1;
+    // Check if we have the data needed for compliance analysis
+    const measurementsWithMinThickness = measurements.filter(m => 
+      m.minRequiredThickness !== undefined && m.currentThickness !== undefined
+    );
+    
+    if (measurementsWithMinThickness.length === 0) {
+      // No valid compliance data available
+      this.pdf.setFont('helvetica', 'normal');
+      this.pdf.setFontSize(11);
+      this.pdf.setTextColor(100, 100, 100);
+      this.pdf.text('Insufficient data for minimum thickness compliance analysis.', this.margin, this.currentY);
+      this.currentY += 8;
+      this.pdf.text('Minimum required thickness calculations require complete measurement data.', this.margin, this.currentY);
+      this.currentY += 15;
+      return;
+    }
+    
+    // Compliance summary - only for measurements with valid min thickness
+    const compliantCount = measurementsWithMinThickness.filter(m => {
+      const current = parseFloat(String(m.currentThickness));
+      const min = m.minRequiredThickness!;
       return current >= min;
     }).length;
     
-    const nonCompliantCount = measurements.length - compliantCount;
-    const complianceRate = measurements.length > 0 ? (compliantCount / measurements.length) * 100 : 0;
+    const nonCompliantCount = measurementsWithMinThickness.length - compliantCount;
+    const complianceRate = (compliantCount / measurementsWithMinThickness.length) * 100;
     
     // Compliance overview box
     const bgColor: [number, number, number] = complianceRate === 100 ? [240, 255, 240] : [255, 245, 245];
@@ -1382,23 +1441,40 @@ class ProfessionalPDFGenerator {
   private addRemainingLifeAnalysis(measurements: ExtendedThicknessMeasurement[], analysisData: AnalysisData) {
     this.addSectionHeader('7.0 REMAINING LIFE ANALYSIS', true, true);
     
+    // Check if we have valid remaining life data
+    const measurementsWithRemainingLife = measurements.filter(m => 
+      m.remainingLife !== undefined && m.remainingLife !== null && !isNaN(parseFloat(String(m.remainingLife)))
+    );
+    
+    if (measurementsWithRemainingLife.length === 0) {
+      // No valid remaining life data available
+      this.pdf.setFont('helvetica', 'normal');
+      this.pdf.setFontSize(11);
+      this.pdf.setTextColor(100, 100, 100);
+      this.pdf.text('Insufficient data for remaining life analysis.', this.margin, this.currentY);
+      this.currentY += 8;
+      this.pdf.text('Remaining life calculations require corrosion rate and thickness measurements.', this.margin, this.currentY);
+      this.currentY += 15;
+      return;
+    }
+    
     // Criticality Matrix
     this.pdf.setFont('helvetica', 'bold');
     this.pdf.setFontSize(11);
     this.pdf.text('CRITICALITY MATRIX', this.margin, this.currentY);
     this.currentY += 8;
     
-    // Define criticality categories
-    const critical = measurements.filter(m => parseFloat(String(m.remainingLife || 999)) < 2);
-    const high = measurements.filter(m => {
-      const rl = parseFloat(String(m.remainingLife || 999));
+    // Define criticality categories - only for valid measurements
+    const critical = measurementsWithRemainingLife.filter(m => parseFloat(String(m.remainingLife)) < 2);
+    const high = measurementsWithRemainingLife.filter(m => {
+      const rl = parseFloat(String(m.remainingLife));
       return rl >= 2 && rl < 5;
     });
-    const medium = measurements.filter(m => {
-      const rl = parseFloat(String(m.remainingLife || 999));
+    const medium = measurementsWithRemainingLife.filter(m => {
+      const rl = parseFloat(String(m.remainingLife));
       return rl >= 5 && rl < 10;
     });
-    const low = measurements.filter(m => parseFloat(String(m.remainingLife || 999)) >= 10);
+    const low = measurementsWithRemainingLife.filter(m => parseFloat(String(m.remainingLife)) >= 10);
     
     const matrixData = [
       ['CRITICAL (<2 years)', critical.length.toString(), critical.map(m => m.location).join(', ') || 'None'],
@@ -2116,6 +2192,38 @@ class ProfessionalPDFGenerator {
     
     const { externalInterval, internalInterval, criticalCourse } = analysisData.tankInspectionIntervals;
     
+    // Check if we have valid interval data
+    if (isNaN(externalInterval) || isNaN(internalInterval)) {
+      this.pdf.setFont('helvetica', 'normal');
+      this.pdf.setFontSize(11);
+      this.pdf.setTextColor(100, 100, 100);
+      this.pdf.text('Inspection intervals could not be calculated due to insufficient data.', this.margin, this.currentY);
+      this.currentY += 8;
+      this.pdf.text('API 653 interval calculations require complete shell course analysis.', this.margin, this.currentY);
+      this.currentY += 15;
+      
+      // Show any explicitly provided intervals from the report
+      if (report.nextExternalInspection || report.nextInternalInspection) {
+        this.pdf.setFont('helvetica', 'bold');
+        this.pdf.setFontSize(11);
+        this.pdf.setTextColor(0, 0, 0);
+        this.pdf.text('SCHEDULED INSPECTIONS (FROM REPORT)', this.margin, this.currentY);
+        this.currentY += 8;
+        
+        this.pdf.setFont('helvetica', 'normal');
+        this.pdf.setFontSize(10);
+        if (report.nextExternalInspection) {
+          this.pdf.text(`• Next External Inspection: ${report.nextExternalInspection}`, this.margin, this.currentY);
+          this.currentY += 6;
+        }
+        if (report.nextInternalInspection) {
+          this.pdf.text(`• Next Internal Inspection: ${report.nextInternalInspection}`, this.margin, this.currentY);
+          this.currentY += 6;
+        }
+      }
+      return;
+    }
+    
     // Calculate dates
     const currentDate = new Date();
     const externalDate = new Date();
@@ -2217,10 +2325,10 @@ class ProfessionalPDFGenerator {
         `The tank is considered fit for continued service under current operating conditions.`,
         ``,
         `All thickness measurements meet or exceed API 653 minimum requirements, and the calculated remaining`,
-        `life of ${kpiMetrics.minRemainingLife.toFixed(1)} years provides adequate time for planned maintenance activities.`,
+        `life of ${!isNaN(kpiMetrics.minRemainingLife) ? kpiMetrics.minRemainingLife.toFixed(1) + ' years' : 'sufficient duration'} provides adequate time for planned maintenance activities.`,
         ``,
         `Recommended actions include routine monitoring and the scheduled maintenance items identified in this`,
-        `report. The next internal inspection should be performed within ${analysisData.tankInspectionIntervals.internalInterval} years.`
+        `report. ${!isNaN(analysisData.tankInspectionIntervals.internalInterval) ? 'The next internal inspection should be performed within ' + analysisData.tankInspectionIntervals.internalInterval + ' years.' : 'Inspection intervals should be determined based on complete analysis.'}`
       ];
     } else if (status === 'CONDITIONAL') {
       conclusionText = [
@@ -2228,13 +2336,13 @@ class ProfessionalPDFGenerator {
         `The tank may continue in service with the implementation of recommended repairs and increased monitoring.`,
         ``,
         `${kpiMetrics.majorFindings} major findings require action within the next operating cycle to ensure`,
-        `continued safe operation. The minimum remaining life of ${kpiMetrics.minRemainingLife.toFixed(1)} years indicates`,
-        `accelerated corrosion in certain areas.`,
+        `continued safe operation. ${!isNaN(kpiMetrics.minRemainingLife) ? 'The minimum remaining life of ' + kpiMetrics.minRemainingLife.toFixed(1) + ' years indicates' : 'Certain areas show'}`,
+        `accelerated corrosion.`,
         ``,
         `All high priority recommendations should be implemented within 6 months, with follow-up inspection`,
         `to verify repair effectiveness.`
       ];
-    } else {
+    } else if (status === 'NO-GO') {
       conclusionText = [
         `The API 653 inspection of Tank ${report.tankId} has identified ${kpiMetrics.criticalFindings} critical findings`,
         `requiring immediate attention before the tank can continue in service.`,
@@ -2244,6 +2352,17 @@ class ProfessionalPDFGenerator {
         ``,
         `The tank should not return to full service until all critical repairs are completed and verified`,
         `through follow-up inspection.`
+      ];
+    } else {
+      // INSUFFICIENT DATA status
+      conclusionText = [
+        `The API 653 inspection of Tank ${report.tankId} could not be fully evaluated due to insufficient data.`,
+        `Complete thickness measurements and operating parameters are required for proper assessment.`,
+        ``,
+        `Additional data collection is necessary to determine tank condition and compliance with API 653 requirements.`,
+        `The tank should be re-inspected with comprehensive measurements before determining fitness for service.`,
+        ``,
+        `Please ensure all required measurements are collected and documented for complete analysis.`
       ];
     }
     
