@@ -326,6 +326,8 @@ class ProfessionalPDFGenerator {
   private sectionNumber: number = 0;
   private subsectionNumber: number = 0;
   private tableOfContents: Array<{title: string, page: number, level: number}> = [];
+  private defaultTopMargin: number = 40;
+  private bottomMargin: number = 30;
 
   constructor() {
     this.pdf = new jsPDF({
@@ -333,6 +335,75 @@ class ProfessionalPDFGenerator {
       unit: 'mm',
       format: 'a4'
     });
+  }
+
+  // Layout engine helper methods
+  private ensurePageBreak(requiredHeight: number = 50): void {
+    if (this.currentY + requiredHeight > this.pageHeight - this.bottomMargin) {
+      this.pdf.addPage();
+      this.currentPage++;
+      this.currentY = this.defaultTopMargin;
+    }
+  }
+
+  private addTextFlow(text: string, options?: {
+    fontSize?: number;
+    fontStyle?: string;
+    color?: [number, number, number];
+    indent?: number;
+    lineHeight?: number;
+  }): void {
+    const opts = {
+      fontSize: 10,
+      fontStyle: 'normal',
+      color: [0, 0, 0] as [number, number, number],
+      indent: 0,
+      lineHeight: 6,
+      ...options
+    };
+
+    this.pdf.setFont('helvetica', opts.fontStyle);
+    this.pdf.setFontSize(opts.fontSize);
+    this.pdf.setTextColor(...opts.color);
+
+    // Check for page break before adding text
+    this.ensurePageBreak(opts.lineHeight + 5);
+
+    this.pdf.text(text, this.margin + opts.indent, this.currentY);
+    this.currentY += opts.lineHeight;
+  }
+
+  private addTableFlow(config: any, spacing: number = 10): void {
+    // Ensure we have space for at least the header
+    this.ensurePageBreak(30);
+    
+    // Set the startY to current position
+    config.startY = this.currentY;
+    
+    // Apply the table
+    (this.pdf as any).autoTable(config);
+    
+    // Update currentY after table
+    this.currentY = (this.pdf as any).lastAutoTable.finalY + spacing;
+  }
+
+  private addImageFlow(imageData: any, width: number, height: number, spacing: number = 10): void {
+    // Check if image fits on current page
+    this.ensurePageBreak(height + spacing);
+    
+    // Add the image at current position
+    this.pdf.addImage(imageData, 'PNG', this.margin, this.currentY, width, height);
+    
+    // Advance currentY
+    this.currentY += height + spacing;
+  }
+
+  private startNewSection(addNewPage: boolean = true): void {
+    if (addNewPage) {
+      this.pdf.addPage();
+      this.currentPage++;
+    }
+    this.currentY = this.defaultTopMargin;
   }
 
   generate(data: ReportData): Buffer {
@@ -346,108 +417,90 @@ class ProfessionalPDFGenerator {
     // Cover Page
     this.addCoverPage(report);
     
-    // Table of Contents
-    this.pdf.addPage();
-    this.currentPage++;
+    // Table of Contents placeholder - will be updated later
+    this.startNewSection(true);
     this.addTableOfContents();
     
     // Executive Summary with KPIs
-    this.pdf.addPage();
-    this.currentPage++;
+    this.startNewSection(true);
     this.addEnhancedExecutiveSummary(report, measurements, analysisData);
     
     // Tank Information
-    this.pdf.addPage();
-    this.currentPage++;
+    this.startNewSection(true);
     this.addComprehensiveTankInformation(report);
     
     // API 653 Calculation Analysis
-    this.pdf.addPage();
-    this.currentPage++;
+    this.startNewSection(true);
     this.addAPI653CalculationAnalysis(analysisData, measurements);
     
     // Corrosion Rate Analysis
-    this.pdf.addPage();
-    this.currentPage++;
+    this.startNewSection(true);
     this.addCorrosionRateAnalysis(measurements, analysisData);
     
     // Thickness Measurements with Analysis
     if (measurements.length > 0) {
-      this.pdf.addPage();
-      this.currentPage++;
+      this.startNewSection(true);
       this.addEnhancedThicknessMeasurements(measurements, analysisData);
     }
     
     // Minimum Thickness Compliance Table
-    this.pdf.addPage();
-    this.currentPage++;
+    this.startNewSection(true);
     this.addMinimumThicknessCompliance(measurements, analysisData);
     
     // Remaining Life Analysis with Criticality Matrix
-    this.pdf.addPage();
-    this.currentPage++;
+    this.startNewSection(true);
     this.addRemainingLifeAnalysis(measurements, analysisData);
     
     // NDE Test Locations
     if (ndeTestLocations && ndeTestLocations.length > 0) {
-      this.pdf.addPage();
-      this.currentPage++;
+      this.startNewSection(true);
       this.addNDETestLocations(ndeTestLocations);
     }
     
     // Inspection Checklist with Findings
     if (checklists.length > 0) {
-      this.pdf.addPage();
-      this.currentPage++;
+      this.startNewSection(true);
       this.addEnhancedInspectionChecklist(checklists);
     }
     
     // Appurtenances
     if (appurtenances.length > 0) {
-      this.pdf.addPage();
-      this.currentPage++;
+      this.startNewSection(true);
       this.addEnhancedAppurtenances(appurtenances);
     }
     
     // Venting System
     if (ventingInspections.length > 0) {
-      this.pdf.addPage();
-      this.currentPage++;
+      this.startNewSection(true);
       this.addEnhancedVentingSystem(ventingInspections);
     }
     
     // Settlement Analysis
     if (settlementSurvey) {
-      this.pdf.addPage();
-      this.currentPage++;
+      this.startNewSection(true);
       this.addEnhancedSettlementAnalysis(settlementSurvey);
     }
     
     // Secondary Containment Calculations
     if (secondaryContainments && secondaryContainments.length > 0) {
-      this.pdf.addPage();
-      this.currentPage++;
+      this.startNewSection(true);
       this.addSecondaryContainmentAnalysis(secondaryContainments, report);
     }
     
     // Detailed Findings Section
-    this.pdf.addPage();
-    this.currentPage++;
+    this.startNewSection(true);
     this.addDetailedFindings(measurements, checklists, appurtenances, analysisData);
     
     // Comprehensive Recommendations
-    this.pdf.addPage();
-    this.currentPage++;
+    this.startNewSection(true);
     this.addComprehensiveRecommendations(recommendations, analysisData);
     
     // Next Inspection Intervals
-    this.pdf.addPage();
-    this.currentPage++;
+    this.startNewSection(true);
     this.addNextInspectionIntervals(analysisData, report);
     
     // Conclusion
-    this.pdf.addPage();
-    this.currentPage++;
+    this.startNewSection(true);
     this.addConclusion(report, analysisData);
     
     // Add headers and footers to all pages
@@ -652,7 +705,6 @@ class ProfessionalPDFGenerator {
   }
 
   private addTableOfContents() {
-    this.currentY = 40;
     this.addSectionHeader('TABLE OF CONTENTS', false, false);
     
     const sections = [
@@ -675,10 +727,7 @@ class ProfessionalPDFGenerator {
     this.pdf.setFontSize(11);
     
     sections.forEach((section, index) => {
-      if (this.currentY > this.pageHeight - 30) {
-        this.pdf.addPage();
-        this.currentY = 30;
-      }
+      this.ensurePageBreak(15);
       
       // Draw dotted line
       if (this.pdf.setLineDash) {
@@ -701,7 +750,6 @@ class ProfessionalPDFGenerator {
   }
 
   private addEnhancedExecutiveSummary(report: InspectionReport, measurements: ExtendedThicknessMeasurement[], analysisData: AnalysisData) {
-    this.currentY = 40;
     this.addSectionHeader('1.0 EXECUTIVE SUMMARY', true, true);
     
     const { kpiMetrics } = analysisData;
@@ -732,10 +780,7 @@ class ProfessionalPDFGenerator {
     ];
     
     summaryText.forEach(line => {
-      if (this.currentY > this.pageHeight - 30) {
-        this.pdf.addPage();
-        this.currentY = 30;
-      }
+      this.ensurePageBreak(10);
       
       if (line.startsWith('KEY FINDINGS:') || line.startsWith('IMMEDIATE ACTIONS')) {
         this.pdf.setFont('helvetica', 'bold');
@@ -854,7 +899,6 @@ class ProfessionalPDFGenerator {
   }
 
   private addComprehensiveTankInformation(report: InspectionReport) {
-    this.currentY = 40;
     this.addSectionHeader('2.0 TANK INFORMATION', true, true);
     
     // Basic Information
@@ -917,9 +961,8 @@ class ProfessionalPDFGenerator {
   }
 
   private addInfoTable(data: string[][]) {
-    (this.pdf as any).autoTable({
+    this.addTableFlow({
       body: data,
-      startY: this.currentY,
       theme: 'plain',
       styles: {
         fontSize: 10,
@@ -937,13 +980,10 @@ class ProfessionalPDFGenerator {
         }
       },
       margin: { left: this.margin }
-    });
-    
-    this.currentY = this.pdf.lastAutoTable.finalY + 5;
+    }, 5);
   }
 
   private addAPI653CalculationAnalysis(analysisData: AnalysisData, measurements: ExtendedThicknessMeasurement[]) {
-    this.currentY = 40;
     this.addSectionHeader('3.0 API 653 CALCULATION ANALYSIS', true, true);
     
     // Summary of calculations
@@ -989,10 +1029,9 @@ class ProfessionalPDFGenerator {
     ]);
     
     if (shellData.length > 0 || shellMeasurements.length > 0) {
-      (this.pdf as any).autoTable({
+      this.addTableFlow({
         head: [['Course', 'Original\n(in)', 't-min\n(in)', 'Current\n(in)', 'CR\n(mpy)', 'RL\n(years)', 'Status']],
         body: shellData,
-        startY: this.currentY,
         theme: 'striped',
         headStyles: {
           fillColor: this.primaryColor,
@@ -1024,9 +1063,7 @@ class ProfessionalPDFGenerator {
           }
         },
         margin: { left: this.margin }
-      });
-      
-      this.currentY = this.pdf.lastAutoTable.finalY + 10;
+      }, 10);
     }
     
     // API 653 Compliance Summary
@@ -1052,7 +1089,6 @@ class ProfessionalPDFGenerator {
   }
 
   private addCorrosionRateAnalysis(measurements: ExtendedThicknessMeasurement[], analysisData: AnalysisData) {
-    this.currentY = 40;
     this.addSectionHeader('4.0 CORROSION RATE ANALYSIS', true, true);
     
     // Corrosion rate trends by component
@@ -1085,10 +1121,9 @@ class ProfessionalPDFGenerator {
       ['Bottom - Maximum', maxBottomRate.toFixed(2), this.getCorrosionCategory(maxBottomRate)]
     ];
     
-    (this.pdf as any).autoTable({
+    this.addTableFlow({
       head: [['Component', 'Corrosion Rate (mpy)', 'Category']],
       body: rateData,
-      startY: this.currentY,
       theme: 'grid',
       headStyles: {
         fillColor: this.primaryColor,
@@ -1099,9 +1134,7 @@ class ProfessionalPDFGenerator {
         fontSize: 10
       },
       margin: { left: this.margin }
-    });
-    
-    this.currentY = this.pdf.lastAutoTable.finalY + 10;
+    }, 10);
     
     // Corrosion predictions
     this.pdf.setFont('helvetica', 'bold');
@@ -1156,7 +1189,6 @@ class ProfessionalPDFGenerator {
   }
 
   private addEnhancedThicknessMeasurements(measurements: ExtendedThicknessMeasurement[], analysisData: AnalysisData) {
-    this.currentY = 40;
     this.addSectionHeader('5.0 THICKNESS MEASUREMENTS', true, true);
     
     // Group measurements by component - use measurementType for better filtering
@@ -1188,10 +1220,9 @@ class ProfessionalPDFGenerator {
         m.status?.toUpperCase() || 'N/A'
       ]);
       
-      (this.pdf as any).autoTable({
+      this.addTableFlow({
         head: [['Location', 'Component', 'Original\n(in)', 'Current\n(in)', 't-min\n(in)', 'CR\n(mpy)', 'RL\n(yrs)', 'Status']],
         body: shellData,
-        startY: this.currentY,
         theme: 'striped',
         headStyles: {
           fillColor: this.primaryColor,
@@ -1230,17 +1261,13 @@ class ProfessionalPDFGenerator {
             }
           }
         }
-      });
-      
-      this.currentY = this.pdf.lastAutoTable.finalY + 10;
+      }, 10);
     }
     
     // Bottom Measurements - skip section entirely if no data exists (as requested)
     if (bottomMeasurements.length > 0) {
-      // Always start on new page for bottom measurements
-      this.pdf.addPage();
-      this.currentPage++;
-      this.currentY = 40;
+      // Ensure space for bottom measurements section
+      this.ensurePageBreak(50);
       
       this.pdf.setFont('helvetica', 'bold');
       this.pdf.setFontSize(11);
@@ -1257,10 +1284,9 @@ class ProfessionalPDFGenerator {
         m.status?.toUpperCase() || 'N/A'
       ]);
       
-      (this.pdf as any).autoTable({
+      this.addTableFlow({
         head: [['Location', 'Current (in)', 'Original (in)', 't-min (in)', 'CR (mpy)', 'RL (yrs)', 'Status']],
         body: bottomData,
-        startY: this.currentY,
         theme: 'striped',
         headStyles: {
           fillColor: this.primaryColor,
@@ -1273,14 +1299,11 @@ class ProfessionalPDFGenerator {
           halign: 'center'
         },
         margin: { left: this.margin }
-      });
-      
-      this.currentY = this.pdf.lastAutoTable.finalY + 10;
+      }, 10);
     }
   }
 
   private addMinimumThicknessCompliance(measurements: ExtendedThicknessMeasurement[], analysisData: AnalysisData) {
-    this.currentY = 40;
     this.addSectionHeader('6.0 MINIMUM THICKNESS COMPLIANCE', true, true);
     
     // Compliance summary
@@ -1333,10 +1356,9 @@ class ProfessionalPDFGenerator {
         'IMMEDIATE ACTION'
       ]);
       
-      (this.pdf as any).autoTable({
+      this.addTableFlow({
         head: [['Location', 'Component', 'Current (in)', 't-min (in)', 'Deficit (mils)', 'Action']],
         body: nonCompliantData,
-        startY: this.currentY,
         theme: 'grid',
         headStyles: {
           fillColor: this.secondaryColor,
@@ -1350,9 +1372,7 @@ class ProfessionalPDFGenerator {
           5: { fontStyle: 'bold', textColor: this.secondaryColor }
         },
         margin: { left: this.margin }
-      });
-      
-      this.currentY = this.pdf.lastAutoTable.finalY + 10;
+      }, 10);
     }
     
     // API 653 reference
@@ -1363,7 +1383,6 @@ class ProfessionalPDFGenerator {
   }
 
   private addRemainingLifeAnalysis(measurements: ExtendedThicknessMeasurement[], analysisData: AnalysisData) {
-    this.currentY = 40;
     this.addSectionHeader('7.0 REMAINING LIFE ANALYSIS', true, true);
     
     // Criticality Matrix
@@ -1391,10 +1410,9 @@ class ProfessionalPDFGenerator {
       ['LOW (>10 years)', low.length.toString(), low.length > 0 ? 'Multiple locations' : 'None']
     ];
     
-    (this.pdf as any).autoTable({
+    this.addTableFlow({
       head: [['Risk Category', 'Count', 'Locations']],
       body: matrixData,
-      startY: this.currentY,
       theme: 'grid',
       headStyles: {
         fillColor: this.primaryColor,
@@ -1424,9 +1442,7 @@ class ProfessionalPDFGenerator {
         }
       },
       margin: { left: this.margin }
-    });
-    
-    this.currentY = this.pdf.lastAutoTable.finalY + 10;
+    }, 10);
     
     // Life extension options
     this.pdf.setFont('helvetica', 'bold');
@@ -1452,18 +1468,13 @@ class ProfessionalPDFGenerator {
     recommendations.push('• Consider thickness monitoring program with permanent UT sensors');
     
     recommendations.forEach(rec => {
-      if (this.currentY > this.pageHeight - 30) {
-        this.pdf.addPage();
-        this.currentPage++;
-        this.currentY = 40;
-      }
+      this.ensurePageBreak(10);
       this.pdf.text(rec, this.margin, this.currentY);
       this.currentY += 6;
     });
   }
 
   private addNDETestLocations(ndeTestLocations: NdeTestLocation[]) {
-    this.currentY = 40;
     this.addSectionHeader('8.0 NDE TEST LOCATIONS', true, true);
     
     const ndeData = ndeTestLocations.map(location => [
@@ -1474,10 +1485,9 @@ class ProfessionalPDFGenerator {
       location.followUp || 'None required'
     ]);
     
-    (this.pdf as any).autoTable({
+    this.addTableFlow({
       head: [['Location', 'Test Type', 'Extent', 'Findings', 'Follow-up']],
       body: ndeData,
-      startY: this.currentY,
       theme: 'striped',
       headStyles: {
         fillColor: this.primaryColor,
@@ -1488,13 +1498,10 @@ class ProfessionalPDFGenerator {
         fontSize: 8
       },
       margin: { left: this.margin }
-    });
-    
-    this.currentY = this.pdf.lastAutoTable.finalY + 10;
+    }, 10);
   }
 
   private addEnhancedInspectionChecklist(checklists: ExtendedInspectionChecklist[]) {
-    this.currentY = 40;
     this.addSectionHeader('9.0 INSPECTION CHECKLIST', true, true);
     
     // Group by category
@@ -1504,11 +1511,7 @@ class ProfessionalPDFGenerator {
       const items = checklists.filter(item => item.category === category);
       
       if (items.length > 0) {
-        if (this.currentY > this.pageHeight - 50) {
-          this.pdf.addPage();
-          this.currentPage++;
-          this.currentY = 40;
-        }
+        this.ensurePageBreak(50);
         
         this.pdf.setFont('helvetica', 'bold');
         this.pdf.setFontSize(11);
@@ -1522,10 +1525,9 @@ class ProfessionalPDFGenerator {
           item.notes || 'No issues noted'
         ]);
         
-        (this.pdf as any).autoTable({
+        this.addTableFlow({
           head: [['Item', 'Status', 'Severity', 'Notes']],
           body: checklistData,
-          startY: this.currentY,
           theme: 'grid',
           headStyles: {
             fillColor: this.primaryColor,
@@ -1561,15 +1563,12 @@ class ProfessionalPDFGenerator {
             }
           },
           margin: { left: this.margin }
-        });
-        
-        this.currentY = this.pdf.lastAutoTable.finalY + 10;
+        }, 10);
       }
     });
   }
 
   private addEnhancedAppurtenances(appurtenances: ExtendedAppurtenanceInspection[]) {
-    this.currentY = 40;
     this.addSectionHeader('10.0 APPURTENANCE INSPECTIONS', true, true);
     
     const appurtenanceData = appurtenances.map(item => [
@@ -1581,10 +1580,9 @@ class ProfessionalPDFGenerator {
       item.notes || 'No issues'
     ]);
     
-    (this.pdf as any).autoTable({
+    this.addTableFlow({
       head: [['Component', 'Location', 'Condition', 'Severity', 'Action', 'Notes']],
       body: appurtenanceData,
-      startY: this.currentY,
       theme: 'striped',
       headStyles: {
         fillColor: this.primaryColor,
@@ -1599,13 +1597,10 @@ class ProfessionalPDFGenerator {
         4: { halign: 'center' }
       },
       margin: { left: this.margin }
-    });
-    
-    this.currentY = this.pdf.lastAutoTable.finalY + 10;
+    }, 10);
   }
 
   private addEnhancedVentingSystem(ventingInspections: ExtendedVentingSystemInspection[]) {
-    this.currentY = 40;
     this.addSectionHeader('11.0 VENTING SYSTEM INSPECTION', true, true);
     
     const ventingData = ventingInspections.map(item => [
@@ -1618,10 +1613,9 @@ class ProfessionalPDFGenerator {
       item.notes || 'No issues'
     ]);
     
-    (this.pdf as any).autoTable({
+    this.addTableFlow({
       head: [['Component', 'Type', 'Size', 'Condition', 'Status', 'Test Results', 'Notes']],
       body: ventingData,
-      startY: this.currentY,
       theme: 'striped',
       headStyles: {
         fillColor: this.primaryColor,
@@ -1632,13 +1626,10 @@ class ProfessionalPDFGenerator {
         fontSize: 8
       },
       margin: { left: this.margin }
-    });
-    
-    this.currentY = this.pdf.lastAutoTable.finalY + 10;
+    }, 10);
   }
 
   private addEnhancedSettlementAnalysis(survey: ExtendedAdvancedSettlementSurvey) {
-    this.currentY = 40;
     this.addSectionHeader('12.0 SETTLEMENT ANALYSIS', true, true);
     
     // Settlement Summary
@@ -1668,9 +1659,8 @@ class ProfessionalPDFGenerator {
       ['Settlement Acceptance', survey.settlementAcceptance || 'PENDING']
     ];
     
-    (this.pdf as any).autoTable({
+    this.addTableFlow({
       body: summaryData,
-      startY: this.currentY,
       theme: 'plain',
       styles: {
         fontSize: 9,
@@ -1681,9 +1671,7 @@ class ProfessionalPDFGenerator {
         1: { cellWidth: 'auto' }
       },
       margin: { left: this.margin }
-    });
-    
-    this.currentY = this.pdf.lastAutoTable.finalY + 10;
+    }, 10);
     
     // Individual Measurement Points Table
     if (survey.measurements && survey.measurements.length > 0) {
@@ -1700,10 +1688,9 @@ class ProfessionalPDFGenerator {
         parseFloat(String(m.outOfPlane || 0)).toFixed(3)
       ]);
       
-      (this.pdf as any).autoTable({
+      this.addTableFlow({
         head: [['Point #', 'Angle (°)', 'Measured (in)', 'Cosine Fit (in)', 'Out of Plane (in)']],
         body: measurementData,
-        startY: this.currentY,
         theme: 'striped',
         headStyles: {
           fillColor: this.primaryColor,
@@ -1721,9 +1708,7 @@ class ProfessionalPDFGenerator {
           4: { halign: 'right', cellWidth: 35 }
         },
         margin: { left: this.margin }
-      });
-      
-      this.currentY = this.pdf.lastAutoTable.finalY + 10;
+      }, 10);
     }
     
     // Cosine Fit Analysis
@@ -1748,9 +1733,8 @@ class ProfessionalPDFGenerator {
         ['Cosine Fit Status', rSquared >= 0.90 ? '✓ ACCEPTABLE' : '✗ REVIEW REQUIRED']
       ];
       
-      (this.pdf as any).autoTable({
+      this.addTableFlow({
         body: cosineFitData,
-        startY: this.currentY,
         theme: 'plain',
         styles: {
           fontSize: 9,
@@ -1772,9 +1756,7 @@ class ProfessionalPDFGenerator {
           }
         },
         margin: { left: this.margin }
-      });
-      
-      this.currentY = this.pdf.lastAutoTable.finalY + 10;
+      }, 10);
     }
     
     // API 653 Compliance
@@ -1790,10 +1772,9 @@ class ProfessionalPDFGenerator {
       ['Out-of-Plane', `${maxOutOfPlane.toFixed(3)}"`, `${allowableSettlement > 0 ? allowableSettlement.toFixed(3) + '"' : 'L²/130H'}`, maxOutOfPlane <= (allowableSettlement || 2.0) ? '✓ ACCEPTABLE' : '✗ REVIEW']
     ];
     
-    (this.pdf as any).autoTable({
+    this.addTableFlow({
       body: complianceData.slice(1),
       head: [complianceData[0]],
-      startY: this.currentY,
       theme: 'grid',
       headStyles: {
         fillColor: this.primaryColor,
@@ -1819,9 +1800,7 @@ class ProfessionalPDFGenerator {
         }
       },
       margin: { left: this.margin }
-    });
-    
-    this.currentY = this.pdf.lastAutoTable.finalY + 10;
+    }, 10);
     
     // Recommendations
     if (survey.settlementRecommendations) {
@@ -1834,11 +1813,7 @@ class ProfessionalPDFGenerator {
       this.pdf.setFontSize(10);
       const text = this.pdf.splitTextToSize(survey.settlementRecommendations, this.pageWidth - 2 * this.margin);
       text.forEach((line: string) => {
-        if (this.currentY > this.pageHeight - 30) {
-          this.pdf.addPage();
-          this.currentPage++;
-          this.currentY = 40;
-        }
+        this.ensurePageBreak(10);
         this.pdf.text(line, this.margin, this.currentY);
         this.currentY += 5;
       });
@@ -1846,7 +1821,6 @@ class ProfessionalPDFGenerator {
   }
 
   private addSecondaryContainmentAnalysis(containments: SecondaryContainment[], report: InspectionReport) {
-    this.currentY = 40;
     this.addSectionHeader('13.0 SECONDARY CONTAINMENT', true, true);
     
     const containment = containments[0]; // Use first containment if multiple
@@ -1872,9 +1846,8 @@ class ProfessionalPDFGenerator {
         ['Compliance', adequacyRatio >= 110 ? '✓ COMPLIANT' : '✗ NON-COMPLIANT']
       ];
       
-      (this.pdf as any).autoTable({
+      this.addTableFlow({
         body: capacityData,
-        startY: this.currentY,
         theme: 'plain',
         styles: {
           fontSize: 9,
@@ -1894,9 +1867,7 @@ class ProfessionalPDFGenerator {
           }
         },
         margin: { left: this.margin }
-      });
-      
-      this.currentY = this.pdf.lastAutoTable.finalY + 10;
+      }, 10);
       
       // Condition assessment
       this.pdf.setFont('helvetica', 'bold');
@@ -1912,9 +1883,8 @@ class ProfessionalPDFGenerator {
         ['Drainage Valves', containment.drainValvesSealed ? 'Sealed' : 'Not sealed']
       ];
       
-      (this.pdf as any).autoTable({
+      this.addTableFlow({
         body: conditionData,
-        startY: this.currentY,
         theme: 'plain',
         styles: {
           fontSize: 9,
@@ -1925,18 +1895,16 @@ class ProfessionalPDFGenerator {
           1: { cellWidth: 'auto' }
         },
         margin: { left: this.margin }
-      });
-      
-      this.currentY = this.pdf.lastAutoTable.finalY + 10;
+      }, 10);
     }
   }
 
   private addDetailedFindings(measurements: ExtendedThicknessMeasurement[], checklists: ExtendedInspectionChecklist[], 
                              appurtenances: ExtendedAppurtenanceInspection[], analysisData: AnalysisData) {
-    this.currentY = 40;
     this.addSectionHeader('14.0 DETAILED FINDINGS', true, true);
     
     // Critical Findings
+    this.ensurePageBreak(20);
     this.pdf.setFont('helvetica', 'bold');
     this.pdf.setFontSize(11);
     this.pdf.setTextColor(...this.secondaryColor);
@@ -1967,11 +1935,7 @@ class ProfessionalPDFGenerator {
     this.pdf.setFont('helvetica', 'normal');
     this.pdf.setFontSize(10);
     criticalFindings.forEach(finding => {
-      if (this.currentY > this.pageHeight - 30) {
-        this.pdf.addPage();
-        this.currentPage++;
-        this.currentY = 40;
-      }
+      this.ensurePageBreak(10);
       this.pdf.text(finding, this.margin, this.currentY);
       this.currentY += 6;
     });
@@ -2007,11 +1971,7 @@ class ProfessionalPDFGenerator {
     this.pdf.setFont('helvetica', 'normal');
     this.pdf.setFontSize(10);
     majorFindings.forEach(finding => {
-      if (this.currentY > this.pageHeight - 30) {
-        this.pdf.addPage();
-        this.currentPage++;
-        this.currentY = 40;
-      }
+      this.ensurePageBreak(10);
       this.pdf.text(finding, this.margin, this.currentY);
       this.currentY += 6;
     });
@@ -2039,11 +1999,7 @@ class ProfessionalPDFGenerator {
     this.pdf.setFont('helvetica', 'normal');
     this.pdf.setFontSize(10);
     minorFindings.slice(0, 5).forEach(finding => {
-      if (this.currentY > this.pageHeight - 30) {
-        this.pdf.addPage();
-        this.currentPage++;
-        this.currentY = 40;
-      }
+      this.ensurePageBreak(10);
       this.pdf.text(finding, this.margin, this.currentY);
       this.currentY += 6;
     });
@@ -2054,7 +2010,6 @@ class ProfessionalPDFGenerator {
   }
 
   private addComprehensiveRecommendations(recommendations: ExtendedRepairRecommendation[], analysisData: AnalysisData) {
-    this.currentY = 40;
     this.addSectionHeader('15.0 RECOMMENDATIONS', true, true);
     
     // Priority matrix
@@ -2079,10 +2034,9 @@ class ProfessionalPDFGenerator {
         r.estimatedCost ? `$${r.estimatedCost.toLocaleString()}` : 'TBD'
       ]);
       
-      (this.pdf as any).autoTable({
+      this.addTableFlow({
         head: [['Component', 'Description', 'Timeline', 'Est. Cost']],
         body: criticalData,
-        startY: this.currentY,
         theme: 'grid',
         headStyles: {
           fillColor: this.secondaryColor,
@@ -2093,18 +2047,12 @@ class ProfessionalPDFGenerator {
           fontSize: 8
         },
         margin: { left: this.margin }
-      });
-      
-      this.currentY = this.pdf.lastAutoTable.finalY + 10;
+      }, 10);
     }
     
     // High Priority
     if (high.length > 0) {
-      if (this.currentY > this.pageHeight - 50) {
-        this.pdf.addPage();
-        this.currentPage++;
-        this.currentY = 40;
-      }
+      this.ensurePageBreak(50);
       
       this.pdf.setFont('helvetica', 'bold');
       this.pdf.setFontSize(11);
@@ -2120,10 +2068,9 @@ class ProfessionalPDFGenerator {
         r.estimatedCost ? `$${r.estimatedCost.toLocaleString()}` : 'TBD'
       ]);
       
-      (this.pdf as any).autoTable({
+      this.addTableFlow({
         head: [['Component', 'Description', 'Timeline', 'Est. Cost']],
         body: highData,
-        startY: this.currentY,
         theme: 'grid',
         headStyles: {
           fillColor: this.warningColor,
@@ -2135,18 +2082,12 @@ class ProfessionalPDFGenerator {
           fontSize: 8
         },
         margin: { left: this.margin }
-      });
-      
-      this.currentY = this.pdf.lastAutoTable.finalY + 10;
+      }, 10);
     }
     
     // Medium and Low Priority Summary
     if (medium.length > 0 || low.length > 0) {
-      if (this.currentY > this.pageHeight - 40) {
-        this.pdf.addPage();
-        this.currentPage++;
-        this.currentY = 40;
-      }
+      this.ensurePageBreak(40);
       
       this.pdf.setFont('helvetica', 'bold');
       this.pdf.setFontSize(11);
@@ -2170,7 +2111,6 @@ class ProfessionalPDFGenerator {
   }
 
   private addNextInspectionIntervals(analysisData: AnalysisData, report: InspectionReport) {
-    this.currentY = 40;
     this.addSectionHeader('16.0 NEXT INSPECTION INTERVALS', true, true);
     
     const { externalInterval, internalInterval, criticalCourse } = analysisData.tankInspectionIntervals;
@@ -2214,9 +2154,8 @@ class ProfessionalPDFGenerator {
       ['Special Considerations', report.coatingCondition === 'poor' ? 'Coating degradation noted' : 'None']
     ];
     
-    (this.pdf as any).autoTable({
+    this.addTableFlow({
       body: basisData,
-      startY: this.currentY,
       theme: 'plain',
       styles: {
         fontSize: 9,
@@ -2227,9 +2166,7 @@ class ProfessionalPDFGenerator {
         1: { cellWidth: 'auto' }
       },
       margin: { left: this.margin }
-    });
-    
-    this.currentY = this.pdf.lastAutoTable.finalY + 10;
+    }, 10);
     
     // Additional inspections
     this.pdf.setFont('helvetica', 'bold');
@@ -2256,7 +2193,6 @@ class ProfessionalPDFGenerator {
   }
 
   private addConclusion(report: InspectionReport, analysisData: AnalysisData) {
-    this.currentY = 40;
     this.addSectionHeader('17.0 CONCLUSION', true, true);
     
     this.pdf.setFont('helvetica', 'normal');
