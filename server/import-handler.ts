@@ -1,4 +1,5 @@
 import * as XLSX from "xlsx";
+import { analyzeExcelWithManus, analyzePDFWithManus } from "./manus-analyzer.ts";
 import { analyzeSpreadsheetWithOpenRouter, processSpreadsheetWithAI } from "./openrouter-analyzer.ts";
 import { analyzePDFWithOpenRouter, processPDFWithAI } from "./pdf-analyzer.ts";
 import { parseLegacyExcelData, convertToSystemFormat } from "./legacy-import-mapper.ts";
@@ -113,35 +114,62 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
   }
 
   // Use AI to analyze the ENTIRE workbook
-  console.log('=== ATTEMPTING OPENROUTER AI ANALYSIS ===');
-  console.log('About to call analyzeSpreadsheetWithOpenRouter...');
+  console.log('=== ATTEMPTING AI ANALYSIS ===');
+  console.log('Using Manus AI for document analysis');
   console.log('Workbook sheets:', workbook.SheetNames);
   console.log('Filename:', fileName);
-  console.log('API Key configured:', !!process.env.OPENROUTER_API_KEY);
   
   let aiAnalysis;
-  try {
-    console.log('Calling OpenRouter AI analyzer...');
-    aiAnalysis = await analyzeSpreadsheetWithOpenRouter(workbook, fileName);
-    console.log('OpenRouter AI analysis completed');
-    console.log('AI Confidence:', aiAnalysis.confidence);
-    console.log('AI found measurements:', aiAnalysis.thicknessMeasurements?.length || 0);
-  } catch (error: any) {
-    console.error('=== OPENROUTER CALL FAILED ===');
-    console.error('Error type:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Full error:', error);
-    console.error('Stack trace:', error.stack);
-    
-    // Provide more helpful error message
-    if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-      console.error('AUTHENTICATION ERROR: OpenRouter API key may be invalid or expired');
-    } else if (error.message?.includes('429')) {
-      console.error('RATE LIMIT ERROR: Too many requests to OpenRouter API');
-    } else if (error.message?.includes('timeout')) {
-      console.error('TIMEOUT ERROR: OpenRouter API took too long to respond');
+  let usedManus = false;
+  
+  // Try Manus AI first if available
+  if (process.env.MANUS_API_KEY) {
+    console.log('Manus API key configured, using Manus AI...');
+    try {
+      console.log('Calling Manus AI analyzer...');
+      aiAnalysis = await analyzeExcelWithManus(workbook, fileName);
+      console.log('Manus AI analysis completed');
+      console.log('AI Confidence:', aiAnalysis.confidence);
+      console.log('AI found measurements:', aiAnalysis.thicknessMeasurements?.length || 0);
+      console.log('AI found checklist items:', aiAnalysis.checklistItems?.length || 0);
+      usedManus = true;
+    } catch (error: any) {
+      console.error('=== MANUS AI CALL FAILED ===');
+      console.error('Error:', error.message);
+      console.log('Falling back to OpenRouter...');
     }
-    
+  }
+  
+  // Fall back to OpenRouter if Manus fails or is not configured
+  if (!usedManus && process.env.OPENROUTER_API_KEY) {
+    console.log('API Key configured:', !!process.env.OPENROUTER_API_KEY);
+    try {
+      console.log('Calling OpenRouter AI analyzer...');
+      aiAnalysis = await analyzeSpreadsheetWithOpenRouter(workbook, fileName);
+      console.log('OpenRouter AI analysis completed');
+      console.log('AI Confidence:', aiAnalysis.confidence);
+      console.log('AI found measurements:', aiAnalysis.thicknessMeasurements?.length || 0);
+    } catch (error: any) {
+      console.error('=== OPENROUTER CALL FAILED ===');
+      console.error('Error type:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Full error:', error);
+      console.error('Stack trace:', error.stack);
+      
+      // Provide more helpful error message
+      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        console.error('AUTHENTICATION ERROR: OpenRouter API key may be invalid or expired');
+      } else if (error.message?.includes('429')) {
+        console.error('RATE LIMIT ERROR: Too many requests to OpenRouter API');
+      } else if (error.message?.includes('timeout')) {
+        console.error('TIMEOUT ERROR: OpenRouter API took too long to respond');
+      }
+    }
+  }
+  
+  // If no AI analysis succeeded, provide empty structure
+  if (!aiAnalysis) {
+    console.log('No AI analysis available, using standard parsing only...');
     aiAnalysis = {
       reportData: {},
       thicknessMeasurements: [],
@@ -153,7 +181,17 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
   }
   
   // Process with AI insights
-  let { importedData, thicknessMeasurements, checklistItems } = await processSpreadsheetWithAI(workbook, aiAnalysis);
+  let importedData, thicknessMeasurements, checklistItems;
+  
+  if (usedManus && aiAnalysis.confidence > 0.3) {
+    // Use Manus AI results directly if confidence is reasonable
+    importedData = aiAnalysis.reportData || {};
+    thicknessMeasurements = aiAnalysis.thicknessMeasurements || [];
+    checklistItems = aiAnalysis.checklistItems || [];
+  } else {
+    // Use OpenRouter processing or standard parsing
+    ({ importedData, thicknessMeasurements, checklistItems } = await processSpreadsheetWithAI(workbook, aiAnalysis));
+  }
   
   // Enhanced checklist extraction if AI didn't find many
   if (checklistItems.length < 5) {
@@ -903,19 +941,58 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
   console.log('File size:', buffer.length, 'bytes');
   
   try {
-    // Use OpenRouter AI to analyze the PDF
-    console.log('=== ATTEMPTING OPENROUTER PDF ANALYSIS ===');
-    console.log('About to call analyzePDFWithOpenRouter...');
+    // Use AI to analyze the PDF
+    console.log('=== ATTEMPTING AI PDF ANALYSIS ===');
     console.log('Filename:', fileName);
     
     let pdfAnalysis;
-    try {
-      console.log('Calling OpenRouter PDF analyzer...');
-      pdfAnalysis = await analyzePDFWithOpenRouter(buffer, fileName);
-      console.log('OpenRouter PDF analysis completed');
-    } catch (error) {
-      console.error('=== OPENROUTER PDF ANALYSIS FAILED ===');
-      console.error('Error calling analyzePDFWithOpenRouter:', error);
+    let usedManus = false;
+    
+    // Try Manus AI first if available
+    if (process.env.MANUS_API_KEY) {
+      console.log('Manus API key configured, using Manus AI for PDF analysis...');
+      try {
+        console.log('Calling Manus PDF analyzer...');
+        
+        // First extract text from PDF for Manus
+        const pdfjs = await import('pdf-parse');
+        const pdfData = await pdfjs.default(buffer);
+        const extractedText = pdfData.text || '';
+        
+        // Use Manus AI to analyze the PDF content
+        pdfAnalysis = await analyzePDFWithManus(extractedText, fileName, {
+          pages: pdfData.numpages,
+          info: pdfData.info,
+          metadata: pdfData.metadata
+        });
+        
+        console.log('Manus PDF analysis completed');
+        console.log('AI Confidence:', pdfAnalysis.confidence);
+        console.log('AI found measurements:', pdfAnalysis.thicknessMeasurements?.length || 0);
+        console.log('AI found checklist items:', pdfAnalysis.checklistItems?.length || 0);
+        usedManus = true;
+      } catch (error: any) {
+        console.error('=== MANUS PDF ANALYSIS FAILED ===');
+        console.error('Error:', error.message);
+        console.log('Falling back to OpenRouter...');
+      }
+    }
+    
+    // Fall back to OpenRouter if Manus fails or is not configured
+    if (!usedManus && process.env.OPENROUTER_API_KEY) {
+      try {
+        console.log('Calling OpenRouter PDF analyzer...');
+        pdfAnalysis = await analyzePDFWithOpenRouter(buffer, fileName);
+        console.log('OpenRouter PDF analysis completed');
+      } catch (error) {
+        console.error('=== OPENROUTER PDF ANALYSIS FAILED ===');
+        console.error('Error calling analyzePDFWithOpenRouter:', error);
+      }
+    }
+    
+    // If no AI analysis succeeded, provide empty structure
+    if (!pdfAnalysis) {
+      console.log('No AI analysis available, using basic PDF parsing...');
       pdfAnalysis = {
         reportData: {},
         thicknessMeasurements: [],
@@ -928,7 +1005,20 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
     }
     
     // Process PDF with AI insights
-    const { importedData, thicknessMeasurements, checklistItems, totalPages, preview, aiAnalysis } = await processPDFWithAI(pdfAnalysis);
+    let importedData, thicknessMeasurements, checklistItems, totalPages, preview, aiAnalysis;
+    
+    if (usedManus && pdfAnalysis.confidence > 0.3) {
+      // Use Manus AI results directly if confidence is reasonable
+      importedData = pdfAnalysis.reportData || {};
+      thicknessMeasurements = pdfAnalysis.thicknessMeasurements || [];
+      checklistItems = pdfAnalysis.checklistItems || [];
+      totalPages = pdfAnalysis.extractionDetails?.tablesFound || 1;
+      preview = pdfAnalysis.extractedText?.substring(0, 1000) || '';
+      aiAnalysis = pdfAnalysis;
+    } else {
+      // Use OpenRouter processing or standard parsing
+      ({ importedData, thicknessMeasurements, checklistItems, totalPages, preview, aiAnalysis } = await processPDFWithAI(pdfAnalysis));
+    }
     
     console.log('=== FINAL PDF IMPORT DATA VALIDATION ===');
     console.log('Tank ID:', importedData.tankId, 'Type:', typeof importedData.tankId);
@@ -938,15 +1028,14 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
     console.log('Total Checklist Items:', checklistItems.length);
     console.log('Total Pages:', totalPages);
     
-    if (aiAnalysis.confidence >= 30) {
+    if (aiAnalysis.confidence >= 0.3) {
       console.log('=== AI ANALYSIS SUCCESSFUL ===');
       console.log('AI confidence:', aiAnalysis.confidence);
-      console.log('This means your OpenRouter AI successfully analyzed the PDF!');
+      console.log(usedManus ? 'Manus AI successfully analyzed the PDF!' : 'OpenRouter AI successfully analyzed the PDF!');
     } else {
       console.log('=== AI ANALYSIS FAILED OR LOW CONFIDENCE ===');
       console.log('AI confidence:', aiAnalysis.confidence);
-      console.log('This means your OpenRouter AI could not analyze the PDF properly!');
-      console.log('Falling back to basic PDF parsing...');
+      console.log('AI could not analyze the PDF properly, using basic parsing...');
     }
     
     // Ensure all expected sections are present in importedData
