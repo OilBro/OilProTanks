@@ -127,7 +127,18 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     console.log('Manus API key configured, using Manus AI...');
     try {
       console.log('Calling Manus AI analyzer...');
-      aiAnalysis = await analyzeExcelWithManus(workbook, fileName);
+      const manusResult = await analyzeExcelWithManus(workbook, fileName);
+      
+      // Convert Manus format to expected format
+      aiAnalysis = {
+        reportData: manusResult.reportData || {},
+        thicknessMeasurements: manusResult.thicknessMeasurements || [],
+        checklistItems: manusResult.checklistItems || [],
+        confidence: manusResult.confidence,
+        mappingSuggestions: manusResult.mappingSuggestions || {},
+        detectedColumns: [] // Manus doesn't provide this, but it's required by the type
+      };
+      
       console.log('Manus AI analysis completed');
       console.log('AI Confidence:', aiAnalysis.confidence);
       console.log('AI found measurements:', aiAnalysis.thicknessMeasurements?.length || 0);
@@ -960,11 +971,22 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
         const extractedText = pdfData.text || '';
         
         // Use Manus AI to analyze the PDF content
-        pdfAnalysis = await analyzePDFWithManus(extractedText, fileName, {
+        const manusResult = await analyzePDFWithManus(extractedText, fileName, {
           pages: pdfData.numpages,
           info: pdfData.info,
           metadata: pdfData.metadata
         });
+        
+        // Convert Manus format to expected PDFAnalysis format
+        pdfAnalysis = {
+          reportData: manusResult.reportData || {},
+          thicknessMeasurements: manusResult.thicknessMeasurements || [],
+          checklistItems: manusResult.checklistItems || [],
+          confidence: manusResult.confidence,
+          mappingSuggestions: manusResult.mappingSuggestions || {},
+          detectedFields: [],
+          extractedText: manusResult.extractedText || extractedText || '' // Ensure it's never undefined
+        };
         
         console.log('Manus PDF analysis completed');
         console.log('AI Confidence:', pdfAnalysis.confidence);
