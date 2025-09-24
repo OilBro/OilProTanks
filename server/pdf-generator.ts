@@ -1060,30 +1060,32 @@ class ProfessionalPDFGenerator {
     this.pdf.text('SHELL COURSE ANALYSIS', this.margin, this.currentY);
     this.currentY += 8;
     
-    const shellData = analysisData.shellCourses.map(course => {
-      const worstMeasurement = course.measurements.reduce((worst, current) => 
-        current.remainingLife < worst.remainingLife ? current : worst,
-        course.measurements[0] || { remainingLife: 999 }
-      );
-      
-      return [
-        `Course ${course.courseNumber}`,
-        this.renderNumber(course.originalThickness, 3, 'N/A'),
-        this.renderNumber(course.minimumRequired, 3, 'N/A'),
-        worstMeasurement?.currentThickness ? this.renderNumber(worstMeasurement.currentThickness, 3, 'N/A') : 'N/A',
-        worstMeasurement?.corrosionRateMPY ? this.renderNumber(worstMeasurement.corrosionRateMPY, 1, 'N/A') : 'N/A',
-        worstMeasurement?.remainingLife ? this.renderNumber(worstMeasurement.remainingLife, 1, 'N/A') : 'N/A',
-        worstMeasurement?.status?.toUpperCase() || 'N/A'
-      ];
-    }) : shellMeasurements.map(m => [
-      m.component || 'Not specified',
-      m.originalThickness ? this.renderNumber(m.originalThickness, 3, 'Not provided') : 'Not provided',
-      m.minRequiredThickness ? this.renderNumber(m.minRequiredThickness, 3, 'Not calculated') : 'Not calculated',
-      m.currentThickness ? this.renderNumber(m.currentThickness, 3, 'Not measured') : 'Not measured',
-      m.corrosionRate ? this.renderNumber(m.corrosionRate, 1, 'Not calculated') : 'Not calculated',
-      m.remainingLife ? this.renderNumber(m.remainingLife, 1, 'Not calculated') : 'Not calculated',
-      m.status?.toUpperCase() || 'ACCEPTABLE'
-    ]);
+    const shellData = analysisData.shellCourses && analysisData.shellCourses.length > 0
+      ? analysisData.shellCourses.map(course => {
+        const worstMeasurement = course.measurements.reduce((worst, current) => 
+          current.remainingLife < worst.remainingLife ? current : worst,
+          course.measurements[0] || { remainingLife: 999 }
+        );
+        
+        return [
+          `Course ${course.courseNumber}`,
+          this.renderNumber(course.originalThickness, 3, 'N/A'),
+          this.renderNumber(course.minimumRequired, 3, 'N/A'),
+          worstMeasurement?.currentThickness ? this.renderNumber(worstMeasurement.currentThickness, 3, 'N/A') : 'N/A',
+          worstMeasurement?.corrosionRateMPY ? this.renderNumber(worstMeasurement.corrosionRateMPY, 1, 'N/A') : 'N/A',
+          worstMeasurement?.remainingLife ? this.renderNumber(worstMeasurement.remainingLife, 1, 'N/A') : 'N/A',
+          worstMeasurement?.status?.toUpperCase() || 'N/A'
+        ];
+      })
+      : shellMeasurements.map(m => [
+        m.component || 'Not specified',
+        m.originalThickness ? this.renderNumber(m.originalThickness, 3, 'Not provided') : 'Not provided',
+        m.minRequiredThickness ? this.renderNumber(m.minRequiredThickness, 3, 'Not calculated') : 'Not calculated',
+        m.currentThickness ? this.renderNumber(m.currentThickness, 3, 'Not measured') : 'Not measured',
+        m.corrosionRate ? this.renderNumber(m.corrosionRate, 1, 'Not calculated') : 'Not calculated',
+        m.remainingLife ? this.renderNumber(m.remainingLife, 1, 'Not calculated') : 'Not calculated',
+        m.status?.toUpperCase() || 'ACCEPTABLE'
+      ]);
     
     if (shellData.length > 0 || shellMeasurements.length > 0) {
       this.addTableFlow({
