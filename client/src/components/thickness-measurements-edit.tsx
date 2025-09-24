@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import type { ThicknessMeasurement } from "@shared/schema";
+import type { InspectionReport, ThicknessMeasurement } from "@shared/schema";
 import { calculateMeasurement } from "@/lib/calculations";
 
 interface ThicknessMeasurementsEditProps {
@@ -47,7 +47,7 @@ export function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEdi
   });
 
   // Fetch report to get years since last inspection
-  const { data: report } = useQuery({
+  const { data: report } = useQuery<InspectionReport | null>({
     queryKey: [`/api/reports/${reportId}`],
   });
 

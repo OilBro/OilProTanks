@@ -13,7 +13,7 @@ interface CMLReading {
   notes?: string;
 }
 
-interface CMLRecord {
+export interface CMLRecord {
   id: number;
   cmlId: string;
   component: string;

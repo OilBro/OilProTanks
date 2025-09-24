@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calculator, AlertTriangle, Info } from "lucide-react";
 
-interface ShellCourse {
+export interface ShellCourse {
   course: number;
   height: number; // feet
   tOriginal: number; // inches - original thickness
@@ -24,7 +24,7 @@ interface ShellCourse {
   status: 'acceptable' | 'monitor' | 'action_required' | 'critical';
 }
 
-interface ShellCalculationData {
+export interface ShellCalculationData {
   diameter: number; // feet
   fillHeight: number; // feet
   specificGravity: number;

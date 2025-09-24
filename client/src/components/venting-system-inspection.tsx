@@ -71,7 +71,7 @@ export function VentingSystemInspection({ inspections, onInspectionsChange }: Ve
     onInspectionsChange(inspections.filter(inspection => inspection.id !== id));
   };
 
-  const getConditionColor = (condition: string) => {
+  const getConditionColor = (condition?: string | null) => {
     const conditionObj = CONDITIONS.find(c => c.value === condition);
     return conditionObj?.color || "gray";
   };
@@ -105,7 +105,7 @@ export function VentingSystemInspection({ inspections, onInspectionsChange }: Ve
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="ventType">Vent Type</Label>
-              <Select value={newInspection.ventType} onValueChange={(value) => 
+              <Select value={newInspection.ventType || ''} onValueChange={(value) =>
                 setNewInspection(prev => ({ ...prev, ventType: value }))
               }>
                 <SelectTrigger>
@@ -127,7 +127,7 @@ export function VentingSystemInspection({ inspections, onInspectionsChange }: Ve
               <Label htmlFor="ventId">Vent ID</Label>
               <Input
                 placeholder="PRV-1, VRV-2, CV-1"
-                value={newInspection.ventId}
+                value={newInspection.ventId || ''}
                 onChange={(e) => setNewInspection(prev => ({ ...prev, ventId: e.target.value }))}
               />
             </div>
@@ -135,7 +135,7 @@ export function VentingSystemInspection({ inspections, onInspectionsChange }: Ve
               <Label htmlFor="setpoint">Set Point</Label>
               <Input
                 placeholder="2.5 psig, -1.0 psig"
-                value={newInspection.setpoint}
+                value={newInspection.setpoint || ''}
                 onChange={(e) => setNewInspection(prev => ({ ...prev, setpoint: e.target.value }))}
               />
             </div>
@@ -144,7 +144,7 @@ export function VentingSystemInspection({ inspections, onInspectionsChange }: Ve
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div>
               <Label htmlFor="condition">Overall Condition</Label>
-              <Select value={newInspection.condition} onValueChange={(value) => 
+              <Select value={newInspection.condition || ''} onValueChange={(value) =>
                 setNewInspection(prev => ({ ...prev, condition: value }))
               }>
                 <SelectTrigger>
@@ -161,7 +161,7 @@ export function VentingSystemInspection({ inspections, onInspectionsChange }: Ve
               <Label htmlFor="testResults">Test Results</Label>
               <Input
                 placeholder="Passed, Failed, Not Tested"
-                value={newInspection.testResults}
+                value={newInspection.testResults || ''}
                 onChange={(e) => setNewInspection(prev => ({ ...prev, testResults: e.target.value }))}
               />
             </div>
@@ -172,7 +172,7 @@ export function VentingSystemInspection({ inspections, onInspectionsChange }: Ve
               <Label htmlFor="findings">Inspection Findings</Label>
               <Textarea
                 placeholder="Detailed observations and test results..."
-                value={newInspection.findings}
+                value={newInspection.findings || ''}
                 onChange={(e) => setNewInspection(prev => ({ ...prev, findings: e.target.value }))}
                 rows={3}
               />
@@ -181,7 +181,7 @@ export function VentingSystemInspection({ inspections, onInspectionsChange }: Ve
               <Label htmlFor="recommendations">Recommendations</Label>
               <Textarea
                 placeholder="Repair, replacement, or maintenance recommendations..."
-                value={newInspection.recommendations}
+                value={newInspection.recommendations || ''}
                 onChange={(e) => setNewInspection(prev => ({ ...prev, recommendations: e.target.value }))}
                 rows={3}
               />
@@ -265,7 +265,7 @@ export function VentingSystemInspection({ inspections, onInspectionsChange }: Ve
 
                   <div className="flex justify-end mt-3 pt-3 border-t">
                     <div className="text-xs text-gray-400">
-                      Inspected: {new Date(inspection.createdAt).toLocaleDateString()}
+                      Inspected: {inspection.createdAt ? new Date(inspection.createdAt).toLocaleDateString() : 'N/A'}
                     </div>
                   </div>
                 </div>

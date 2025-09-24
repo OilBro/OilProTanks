@@ -3,9 +3,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CMLDataEntry } from "@/components/cml-data-entry";
-import { ShellCalculations } from "@/components/shell-calculations";
-import { SettlementSurvey } from "@/components/settlement-survey";
+import { CMLDataEntry, type CMLRecord } from "@/components/cml-data-entry";
+import { ShellCalculations, type ShellCalculationData } from "@/components/shell-calculations";
 import { Calculator, FileText, BarChart3, Building, Layers, Wrench } from "lucide-react";
 import { useLocation } from "wouter";
 
@@ -13,13 +12,13 @@ export default function CalculationAppendix() {
   const [, setLocation] = useLocation();
   
   // Component CML Data
-  const [componentCMLData, setComponentCMLData] = useState([]);
-  
-  // Nozzle CML Data  
-  const [nozzleCMLData, setNozzleCMLData] = useState([]);
-  
+  const [componentCMLData, setComponentCMLData] = useState<CMLRecord[]>([]);
+
+  // Nozzle CML Data
+  const [nozzleCMLData, setNozzleCMLData] = useState<CMLRecord[]>([]);
+
   // Shell Calculation Data
-  const [shellData, setShellData] = useState({
+  const [shellData, setShellData] = useState<ShellCalculationData>({
     diameter: 120,
     fillHeight: 48,
     specificGravity: 0.85,
@@ -29,21 +28,23 @@ export default function CalculationAppendix() {
       {
         course: 1,
         height: 8,
-        tNominal: 0.5,
+        tOriginal: 0.5,
         tActual: 0.425,
+        tRequired: 0,
+        tMin: 0.1,
         material: "A36",
         stressValue: 16000,
         jointEfficiency: 1.0,
-        tmin: 0.1,
+        corrosionRate: 0,
         remainingLife: 15.2,
-        status: 'acceptable' as const
+        status: 'acceptable'
       }
     ],
     notes: ""
   });
-  
+
   // Settlement Survey Data
-  const [settlementData, setSettlementData] = useState({
+  const [settlementData] = useState({
     tankDiameter: 120,
     numberOfPoints: 12,
     roofType: 'F' as const,
@@ -228,10 +229,35 @@ export default function CalculationAppendix() {
         </TabsContent>
 
         <TabsContent value="settlement" className="space-y-6">
-          <SettlementSurvey
-            data={settlementData}
-            onDataChange={setSettlementData}
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                Settlement Analysis Overview
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-gray-600">
+              <p>
+                Settlement calculations for the current report are managed within the dedicated
+                settlement survey workflow. Save a report and open it from the dashboard to add
+                cosine-fit measurements, tie-points, and annex-compliant evaluations.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="rounded-lg border p-3">
+                  <span className="text-xs uppercase text-gray-500">Tank Diameter</span>
+                  <div className="text-lg font-semibold">{settlementData.tankDiameter} ft</div>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <span className="text-xs uppercase text-gray-500">Survey Points</span>
+                  <div className="text-lg font-semibold">{settlementData.numberOfPoints}</div>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <span className="text-xs uppercase text-gray-500">Method</span>
+                  <div className="text-lg font-semibold capitalize">{settlementData.calculationMethod}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

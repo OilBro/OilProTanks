@@ -103,7 +103,7 @@ export function DykeInspection({ inspections, onInspectionsChange }: DykeInspect
     onInspectionsChange(inspections.filter(inspection => inspection.id !== id));
   };
 
-  const getConditionColor = (condition: string) => {
+  const getConditionColor = (condition?: string | null) => {
     const conditionObj = CONDITIONS.find(c => c.value === condition);
     return conditionObj?.color || "bg-gray-100 text-gray-800";
   };
@@ -136,8 +136,8 @@ export function DykeInspection({ inspections, onInspectionsChange }: DykeInspect
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="dyke-type">Dyke Type</Label>
-              <Select 
-                value={newInspection.dykeType} 
+              <Select
+                value={newInspection.dykeType ?? ''}
                 onValueChange={(value) => setNewInspection({...newInspection, dykeType: value})}
               >
                 <SelectTrigger>
@@ -157,7 +157,7 @@ export function DykeInspection({ inspections, onInspectionsChange }: DykeInspect
               <Label htmlFor="location">Location</Label>
               <Input
                 id="location"
-                value={newInspection.location}
+                value={newInspection.location ?? ''}
                 onChange={(e) => setNewInspection({...newInspection, location: e.target.value})}
                 placeholder="e.g., North Side, Section A"
               />
@@ -165,8 +165,8 @@ export function DykeInspection({ inspections, onInspectionsChange }: DykeInspect
 
             <div>
               <Label htmlFor="condition">Condition</Label>
-              <Select 
-                value={newInspection.condition} 
+              <Select
+                value={newInspection.condition ?? ''}
                 onValueChange={(value) => setNewInspection({...newInspection, condition: value})}
               >
                 <SelectTrigger>
@@ -188,7 +188,7 @@ export function DykeInspection({ inspections, onInspectionsChange }: DykeInspect
               <Label htmlFor="height">Height (ft)</Label>
               <Input
                 id="height"
-                value={newInspection.height}
+                value={newInspection.height ?? ''}
                 onChange={(e) => setNewInspection({...newInspection, height: e.target.value})}
                 placeholder="e.g., 4.5"
               />
@@ -198,7 +198,7 @@ export function DykeInspection({ inspections, onInspectionsChange }: DykeInspect
               <Label htmlFor="width">Width (ft)</Label>
               <Input
                 id="width"
-                value={newInspection.width}
+                value={newInspection.width ?? ''}
                 onChange={(e) => setNewInspection({...newInspection, width: e.target.value})}
                 placeholder="e.g., 3.0"
               />
@@ -206,8 +206,8 @@ export function DykeInspection({ inspections, onInspectionsChange }: DykeInspect
 
             <div>
               <Label htmlFor="material">Material</Label>
-              <Select 
-                value={newInspection.material} 
+              <Select
+                value={newInspection.material ?? ''}
                 onValueChange={(value) => setNewInspection({...newInspection, material: value})}
               >
                 <SelectTrigger>
@@ -225,8 +225,8 @@ export function DykeInspection({ inspections, onInspectionsChange }: DykeInspect
 
             <div>
               <Label htmlFor="drainage">Drainage</Label>
-              <Select 
-                value={newInspection.drainage} 
+              <Select
+                value={newInspection.drainage ?? ''}
                 onValueChange={(value) => setNewInspection({...newInspection, drainage: value})}
               >
                 <SelectTrigger>
@@ -272,7 +272,7 @@ export function DykeInspection({ inspections, onInspectionsChange }: DykeInspect
               <Label htmlFor="capacity">Capacity (gallons)</Label>
               <Input
                 id="capacity"
-                value={newInspection.capacity}
+                value={newInspection.capacity ?? ''}
                 onChange={(e) => setNewInspection({...newInspection, capacity: e.target.value})}
                 placeholder="e.g., 50000"
               />
@@ -281,7 +281,7 @@ export function DykeInspection({ inspections, onInspectionsChange }: DykeInspect
               <Label htmlFor="notes">Notes</Label>
               <Textarea
                 id="notes"
-                value={newInspection.notes}
+                value={newInspection.notes ?? ''}
                 onChange={(e) => setNewInspection({...newInspection, notes: e.target.value})}
                 placeholder="Additional observations..."
                 rows={2}
@@ -302,13 +302,14 @@ export function DykeInspection({ inspections, onInspectionsChange }: DykeInspect
           <h4 className="font-medium text-gray-900">Recorded Inspections</h4>
           {inspections.map((inspection) => {
             const issueCount = getIssueCount(inspection);
+            const dykeLabel = inspection.dykeType ? inspection.dykeType.replace('_', ' ') : 'Dyke';
             return (
               <Card key={inspection.id}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2">
-                        <Badge variant="outline">{inspection.dykeType.replace('_', ' ')}</Badge>
+                        <Badge variant="outline">{dykeLabel}</Badge>
                         <Badge className={getConditionColor(inspection.condition)}>
                           {inspection.condition}
                         </Badge>

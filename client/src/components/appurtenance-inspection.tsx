@@ -82,7 +82,7 @@ export function AppurtenanceInspection({ inspections, onInspectionsChange }: App
     onInspectionsChange(inspections.filter(inspection => inspection.id !== id));
   };
 
-  const getConditionColor = (condition: string) => {
+  const getConditionColor = (condition?: string | null) => {
     const conditionObj = CONDITIONS.find(c => c.value === condition);
     return conditionObj?.color || "gray";
   };
@@ -197,8 +197,11 @@ export function AppurtenanceInspection({ inspections, onInspectionsChange }: App
         {inspections.length > 0 && (
           <div className="space-y-4">
             <h4 className="font-medium">Recorded Inspections ({inspections.length})</h4>
-            {inspections.map((inspection) => (
-              <div key={inspection.id} className="border rounded-lg p-4">
+            {inspections.map((inspection) => {
+              const conditionColor = getConditionColor(inspection.condition);
+
+              return (
+                <div key={inspection.id} className="border rounded-lg p-4">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">
@@ -208,9 +211,9 @@ export function AppurtenanceInspection({ inspections, onInspectionsChange }: App
                     <span className="text-gray-600">• {inspection.location}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge 
-                      variant={getConditionColor(inspection.condition) === "green" ? "default" : "destructive"}
-                      className={`bg-${getConditionColor(inspection.condition)}-100 text-${getConditionColor(inspection.condition)}-800`}
+                    <Badge
+                      variant={conditionColor === "green" ? "default" : "destructive"}
+                      className={`bg-${conditionColor}-100 text-${conditionColor}-800`}
                     >
                       {CONDITIONS.find(c => c.value === inspection.condition)?.label}
                     </Badge>
@@ -251,8 +254,9 @@ export function AppurtenanceInspection({ inspections, onInspectionsChange }: App
                     Attach Photos
                   </Button>
                 </div>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         )}
       </CardContent>

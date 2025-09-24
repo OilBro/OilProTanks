@@ -55,6 +55,15 @@ interface GuidanceItem {
   warningThresholds?: any;
 }
 
+interface AssistantResponse {
+  content: string;
+  metadata?: Message['metadata'];
+}
+
+interface ConversationHistory {
+  messages?: Message[];
+}
+
 export function AiAssistant({ reportId, context }: AiAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -65,13 +74,13 @@ export function AiAssistant({ reportId, context }: AiAssistantProps) {
   const { toast } = useToast();
 
   // Query for guidance templates
-  const { data: guidanceTemplates } = useQuery({
+  const { data: guidanceTemplates } = useQuery<GuidanceItem[]>({
     queryKey: ['/api/ai/guidance-templates', context?.section],
     enabled: isOpen
   });
 
   // Query for conversation history
-  const { data: conversationHistory } = useQuery({
+  const { data: conversationHistory } = useQuery<ConversationHistory | null>({
     queryKey: ['/api/ai/conversations', reportId, sessionId],
     enabled: isOpen && !!reportId
   });
@@ -79,16 +88,14 @@ export function AiAssistant({ reportId, context }: AiAssistantProps) {
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (message: string) => {
-      return apiRequest('/api/ai/chat', {
-        method: 'POST',
-        body: {
-          message,
-          reportId,
-          sessionId,
-          context,
-          conversationHistory: messages
-        }
+      const response = await apiRequest('POST', '/api/ai/chat', {
+        message,
+        reportId,
+        sessionId,
+        context,
+        conversationHistory: messages
       });
+      return response.json() as Promise<AssistantResponse>;
     },
     onSuccess: (response) => {
       const assistantMessage: Message = {
@@ -114,14 +121,11 @@ export function AiAssistant({ reportId, context }: AiAssistantProps) {
   const saveConversationMutation = useMutation({
     mutationFn: async () => {
       if (!reportId) return;
-      return apiRequest('/api/ai/conversations', {
-        method: 'POST',
-        body: {
-          reportId,
-          sessionId,
-          context: context?.section,
-          messages
-        }
+      await apiRequest('POST', '/api/ai/conversations', {
+        reportId,
+        sessionId,
+        context: context?.section,
+        messages
       });
     }
   });

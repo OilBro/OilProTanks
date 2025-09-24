@@ -56,6 +56,37 @@ interface PressureValue extends UnitValue {
   unit: 'psi' | 'bar' | 'kPa' | 'MPa';
 }
 
+interface NewReportFormValues {
+  reportNumber: string;
+  tankId: string;
+  service: string;
+  diameter: number | null;
+  diameterUnit: string;
+  height: number | null;
+  heightUnit: string;
+  capacity: number | null;
+  capacityUnit: string;
+  inspector: string;
+  inspectionDate: string;
+  originalThickness: number | null;
+  originalThicknessUnit: string;
+  yearsSinceLastInspection: number | null;
+  constructionStandard: string;
+  shellMaterial: string;
+  roofType: string;
+  foundationType: string;
+  designPressure: number | null;
+  designPressureUnit: string;
+  operatingPressure: number | null;
+  operatingPressureUnit: string;
+  designTemperature: number | null;
+  operatingTemperature: number | null;
+  specificGravity: number | null;
+  corrosionAllowance: number | null;
+  corrosionAllowanceUnit: string;
+  status: string;
+}
+
 // CORRECTED: Utility functions for unit conversions
 const UnitConverter = {
   // Length conversions to feet
@@ -306,7 +337,7 @@ export default function NewReport() {
   const [createdReport, setCreatedReport] = useState<InspectionReport | null>(null);
 
   // CORRECTED: Enhanced form with proper unit handling
-  const form = useForm({
+  const form = useForm<NewReportFormValues>({
     // Disable strict validation to prevent auto-focus issues
     resolver: undefined,
     defaultValues: {
@@ -517,6 +548,57 @@ export default function NewReport() {
     }
   };
 
+  const buildPreviewReport = (formData: NewReportFormValues): InspectionReport => ({
+    id: 0,
+    reportNumber: formData.reportNumber,
+    tankId: formData.tankId,
+    service: formData.service,
+    diameter: formData.diameter !== null ? formData.diameter.toString() : null,
+    height: formData.height !== null ? formData.height.toString() : null,
+    inspector: formData.inspector || null,
+    inspectionDate: formData.inspectionDate || null,
+    originalThickness: formData.originalThickness !== null ? formData.originalThickness.toString() : null,
+    yearsSinceLastInspection: formData.yearsSinceLastInspection ?? null,
+    status: formData.status || 'draft',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    customer: null,
+    location: null,
+    inspectionScope: null,
+    reviewer: null,
+    specificGravity: formData.specificGravity !== null ? formData.specificGravity.toString() : null,
+    yearBuilt: null,
+    manufacturer: null,
+    constructionStandard: formData.constructionStandard || null,
+    shellMaterial: formData.shellMaterial || null,
+    foundationType: formData.foundationType || null,
+    roofType: formData.roofType || null,
+    capacity: formData.capacity !== null ? formData.capacity.toString() : null,
+    capacityUnit: formData.capacityUnit || null,
+    product: null,
+    facilityName: null,
+    tankAge: null,
+    designCode: null,
+    lastInternalInspection: null,
+    nextInternalInspection: null,
+    nextExternalInspection: null,
+    diameterUnit: formData.diameterUnit || null,
+    heightUnit: formData.heightUnit || null,
+    coatingCondition: null,
+    foundationSettlement: null,
+    foundationCracking: null,
+    foundationSealing: null,
+    maxSettlement: null,
+    settlementLocation: null,
+    settlementCompliance: null,
+    surveyMethod: null,
+    inspectorCertification: null,
+    inspectorExperience: null,
+    findings: null,
+    recommendations: null,
+    origin: 'manual',
+  });
+
   const handlePreviewReport = () => {
     const formData = form.getValues();
     if (!formData.reportNumber || !formData.tankId) {
@@ -527,19 +609,10 @@ export default function NewReport() {
       });
       return;
     }
-    
+
     // Create a temporary report object for preview
-    const previewReport: InspectionReport = {
-      id: 0,
-      ...formData,
-      diameter: formData.diameter ? formData.diameter.toString() : null,
-      height: formData.height ? formData.height.toString() : null,
-      originalThickness: formData.originalThickness ? formData.originalThickness.toString() : null,
-      yearsSinceLastInspection: formData.yearsSinceLastInspection || null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
+    const previewReport = buildPreviewReport(formData);
+
     setCreatedReport(previewReport);
     setShowPreview(true);
   };
@@ -792,7 +865,7 @@ export default function NewReport() {
         <Card>
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Settlement Analysis</h3>
-            {!createdReport ? (
+            {!createdReport || !createdReport.id ? (
               <div className="text-center py-8 bg-gray-50 rounded-lg">
                 <p className="text-gray-600 mb-2">Settlement analysis requires a saved report.</p>
                 <p className="text-sm text-gray-500">Save the report first, then edit it to access settlement analysis features.</p>
