@@ -15,7 +15,7 @@ declare module 'jspdf' {
     };
   }
 }
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 interface TankDetails {
