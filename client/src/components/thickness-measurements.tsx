@@ -9,7 +9,7 @@ import { Trash2, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { calculateMeasurement, validateThickness } from '@/lib/calculations';
-import type { ThicknessMeasurement } from '@shared/schema';
+import type { InspectionReport, ThicknessMeasurement } from '@shared/schema';
 
 interface ThicknessMeasurementsEditProps {
   reportId: number;
@@ -47,13 +47,13 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
   });
 
   // Fetch report to get years since last inspection
-  const { data: report } = useQuery({
+  const { data: report } = useQuery<InspectionReport | null>({
     queryKey: [`/api/reports/${reportId}`],
     enabled: !!reportId
   });
 
   // Fetch existing measurements
-  const { data: existingMeasurements = [], isLoading } = useQuery({
+  const { data: existingMeasurements = [], isLoading } = useQuery<ThicknessMeasurement[]>({
     queryKey: [`/api/reports/${reportId}/measurements`],
     enabled: !!reportId
   });
@@ -66,12 +66,11 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
   }, [existingMeasurements]);
 
   // Add measurement mutation
-  const addMeasurementMutation = useMutation({
-    mutationFn: (data: any) => 
-      apiRequest(`/api/reports/${reportId}/measurements`, {
-        method: 'POST',
-        body: JSON.stringify(data)
-      }),
+  const addMeasurementMutation = useMutation<ThicknessMeasurement, Error, Record<string, unknown>>({
+    mutationFn: async (data) => {
+      const response = await apiRequest('POST', `/api/reports/${reportId}/measurements`, data);
+      return response.json() as Promise<ThicknessMeasurement>;
+    },
     onSuccess: (newMeasurement) => {
       queryClient.invalidateQueries({ queryKey: [`/api/reports/${reportId}/measurements`] });
       toast({
@@ -99,11 +98,10 @@ function ThicknessMeasurementsEdit({ reportId }: ThicknessMeasurementsEditProps)
   });
 
   // Delete measurement mutation
-  const deleteMeasurementMutation = useMutation({
-    mutationFn: (id: number) => 
-      apiRequest(`/api/measurements/${id}`, {
-        method: 'DELETE'
-      }),
+  const deleteMeasurementMutation = useMutation<unknown, Error, number>({
+    mutationFn: async (id: number) => {
+      await apiRequest('DELETE', `/api/measurements/${id}`);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/reports/${reportId}/measurements`] });
       toast({

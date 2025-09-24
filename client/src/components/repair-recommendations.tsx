@@ -45,10 +45,14 @@ export function RepairRecommendations({ recommendations, onRecommendationsChange
       id: Date.now(),
       reportId: 0,
       component: newRecommendation.component,
+      location: null,
+      description: null,
+      repairType: null,
       defectDescription: newRecommendation.defectDescription,
       recommendation: newRecommendation.recommendation,
       priority: newRecommendation.priority,
       dueDate: newRecommendation.dueDate || null,
+      estimatedCompletion: null,
       status: "open",
       apiReference: newRecommendation.apiReference || null,
       completedDate: null,
@@ -191,7 +195,7 @@ export function RepairRecommendations({ recommendations, onRecommendationsChange
                 return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
               })
               .map((rec) => {
-                const priorityInfo = getPriorityInfo(rec.priority);
+                const priorityInfo = getPriorityInfo(rec.priority ?? 'routine');
                 const PriorityIcon = priorityInfo.icon;
                 
                 return (
@@ -247,7 +251,7 @@ export function RepairRecommendations({ recommendations, onRecommendationsChange
                         )}
                       </div>
                       <div className="text-xs text-gray-400">
-                        Added: {new Date(rec.createdAt).toLocaleDateString()}
+                        Added: {rec.createdAt ? new Date(rec.createdAt).toLocaleDateString() : 'N/A'}
                       </div>
                     </div>
                   </div>

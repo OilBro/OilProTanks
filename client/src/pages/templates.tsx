@@ -60,7 +60,12 @@ export default function Templates() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {templates.map((template) => (
+        {templates.map((template) => {
+          const defaultComponents = Array.isArray(template.defaultComponents)
+            ? (template.defaultComponents as string[])
+            : [];
+
+          return (
           <Card key={template.id} className="hover:shadow-lg transition-shadow cursor-pointer">
             <CardContent className="p-6">
               <div className="flex items-center mb-4">
@@ -74,18 +79,18 @@ export default function Templates() {
               </div>
               <p className="text-gray-600 text-sm mb-4">{template.description}</p>
               
-              {template.defaultComponents && (
+              {defaultComponents.length > 0 && (
                 <div className="mb-4">
                   <p className="text-xs font-medium text-gray-700 mb-2">Includes components:</p>
                   <div className="flex flex-wrap gap-1">
-                    {(template.defaultComponents as string[]).slice(0, 3).map((component, index) => (
+                    {defaultComponents.slice(0, 3).map((component, index) => (
                       <span key={index} className="inline-block bg-gray-100 text-xs px-2 py-1 rounded">
                         {component}
                       </span>
                     ))}
-                    {(template.defaultComponents as string[]).length > 3 && (
+                    {defaultComponents.length > 3 && (
                       <span className="inline-block bg-gray-100 text-xs px-2 py-1 rounded">
-                        +{(template.defaultComponents as string[]).length - 3} more
+                        +{defaultComponents.length - 3} more
                       </span>
                     )}
                   </div>
@@ -101,7 +106,8 @@ export default function Templates() {
               </Button>
             </CardContent>
           </Card>
-        ))}
+        );
+        })}
       </div>
 
       {templates.length === 0 && (

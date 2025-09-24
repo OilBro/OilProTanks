@@ -31,9 +31,29 @@ const CHECKLIST_CATEGORIES = [
 const STATUS_OPTIONS = [
   { value: "satisfactory", label: "Satisfactory (S)", color: "text-green-600" },
   { value: "unsatisfactory", label: "Unsatisfactory (U)", color: "text-red-600" },
-  { value: "not_applicable", label: "Not Applicable (N/A)", color: "text-gray-600" },
-  { value: "monitor", label: "Monitor (M)", color: "text-yellow-600" }
-];
+  { value: "not_applicable", label: "Not Applicable (N/A)", color: "text-gray-600" }
+] as const;
+
+type ChecklistStatus = typeof STATUS_OPTIONS[number]['value'];
+
+type ChecklistItemWithStatus = InspectionChecklist & { status: ChecklistStatus };
+
+const mapCheckedToStatus = (checked: boolean | null | undefined): ChecklistStatus => {
+  if (checked === true) return "satisfactory";
+  if (checked === false) return "unsatisfactory";
+  return "not_applicable";
+};
+
+const mapStatusToChecked = (status: ChecklistStatus): boolean | null => {
+  switch (status) {
+    case "satisfactory":
+      return true;
+    case "unsatisfactory":
+      return false;
+    default:
+      return null;
+  }
+};
 
 export function ChecklistEdit({ reportId }: ChecklistEditProps) {
   const { toast } = useToast();
@@ -45,13 +65,18 @@ export function ChecklistEdit({ reportId }: ChecklistEditProps) {
     queryKey: [`/api/reports/${reportId}/checklist`],
   });
 
+  const checklistItemsWithStatus: ChecklistItemWithStatus[] = checklistItems.map(item => ({
+    ...item,
+    status: mapCheckedToStatus(item.checked ?? null),
+  }));
+
   // Group items by category
-  const groupedItems = checklistItems.reduce((acc, item) => {
+  const groupedItems = checklistItemsWithStatus.reduce((acc, item) => {
     const category = item.category || 'Uncategorized';
     if (!acc[category]) acc[category] = [];
     acc[category].push(item);
     return acc;
-  }, {} as Record<string, InspectionChecklist[]>);
+  }, {} as Record<string, ChecklistItemWithStatus[]>);
 
   // Update checklist item mutation
   const updateItemMutation = useMutation({
@@ -119,16 +144,22 @@ export function ChecklistEdit({ reportId }: ChecklistEditProps) {
     addItemMutation.mutate({
       category,
       item: `New ${category} Item`,
-      status: 'satisfactory',
+      checked: mapStatusToChecked('satisfactory'),
       notes: ''
     });
   };
 
-  const handleUpdateItem = (item: InspectionChecklist, field: string, value: any) => {
-    updateItemMutation.mutate({ ...item, [field]: value });
+  const handleUpdateItem = (item: ChecklistItemWithStatus, field: 'item' | 'status' | 'notes', value: any) => {
+    const { status: _status, ...rest } = item;
+
+    if (field === 'status') {
+      updateItemMutation.mutate({ ...rest, checked: mapStatusToChecked(value as ChecklistStatus) });
+    } else {
+      updateItemMutation.mutate({ ...rest, [field]: value });
+    }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: ChecklistStatus) => {
     return STATUS_OPTIONS.find(opt => opt.value === status)?.color || 'text-gray-600';
   };
 
@@ -142,7 +173,7 @@ export function ChecklistEdit({ reportId }: ChecklistEditProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Inspection Checklist ({checklistItems.length} items)</CardTitle>
+        <CardTitle>Inspection Checklist ({checklistItemsWithStatus.length} items)</CardTitle>
         <div className="flex items-center gap-2">
           <Select value={newItemCategory} onValueChange={setNewItemCategory}>
             <SelectTrigger className="w-48">
@@ -209,11 +240,11 @@ export function ChecklistEdit({ reportId }: ChecklistEditProps) {
                               className="flex-1"
                               placeholder="Checklist item description"
                             />
-                            <Select 
-                              value={item.status || 'satisfactory'} 
-                              onValueChange={(value) => handleUpdateItem(item, 'status', value)}
+                            <Select
+                              value={item.status || 'satisfactory'}
+                              onValueChange={(value) => handleUpdateItem(item, 'status', value as ChecklistStatus)}
                             >
-                              <SelectTrigger className={`w-36 ${getStatusColor(item.status || '')}`}>
+                              <SelectTrigger className={`w-36 ${getStatusColor(item.status || 'satisfactory')}`}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -248,7 +279,7 @@ export function ChecklistEdit({ reportId }: ChecklistEditProps) {
           })}
         </div>
         
-        {checklistItems.length === 0 && (
+        {checklistItemsWithStatus.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             <p>No checklist items found. This may be because:</p>
             <ul className="mt-2 text-sm">
