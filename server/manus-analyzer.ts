@@ -141,26 +141,11 @@ export async function analyzeDocumentWithManus(
     
     return analysis;
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('Manus AI analysis failed:', error);
     
-    // Return fallback structure
-    return {
-      reportData: {},
-      thicknessMeasurements: [],
-      checklistItems: [],
-      confidence: 0,
-      mappingSuggestions: {},
-      detectedFields: [],
-      extractionDetails: {
-        tablesFound: 0,
-        patternsMatched: {},
-        sectionsIdentified: [],
-        warnings: ['Manus AI analysis failed'],
-        successfulExtractions: [],
-        failedExtractions: ['Document analysis']
-      }
-    };
+    // Re-throw the error so the import handler can fall back to OpenRouter
+    throw new Error(`Manus AI analysis failed: ${error.message || 'Unknown error'}`);
   }
 }
 

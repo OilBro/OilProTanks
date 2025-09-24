@@ -108,6 +108,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Delegate to modular route registrations (components/nozzles)
   registerComponentRoutes(app);
   registerNozzleRoutes(app);
+  
+  // Test endpoint for Manus AI status
+  app.get("/api/test-manus", (req, res) => {
+    res.json({
+      manusConfigured: !!process.env.MANUS_API_KEY,
+      openrouterConfigured: !!process.env.OPENROUTER_API_KEY,
+      message: process.env.MANUS_API_KEY 
+        ? "Manus AI is configured and will be used for document parsing"
+        : "Manus AI is not configured, falling back to OpenRouter"
+    });
+  });
   // Excel Import endpoint (restored)
   app.post("/api/reports/import", upload.single('excelFile'), async (req, res) => {
     const started = Date.now();
