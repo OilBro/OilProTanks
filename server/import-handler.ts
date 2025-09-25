@@ -971,11 +971,7 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
         const extractedText = pdfData.text || '';
         
         // Use Manus AI to analyze the PDF content
-        const manusResult = await analyzePDFWithManus(extractedText, fileName, {
-          pages: pdfData.numpages,
-          info: pdfData.info,
-          metadata: pdfData.metadata
-        });
+        const manusResult = await analyzePDFWithManus(extractedText, fileName, 
         
         // Convert Manus format to expected PDFAnalysis format
         pdfAnalysis = {
