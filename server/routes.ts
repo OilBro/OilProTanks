@@ -36,7 +36,7 @@ import { eq } from "drizzle-orm";
 import { imageAnalyses } from "../shared/schema.ts";
 import { enqueueImageAnalysis, getLatestAnalysisForAttachment } from './imageAnalysisService.ts';
 import { imageLabels, imageRegions } from '../shared/schema.ts';
-import { handleExcelImport } from "./import-handler.ts";
+import { handleExcelImport } from "./fixed-import-handler.ts";
 import { persistImportedReport, cleanupOrphanedReportChildren } from './import-persist.ts';
 import { handleChecklistUpload, standardChecklists } from "./checklist-handler.ts";
 import { checklistTemplates, insertChecklistTemplateSchema } from "../shared/schema.ts";
