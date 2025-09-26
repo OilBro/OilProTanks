@@ -36,7 +36,7 @@ import { eq } from "drizzle-orm";
 import { imageAnalyses } from "../shared/schema.ts";
 import { enqueueImageAnalysis, getLatestAnalysisForAttachment } from './imageAnalysisService.ts';
 import { imageLabels, imageRegions } from '../shared/schema.ts';
-import { handleExcelImport } from "./fixed-import-handler.ts";
+import { handleExcelImport, handlePDFImport } from "./fixed-import-handler.ts";
 import { persistImportedReport, cleanupOrphanedReportChildren } from './import-persist.ts';
 import { handleChecklistUpload, standardChecklists } from "./checklist-handler.ts";
 import { checklistTemplates, insertChecklistTemplateSchema } from "../shared/schema.ts";
@@ -131,7 +131,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileName = req.file.originalname.toLowerCase();
       let result;
       if (fileName.endsWith('.pdf')) {
-        const { handlePDFImport } = await import('./import-handler.ts');
         result = await handlePDFImport(req.file.buffer, req.file.originalname);
       } else {
         result = await handleExcelImport(req.file.buffer, req.file.originalname);
@@ -149,13 +148,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         reportData.service = serviceMapping[norm] || 'other';
       }
 
-      const persisted = await persistImportedReport({
-        importedData: reportData,
-        thicknessMeasurements: Array.isArray(tms) ? tms : [],
-        checklistItems: Array.isArray(clItems) ? clItems : [],
-        findings, reportWriteUp, recommendations, notes
-      });
-      reportNumber = persisted.report.reportNumber;
+      // Create the inspection report using storage interface instead of persistImportedReport
+      // to avoid Drizzle ORM compatibility issues with in-memory storage
+      
+      // Generate unique report number if not present
+      if (!reportData.reportNumber) {
+        reportData.reportNumber = `IMP-${Date.now()}`;
+      }
+      
+      // Add any additional fields from findings/recommendations
+      if (findings) reportData.findings = findings;
+      if (reportWriteUp) reportData.reportWriteUp = reportWriteUp;
+      if (recommendations) reportData.recommendations = recommendations;
+      if (notes) reportData.notes = notes;
+      
+      // Create the main report
+      const createdReport = await storage.createInspectionReport(reportData);
+      reportNumber = createdReport.reportNumber;
+      
+      // Create thickness measurements
+      const thicknessList = Array.isArray(tms) ? tms : [];
+      let measurementsCreated = 0;
+      for (const measurement of thicknessList) {
+        try {
+          measurement.reportId = createdReport.id;
+          await storage.createThicknessMeasurement(measurement);
+          measurementsCreated++;
+        } catch (err) {
+          console.warn('Failed to create thickness measurement:', err);
+        }
+      }
+      
+      // Create checklist items
+      const checklistList = Array.isArray(clItems) ? clItems : [];
+      let checklistCreated = 0;
+      for (const item of checklistList) {
+        try {
+          item.reportId = createdReport.id;
+          await storage.createInspectionChecklist(item);
+          checklistCreated++;
+        } catch (err) {
+          console.warn('Failed to create checklist item:', err);
+        }
+      }
+      
+      const persisted = {
+        report: createdReport,
+        measurementsCreated,
+        checklistCreated,
+        warnings: []
+      };
 
       res.json({
         success: true,
