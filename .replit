@@ -1,5 +1,4 @@
 modules = ["nodejs-20", "web", "postgresql-16"]
-# Development mode - use npm run dev which handles PORT correctly
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -10,8 +9,7 @@ packages = ["jq", "graphicsmagick", "imagemagick"]
 [deployment]
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
-# Production deployment - use the replit-specific script
-run = ["bash", "-lc", "PORT=5000 npm run start:replit"]
+run = ["npm", "run", "start"]
 
 [[ports]]
 localPort = 4500
@@ -30,48 +28,13 @@ localPort = 32779
 externalPort = 3000
 
 [[ports]]
-localPort = 33045
-externalPort = 6800
-
-[[ports]]
-localPort = 33083
-externalPort = 8081
-
-[[ports]]
 localPort = 33735
 externalPort = 3002
-
-[[ports]]
-localPort = 34541
-externalPort = 8000
 
 [[ports]]
 localPort = 34889
 externalPort = 3003
 
-<<<<<<< Updated upstream
-[[ports]]
-localPort = 37899
-externalPort = 4200
-
-[[ports]]
-localPort = 38495
-externalPort = 6000
-
-[[ports]]
-localPort = 41141
-externalPort = 8008
-
-[[ports]]
-localPort = 42067
-externalPort = 5000
-
-[[ports]]
-localPort = 43567
-externalPort = 5173
-
-=======
->>>>>>> Stashed changes
 [workflows]
 runButton = "Project"
 
@@ -87,14 +50,11 @@ args = "Start application"
 [[workflows.workflow]]
 name = "Start application"
 author = "agent"
-mode = "parallel"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "bash -lc FORCE_PORT=5000 npm run start"
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
+args = "npm run dev"
+waitForPort = 5000
 
 [agent]
 integrations = ["javascript_object_storage==1.0.0"]
