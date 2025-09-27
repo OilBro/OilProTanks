@@ -1,6 +1,6 @@
 modules = ["nodejs-20", "web", "postgresql-16"]
-# Force the app to bind on 5000 to match port mappings below
-run = "FORCE_PORT=5000 npm run dev"
+# Development mode - use npm run dev which handles PORT correctly
+run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
@@ -10,8 +10,8 @@ packages = ["jq", "graphicsmagick", "imagemagick"]
 [deployment]
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
-# Ensure production server also binds to 5000 (mapped to external 80 below)
-run = ["bash", "-lc", "FORCE_PORT=5000 npm run start"]
+# Production deployment - use the replit-specific script
+run = ["bash", "-lc", "PORT=5000 npm run start:replit"]
 
 [[ports]]
 localPort = 4500
