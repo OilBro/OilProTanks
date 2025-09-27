@@ -7,14 +7,14 @@ import {
   recommendationSchema, recommendationPatchSchema,
   ventingSystemSchema, ventingSystemPatchSchema,
   settlementSurveySchema, settlementSurveyPatchSchema
-} from './validation-schemas.ts';
-import { registerComponentRoutes, registerNozzleRoutes } from './routes/components.routes.ts';
+} from './validation-schemas';
+import { registerComponentRoutes, registerNozzleRoutes } from './routes/components.routes';
 import swaggerUi from 'swagger-ui-express';
 import { readFileSync } from 'fs';
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
-import { storage } from "./storage.ts";
+import { storage } from "./storage";
 import { 
   insertInspectionReportSchema, 
   insertThicknessMeasurementSchema,
@@ -29,37 +29,37 @@ import {
   reportAppendices,
   reportWriteup,
   reportPracticalTminOverrides
-} from "../shared/schema.ts";
-import { importLogs } from '../shared/schema.ts';
-import { db } from "./db.ts";
+} from "../shared/schema";
+import { importLogs } from '../shared/schema';
+import { db } from "./db";
 import { eq } from "drizzle-orm";
-import { imageAnalyses } from "../shared/schema.ts";
-import { enqueueImageAnalysis, getLatestAnalysisForAttachment } from './imageAnalysisService.ts';
-import { imageLabels, imageRegions } from '../shared/schema.ts';
-import { handleExcelImport, handlePDFImport } from "./fixed-import-handler.ts";
-import { persistImportedReport, cleanupOrphanedReportChildren } from './import-persist.ts';
-import { handleChecklistUpload, standardChecklists } from "./checklist-handler.ts";
-import { checklistTemplates, insertChecklistTemplateSchema } from "../shared/schema.ts";
-import { generateInspectionTemplate, generateChecklistTemplateExcel } from "./template-generator.ts";
-import { exportFlatCSV, exportWholePacketZip } from "./exporter.ts";
+import { imageAnalyses } from "../shared/schema";
+import { enqueueImageAnalysis, getLatestAnalysisForAttachment } from './imageAnalysisService';
+import { imageLabels, imageRegions } from '../shared/schema';
+import { handleExcelImport, handlePDFImport } from "./fixed-import-handler";
+import { persistImportedReport, cleanupOrphanedReportChildren } from './import-persist';
+import { handleChecklistUpload, standardChecklists } from "./checklist-handler";
+import { checklistTemplates, insertChecklistTemplateSchema } from "../shared/schema";
+import { generateInspectionTemplate, generateChecklistTemplateExcel } from "./template-generator";
+import { exportFlatCSV, exportWholePacketZip } from "./exporter";
 import { 
   generateDataIngestionPackage,
   parseBasePageNominals,
   parseShellTMLs,
   parseNozzleTMLs
-} from "./csv-templates.ts";
+} from "./csv-templates";
 import {
   performAPI653Evaluation,
   calculateKPIMetrics,
   type TankParameters,
   type ComponentThickness
-} from "./api653-calculator.ts";
+} from "./api653-calculator";
 import { 
   calculateCorrosionRate,
   calculateRemainingLife,
   calculateMinimumRequiredThickness,
   determineInspectionStatus
-} from "./api653-calculations.ts";
+} from "./api653-calculations";
 
 // Unit converter utilities
 const UnitConverter = {
@@ -476,7 +476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reportId = parseInt(req.params.id);
       
       // Import the PDF generator
-      const { generateInspectionPDF } = await import('./pdf-generator.ts');
+      const { generateInspectionPDF } = await import('./pdf-generator');
       
       // Generate PDF buffer
       const pdfBuffer = await generateInspectionPDF(reportId);
@@ -2070,7 +2070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Import calculator functions
-  const { calculateCosineFit, processExternalRingwallSurvey } = await import("./settlement-calculator.ts");
+  const { calculateCosineFit, processExternalRingwallSurvey } = await import("./settlement-calculator");
       
       // Convert measurements to points format
       let points = measurements.map(m => ({
