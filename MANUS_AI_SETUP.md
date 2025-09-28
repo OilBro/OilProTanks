@@ -22,7 +22,7 @@ The OilProTanks application includes advanced AI-powered document analysis capab
 2. Generate an API key from your dashboard
 3. Add the key to your `.env` file:
    ```bash
-   MANUS_API_KEY=your_actual_manus_api_key_here
+   MANUS_API_KEY=sk-zDm_shrMAjHfl6SUz-xLYUmj3Szz8pMuT3RwdAe32lHM2gIAqZOPosd09QbPTcU9fN9aw3xWXUtZ_rc
    ```
 
 ### 2. OpenRouter Backup (Optional)
@@ -58,7 +58,7 @@ JWT_SECRET=development-secret-change-in-production
 # AI API Keys - Configure these to enable AI-powered document analysis
 # Get Manus AI API key from: https://manus.ai
 # Get OpenRouter API key from: https://openrouter.ai
-MANUS_API_KEY=your_actual_manus_api_key_here
+MANUS_API_KEY=sk-zDm_shrMAjHfl6SUz-xLYUmj3Szz8pMuT3RwdAe32lHM2gIAqZOPosd09QbPTcU9fN9aw3xWXUtZ_rc
 OPENROUTER_API_KEY=your_actual_openrouter_api_key_here
 
 # Database URL (using in-memory storage for development)
