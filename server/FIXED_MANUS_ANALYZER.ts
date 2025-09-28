@@ -265,14 +265,14 @@ async function pollForTaskCompletion(
 
 function processManusResults(completedResult: any, filename: string, documentType: string): ManusAnalysisResponse {
   console.log("🔄 Processing Manus results...");
-
+  
   try {
     // Try to extract the actual result data
     let extractedData: any = {};
-
+    
     // Try different possible result fields
     const resultData = completedResult.result || completedResult.output || completedResult.response || completedResult;
-
+    
     if (typeof resultData === 'string') {
       try {
         extractedData = JSON.parse(resultData);
@@ -337,7 +337,7 @@ function processManusResults(completedResult: any, filename: string, documentTyp
     return response;
   } catch (error: any) {
     console.error("❌ Error processing Manus results:", error);
-
+    
     // Return a basic response with error info
     return {
       rawData: {
