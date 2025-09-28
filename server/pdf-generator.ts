@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { storage } from './storage.ts';
+import { storage } from './storage';
 import {
   analyzeShellCourse,
   calculateTankInspectionIntervals,
@@ -11,7 +11,7 @@ import {
   calculateNextInspectionInterval,
   type ShellCourseData,
   type ThicknessCalculation
-} from './api653-calculations.ts';
+} from './api653-calculations';
 import {
   calculateTMin,
   calculateCorrosionRates,
@@ -22,7 +22,7 @@ import {
   type TankParameters,
   type ComponentThickness,
   type CalculationResults
-} from './api653-calculator.ts';
+} from './api653-calculator';
 import type { 
   InspectionReport,
   ThicknessMeasurement,
@@ -32,7 +32,7 @@ import type {
   VentingSystemInspection,
   AdvancedSettlementSurvey,
   AdvancedSettlementMeasurement
-} from '../shared/schema.ts';
+} from '../shared/schema';
 
 // Extend jsPDF with autoTable types and missing methods
 declare module 'jspdf' {

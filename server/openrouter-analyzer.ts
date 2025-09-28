@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';
-import { isMarkedAsNA } from './template-generator.ts';
+import { isMarkedAsNA } from './template-generator';
 
 interface OpenRouterMessage {
   role: 'user' | 'assistant' | 'system';

@@ -1,8 +1,8 @@
 import * as XLSX from "xlsx";
-import { analyzeExcelWithManus, analyzePDFWithManus } from "./manus-analyzer.ts";
-import { analyzeSpreadsheetWithOpenRouter, processSpreadsheetWithAI } from "./openrouter-analyzer.ts";
-import { analyzePDFWithOpenRouter, processPDFWithAI } from "./pdf-analyzer.ts";
-import { parseLegacyExcelData, convertToSystemFormat } from "./legacy-import-mapper.ts";
+import { analyzeExcelWithManus, analyzePDFWithManus } from "./manus-analyzer";
+import { analyzeSpreadsheetWithOpenRouter, processSpreadsheetWithAI } from "./openrouter-analyzer";
+import { analyzePDFWithOpenRouter, processPDFWithAI } from "./pdf-analyzer";
+import { parseLegacyExcelData, convertToSystemFormat } from "./legacy-import-mapper";
 
 export async function handleExcelImport(buffer: Buffer, fileName: string) {
   // Check if this is a PDF file

@@ -41,7 +41,7 @@ import {
   type InsertAiConversation,
   type AiGuidanceTemplate,
   type InsertAiGuidanceTemplate
-} from "../shared/schema.ts";
+} from "../shared/schema";
 // Lazy db import to avoid requiring DATABASE_URL for MemStorage test runs
 let db: any = null;
 async function ensureDb() {

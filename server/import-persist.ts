@@ -1,4 +1,4 @@
-import { db } from './db.ts';
+import { db } from './db';
 import { eq } from 'drizzle-orm';
 import { 
   inspectionReports,
@@ -8,7 +8,7 @@ import {
   insertThicknessMeasurementSchema,
   insertInspectionChecklistSchema,
   type InsertInspectionReport
-} from '../shared/schema.ts';
+} from '../shared/schema';
 
 /**
  * Contract:

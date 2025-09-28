@@ -1,8 +1,8 @@
 import type { Express } from 'express';
-import { db } from '../db.ts';
+import { db } from '../db';
 import { eq } from 'drizzle-orm';
-import { reportComponents, reportNozzles } from '../../shared/schema.ts';
-import { validate, componentSchema, componentPatchSchema, nozzleSchema, nozzlePatchSchema } from '../validation-schemas.ts';
+import { reportComponents, reportNozzles } from '../../shared/schema';
+import { validate, componentSchema, componentPatchSchema, nozzleSchema, nozzlePatchSchema } from '../validation-schemas';
 
 const parseId = (val: any) => { const n = Number(val); return Number.isFinite(n) ? n : undefined; };
 
