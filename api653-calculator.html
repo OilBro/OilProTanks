@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 653 Tank Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .input-section, .results-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .section-title {
+            font-size: 1.4em;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-weight: 600;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .unit {
+            font-size: 0.9em;
+            color: #666;
+            margin-left: 5px;
+        }
+
+        .calculate-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin-top: 10px;
+        }
+
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        .result-item {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 1.2em;
+            color: #27ae60;
+            font-weight: bold;
+        }
+
+        .status-acceptable { color: #27ae60; }
+        .status-monitor { color: #f39c12; }
+        .status-action_required { color: #e74c3c; }
+        .status-critical { color: #c0392b; }
+
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 12px;
+            margin: 10px 0;
+            color: #856404;
+        }
+
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #0c5460;
+            font-size: 0.95em;
+            line-height: 1.4;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+
+        .footer {
+            background: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 20px;
+            font-size: 0.9em;
+        }
+
+        .reset-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin-top: 10px;
+        }
+
+        .reset-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(149, 165, 166, 0.3);
+        }
+
+        .export-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #ecf0f1;
+            border-radius: 6px;
+        }
+
+        .export-btn {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 5px;
+        }
+
+        .export-btn:hover {
+            transform: translateY(-1px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>API 653 Tank Calculator</h1>
+            <p>Professional Tank Inspection & Corrosion Assessment Tool</p>
+        </div>
+
+        <div class="content">
+            <div class="input-section">
+                <h2 class="section-title">Tank Parameters</h2>
+                
+                <div class="form-group">
+                    <label for="diameter">Tank Diameter <span class="unit">(feet)</span></label>
+                    <input type="number" id="diameter" value="120" step="0.1" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="height">Tank Height <span class="unit">(feet)</span></label>
+                    <input type="number" id="height" value="40" step="0.1" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="specificGravity">Specific Gravity</label>
+                    <input type="number" id="specificGravity" value="0.85" step="0.01" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="jointEfficiency">Joint Efficiency</label>
+                    <input type="number" id="jointEfficiency" value="1.0" step="0.01" min="0" max="1">
+                </div>
+
+                <div class="form-group">
+                    <label for="allowableStress">Allowable Stress <span class="unit">(psi)</span></label>
+                    <input type="number" id="allowableStress" value="23000" step="100" min="0">
+                </div>
+
+                <h2 class="section-title">Thickness Measurements</h2>
+                
+                <div class="form-group">
+                    <label for="originalThickness">Original Thickness <span class="unit">(inches)</span></label>
+                    <input type="number" id="originalThickness" value="0.375" step="0.001" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="currentThickness">Current Thickness <span class="unit">(inches)</span></label>
+                    <input type="number" id="currentThickness" value="0.325" step="0.001" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="yearsSinceInspection">Years Since Last Inspection</label>
+                    <input type="number" id="yearsSinceInspection" value="10" step="0.1" min="0">
+                </div>
+
+                <button class="calculate-btn" onclick="calculateResults()">Calculate Results</button>
+                <button class="reset-btn" onclick="resetForm()">Reset to Defaults</button>
+
+                <div class="export-section">
+                    <div class="result-label" style="margin-bottom: 10px;">Export Results:</div>
+                    <button class="export-btn" onclick="exportToPDF()">Export to PDF</button>
+                    <button class="export-btn" onclick="exportToCSV()">Export to CSV</button>
+                    <button class="export-btn" onclick="printResults()">Print Results</button>
+                </div>
+            </div>
+
+            <div class="results-section">
+                <h2 class="section-title">Calculation Results</h2>
+                
+                <div id="results">
+                    <div class="info">
+                        Enter your tank parameters and click "Calculate Results" to see the API 653 calculations.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>API 653 Tank Calculator | Professional Tank Inspection Tool</p>
+            <p>Based on API 653 Standard - Tank Inspection, Repair, Alteration, and Reconstruction</p>
+        </div>
+    </div>
+
+    <script>
+        // API 653 Calculation Functions
+        function validateThickness(value) {
+            return !isNaN(value) && value > 0 && value < 10;
+        }
+
+        function calculateTMin(diameter, height, specificGravity = 1.0, jointEfficiency = 1.0, allowableStress = 23000) {
+            // API 653 formula: t = 2.6 * D * (H - 1) * G / (S * E)
+            // Where:
+            // t = minimum thickness (inches)
+            // D = diameter (feet)
+            // H = height (feet)
+            // G = specific gravity
+            // S = allowable stress (psi)
+            // E = joint efficiency
+            
+            const tMin = (2.6 * diameter * (height - 1) * specificGravity) / (allowableStress * jointEfficiency);
+            return Math.max(tMin, 0.1); // Minimum 0.1 inches per API 653
+        }
+
+        function calculateMeasurement(originalThickness, currentThickness, yearsSinceLastInspection) {
+            // Calculate metal loss
+            const metalLoss = originalThickness - currentThickness;
+            
+            // Calculate corrosion rate (inches per year)
+            const corrosionRate = yearsSinceLastInspection > 0 
+                ? metalLoss / yearsSinceLastInspection 
+                : 0;
+            
+            // Calculate minimum required thickness (simplified)
+            const minThickness = originalThickness * 0.5; // 50% of original as simplified estimate
+            
+            // Calculate remaining thickness available for corrosion
+            const remainingCorrosionAllowance = currentThickness - minThickness;
+            
+            // Calculate remaining life
+            const remainingLife = corrosionRate > 0 
+                ? remainingCorrosionAllowance / corrosionRate 
+                : 999; // If no corrosion, effectively infinite life
+            
+            // Determine status based on remaining life
+            let status;
+            if (remainingLife > 10) {
+                status = 'acceptable';
+            } else if (remainingLife > 5) {
+                status = 'monitor';
+            } else {
+                status = 'action_required';
+            }
+            
+            // Also check current thickness against minimum
+            if (currentThickness <= minThickness) {
+                status = 'action_required';
+            }
+            
+            return {
+                corrosionRate: Math.round(corrosionRate * 10000) / 10000, // Round to 4 decimal places
+                remainingLife: Math.min(Math.round(remainingLife * 10) / 10, 999), // Round to 1 decimal place, cap at 999
+                status,
+                metalLoss: Math.round(metalLoss * 1000) / 1000, // Round to 3 decimal places
+                remainingCorrosionAllowance: Math.round(remainingCorrosionAllowance * 1000) / 1000
+            };
+        }
+
+        function calculateRemainingLifeWithSafetyFactor(currentThickness, minThickness, corrosionRate, safetyFactor = 2.0) {
+            const remainingCorrosionAllowance = currentThickness - minThickness;
+            
+            if (remainingCorrosionAllowance <= 0) {
+                return 0; // Already below minimum
+            }
+            
+            if (corrosionRate <= 0) {
+                return 999; // No corrosion detected
+            }
+            
+            const remainingLife = remainingCorrosionAllowance / (corrosionRate * safetyFactor);
+            return Math.min(Math.round(remainingLife * 10) / 10, 999);
+        }
+
+        function getStatusText(status) {
+            switch(status) {
+                case 'acceptable': return 'ACCEPTABLE';
+                case 'monitor': return 'MONITOR';
+                case 'action_required': return 'ACTION REQUIRED';
+                default: return 'UNKNOWN';
+            }
+        }
+
+        function calculateResults() {
+            try {
+                // Get input values
+                const diameter = parseFloat(document.getElementById('diameter').value);
+                const height = parseFloat(document.getElementById('height').value);
+                const specificGravity = parseFloat(document.getElementById('specificGravity').value);
+                const jointEfficiency = parseFloat(document.getElementById('jointEfficiency').value);
+                const allowableStress = parseFloat(document.getElementById('allowableStress').value);
+                const originalThickness = parseFloat(document.getElementById('originalThickness').value);
+                const currentThickness = parseFloat(document.getElementById('currentThickness').value);
+                const yearsSinceInspection = parseFloat(document.getElementById('yearsSinceInspection').value);
+
+                // Validate inputs
+                if (isNaN(diameter) || isNaN(height) || isNaN(specificGravity) || 
+                    isNaN(jointEfficiency) || isNaN(allowableStress) || 
+                    isNaN(originalThickness) || isNaN(currentThickness) || 
+                    isNaN(yearsSinceInspection)) {
+                    throw new Error('Please enter valid numbers for all fields.');
+                }
+
+                if (diameter <= 0 || height <= 0 || specificGravity <= 0 || 
+                    jointEfficiency <= 0 || allowableStress <= 0 || 
+                    originalThickness <= 0 || currentThickness <= 0 || 
+                    yearsSinceInspection < 0) {
+                    throw new Error('Please enter positive values for all fields.');
+                }
+
+                if (currentThickness > originalThickness) {
+                    throw new Error('Current thickness cannot be greater than original thickness.');
+                }
+
+                // Perform calculations
+                const tMin = calculateTMin(diameter, height, specificGravity, jointEfficiency, allowableStress);
+                const measurement = calculateMeasurement(originalThickness, currentThickness, yearsSinceInspection);
+                const remainingLifeWithSafety = calculateRemainingLifeWithSafetyFactor(currentThickness, tMin, measurement.corrosionRate);
+
+                // Display results
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = `
+                    <div class="result-item">
+                        <div class="result-label">Minimum Required Thickness (t-min)</div>
+                        <div class="result-value">${tMin.toFixed(4)} inches</div>
+                    </div>
+
+                    <div class="result-item">
+                        <div class="result-label">Metal Loss</div>
+                        <div class="result-value">${measurement.metalLoss.toFixed(3)} inches</div>
+                    </div>
+
+                    <div class="result-item">
+                        <div class="result-label">Corrosion Rate</div>
+                        <div class="result-value">${measurement.corrosionRate.toFixed(4)} inches/year</div>
+                    </div>
+
+                    <div class="result-item">
+                        <div class="result-label">Remaining Corrosion Allowance</div>
+                        <div class="result-value">${measurement.remainingCorrosionAllowance.toFixed(3)} inches</div>
+                    </div>
+
+                    <div class="result-item">
+                        <div class="result-label">Remaining Life (Current Rate)</div>
+                        <div class="result-value">${measurement.remainingLife} years</div>
+                    </div>
+
+                    <div class="result-item">
+                        <div class="result-label">Remaining Life (2x Safety Factor)</div>
+                        <div class="result-value">${remainingLifeWithSafety} years</div>
+                    </div>
+
+                    <div class="result-item">
+                        <div class="result-label">Component Status</div>
+                        <div class="result-value status-${measurement.status}">${getStatusText(measurement.status)}</div>
+                    </div>
+
+                    ${currentThickness <= tMin ? 
+                        '<div class="warning"><strong>Warning:</strong> Current thickness is at or below minimum required thickness. Immediate action required.</div>' : 
+                        ''
+                    }
+
+                    ${measurement.remainingLife < 5 ? 
+                        '<div class="warning"><strong>Alert:</strong> Remaining life is less than 5 years. Consider increased inspection frequency.</div>' : 
+                        ''
+                    }
+
+                    <div class="info">
+                        <strong>API 653 Reference:</strong> Calculations based on API 653 Section 4.3.3 (Shell Evaluation) and Section 6.4.2 (Remaining Life Assessment).
+                        <br><br>
+                        <strong>Notes:</strong> 
+                        <ul style="margin-top: 8px; padding-left: 20px;">
+                            <li>t-min calculation uses the one-foot method per API 653</li>
+                            <li>Simplified minimum thickness uses 50% of original thickness</li>
+                            <li>For precise evaluations, consider component-specific factors</li>
+                            <li>Results should be validated by qualified inspection personnel</li>
+                        </ul>
+                    </div>
+                `;
+
+            } catch (error) {
+                const resultsDiv = document.getElementById('results');
+                resultsDiv.innerHTML = `
+                    <div class="warning">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Calculate initial results on page load
+        window.onload = function() {
+            calculateResults();
+        };
+
+        // Reset form to default values
+        function resetForm() {
+            document.getElementById('diameter').value = '120';
+            document.getElementById('height').value = '40';
+            document.getElementById('specificGravity').value = '0.85';
+            document.getElementById('jointEfficiency').value = '1.0';
+            document.getElementById('allowableStress').value = '23000';
+            document.getElementById('originalThickness').value = '0.375';
+            document.getElementById('currentThickness').value = '0.325';
+            document.getElementById('yearsSinceInspection').value = '10';
+            calculateResults();
+        }
+
+        // Export results to PDF
+        function exportToPDF() {
+            // Create a simple PDF export using browser's print function
+            const originalContent = document.body.innerHTML;
+            const printContent = document.querySelector('.results-section').innerHTML;
+            const inputs = getInputValues();
+            
+            const pdfContent = `
+                <html>
+                <head>
+                    <title>API 653 Calculator Results</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; }
+                        .header { text-align: center; margin-bottom: 30px; }
+                        .input-summary { margin-bottom: 30px; }
+                        .result-item { margin-bottom: 15px; padding: 10px; border-left: 3px solid #3498db; }
+                        .result-label { font-weight: bold; }
+                        .result-value { font-size: 1.2em; color: #27ae60; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>API 653 Tank Calculator Results</h1>
+                        <p>Professional Tank Inspection & Corrosion Assessment</p>
+                        <p>Date: ${new Date().toLocaleDateString()}</p>
+                    </div>
+                    <div class="input-summary">
+                        <h3>Input Parameters:</h3>
+                        <p>Tank Diameter: ${inputs.diameter} ft</p>
+                        <p>Tank Height: ${inputs.height} ft</p>
+                        <p>Specific Gravity: ${inputs.specificGravity}</p>
+                        <p>Joint Efficiency: ${inputs.jointEfficiency}</p>
+                        <p>Allowable Stress: ${inputs.allowableStress} psi</p>
+                        <p>Original Thickness: ${inputs.originalThickness} inches</p>
+                        <p>Current Thickness: ${inputs.currentThickness} inches</p>
+                        <p>Years Since Inspection: ${inputs.yearsSinceInspection}</p>
+                    </div>
+                    <div>${printContent}</div>
+                </body>
+                </html>
+            `;
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(pdfContent);
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        // Export results to CSV
+        function exportToCSV() {
+            const inputs = getInputValues();
+            const results = getCurrentResults();
+            
+            const csvData = [
+                ['Parameter', 'Value', 'Unit'],
+                ['Tank Diameter', inputs.diameter, 'ft'],
+                ['Tank Height', inputs.height, 'ft'],
+                ['Specific Gravity', inputs.specificGravity, ''],
+                ['Joint Efficiency', inputs.jointEfficiency, ''],
+                ['Allowable Stress', inputs.allowableStress, 'psi'],
+                ['Original Thickness', inputs.originalThickness, 'inches'],
+                ['Current Thickness', inputs.currentThickness, 'inches'],
+                ['Years Since Inspection', inputs.yearsSinceInspection, 'years'],
+                ['', '', ''],
+                ['Calculation Results', '', ''],
+                ['Minimum Required Thickness', results.tMin, 'inches'],
+                ['Metal Loss', results.metalLoss, 'inches'],
+                ['Corrosion Rate', results.corrosionRate, 'inches/year'],
+                ['Remaining Corrosion Allowance', results.remainingCorrosionAllowance, 'inches'],
+                ['Remaining Life (Current Rate)', results.remainingLife, 'years'],
+                ['Remaining Life (2x Safety Factor)', results.remainingLifeWithSafety, 'years'],
+                ['Component Status', results.status, ''],
+                ['Export Date', new Date().toISOString(), '']
+            ];
+            
+            const csvContent = csvData.map(row => row.join(',')).join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `API653_Calculator_Results_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Print results
+        function printResults() {
+            window.print();
+        }
+
+        // Helper function to get current input values
+        function getInputValues() {
+            return {
+                diameter: document.getElementById('diameter').value,
+                height: document.getElementById('height').value,
+                specificGravity: document.getElementById('specificGravity').value,
+                jointEfficiency: document.getElementById('jointEfficiency').value,
+                allowableStress: document.getElementById('allowableStress').value,
+                originalThickness: document.getElementById('originalThickness').value,
+                currentThickness: document.getElementById('currentThickness').value,
+                yearsSinceInspection: document.getElementById('yearsSinceInspection').value
+            };
+        }
+
+        // Helper function to get current calculation results
+        function getCurrentResults() {
+            const inputs = getInputValues();
+            const tMin = calculateTMin(
+                parseFloat(inputs.diameter), 
+                parseFloat(inputs.height), 
+                parseFloat(inputs.specificGravity), 
+                parseFloat(inputs.jointEfficiency), 
+                parseFloat(inputs.allowableStress)
+            );
+            const measurement = calculateMeasurement(
+                parseFloat(inputs.originalThickness), 
+                parseFloat(inputs.currentThickness), 
+                parseFloat(inputs.yearsSinceInspection)
+            );
+            const remainingLifeWithSafety = calculateRemainingLifeWithSafetyFactor(
+                parseFloat(inputs.currentThickness), 
+                tMin, 
+                measurement.corrosionRate
+            );
+            
+            return {
+                tMin: tMin.toFixed(4),
+                metalLoss: measurement.metalLoss.toFixed(3),
+                corrosionRate: measurement.corrosionRate.toFixed(4),
+                remainingCorrosionAllowance: measurement.remainingCorrosionAllowance.toFixed(3),
+                remainingLife: measurement.remainingLife,
+                remainingLifeWithSafety: remainingLifeWithSafety,
+                status: getStatusText(measurement.status)
+            };
+        }
+    </script>
+</body>
+</html>
