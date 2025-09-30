@@ -123,7 +123,7 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
 
   // Try Claude AI first if available
   if (process.env.ANTHROPIC_API_KEY) {
-    console.log('Claude API key configured, using Claude 3.5 Sonnet...');
+    console.log('Claude API key configured, using Claude Sonnet 4.5...');
     try {
       console.log('Calling Claude AI analyzer...');
       const claudeResult = await analyzeExcelWithClaude(workbook, fileName);
@@ -967,7 +967,7 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
 
     // Try Claude AI first if available
     if (process.env.ANTHROPIC_API_KEY) {
-      console.log('Claude API key configured, using Claude 3.5 Sonnet for PDF analysis...');
+      console.log('Claude API key configured, using Claude Sonnet 4.5 for PDF analysis...');
       try {
         console.log('Calling Claude PDF analyzer...');
 
@@ -1085,7 +1085,7 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
     if (aiAnalysis.confidence >= 0.3) {
       console.log('=== AI ANALYSIS SUCCESSFUL ===');
       console.log('AI confidence:', aiAnalysis.confidence);
-      console.log(usedManus ? 'Manus AI successfully analyzed the PDF!' : 'Claude 3.5 Sonnet successfully analyzed the PDF!');
+      console.log(usedManus ? 'Manus AI successfully analyzed the PDF!' : 'Claude Sonnet 4.5 successfully analyzed the PDF!');
     } else {
       console.log('=== AI ANALYSIS FAILED OR LOW CONFIDENCE ===');
       console.log('AI confidence:', aiAnalysis.confidence);

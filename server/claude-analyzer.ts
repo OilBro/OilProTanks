@@ -104,13 +104,13 @@ export async function analyzeDocumentWithClaude(
   console.log('=== CLAUDE AI ANALYSIS STARTING ===');
   console.log(`Document: ${filename}`);
   console.log(`Type: ${documentType}`);
-  console.log('Model: Claude 3.5 Sonnet');
+  console.log('Model: Claude Sonnet 4.5');
 
   try {
     const client = getAnthropicClient();
 
     const message = await client.messages.create({
-      model: 'claude-3-5-sonnet-latest',
+      model: 'claude-sonnet-4.5',
       max_tokens: 8192,
       temperature: 0,
       system: SYSTEM_PROMPT,
@@ -189,7 +189,7 @@ export async function analyzeDocumentWithClaude(
       mappingSuggestions: {},
       extractedText: content.substring(0, 5000), // Store first 5000 chars for reference
       extractionDetails: {
-        model: 'claude-3-5-sonnet-latest',
+        model: 'claude-sonnet-4.5',
         tokensUsed: (message.usage?.input_tokens || 0) + (message.usage?.output_tokens || 0),
         processingTime
       }
