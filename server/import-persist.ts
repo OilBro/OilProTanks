@@ -83,152 +83,74 @@ export async function persistImportedReport(params: {
     if (findings) narrativeUpdate.findings = findings;
     if (reportWriteUp) narrativeUpdate.recommendations = reportWriteUp; // legacy mismatch safety
     if (recommendations) narrativeUpdate.recommendations = recommendations;
-    if (Object.keys(narrativeUpdate).length) {
+    if (notes) narrativeUpdate.notes = notes;
+
+    if (Object.keys(narrativeUpdate).length > 0) {
+      console.log('Applying narrative update to report:', report.id, narrativeUpdate);
       await tx.update(inspectionReports)
-        .set({ ...narrativeUpdate, updatedAt: new Date().toISOString() })
+        .set(narrativeUpdate)
         .where(eq(inspectionReports.id, report.id));
     }
 
-    // Prepare measurements (dedupe + validate)
-    const measurementWarnings: string[] = [];
-    const checklistWarnings: string[] = [];
-    const uniqueMeasurementKey = (m: any) => `${m.component || m.measurementType || 'unknown'}::${m.location || m.elevation || 'loc'}::${m.currentThickness || 'na'}`;
-    const seen = new Set<string>();
+    // Process thickness measurements
+    const measurementsToInsert: any[] = [];
+    const skippedMeasurements: any[] = [];
+    const warnings: string[] = [];
 
-    const preparedMeasurements = rawMeasurements
-      .filter(m => {
-        if (!m) return false;
-        if (!m.currentThickness && !m.originalThickness) {
-          measurementWarnings.push('Skipped measurement with no thickness values');
-          return false;
-        }
-        const key = uniqueMeasurementKey(m);
-        if (seen.has(key)) {
-          measurementWarnings.push(`Duplicate measurement skipped: ${key}`);
-          return false;
-        }
-        seen.add(key);
-        return true;
-      })
-      .map(m => {
-        // Ensure strings for decimals
-        const toStr = (v: any) => v == null || v === '' ? null : String(v);
-        const measurementType = m.measurementType || inferMeasurementType(m.component || m.location || '');
-        const base = {
+    rawMeasurements.forEach((m: any) => {
+      try {
+        const parsed = insertThicknessMeasurementSchema.parse({
+          ...m,
           reportId: report.id,
-          component: m.component || m.measurementType || 'Component',
-          measurementType,
-          location: m.location || m.elevation || m.gridReference || m.plateNumber || 'Location',
-          elevation: toStr(m.elevation),
-          gridReference: m.gridReference || null,
-          plateNumber: m.plateNumber || null,
-          annularRingPosition: m.annularRingPosition || null,
-          criticalZoneType: m.criticalZoneType || null,
-          repadNumber: m.repadNumber || null,
-            repadType: m.repadType || null,
-          repadThickness: toStr(m.repadThickness),
-          nozzleId: m.nozzleId || null,
-          nozzleSize: m.nozzleSize || null,
-          flangeClass: m.flangeClass || null,
-          flangeType: m.flangeType || null,
-          originalThickness: toStr(m.originalThickness ?? m.nominalThickness ?? importedData.originalThickness ?? '0.375'),
-          currentThickness: toStr(m.currentThickness),
-          corrosionRate: toStr(m.corrosionRate),
-          remainingLife: toStr(m.remainingLife),
-          status: m.status || inferStatusFromRemainingLife(m.remainingLife),
-        };
-        return insertThicknessMeasurementSchema.parse(base);
-      });
-
-    if (preparedMeasurements.length) {
-      // Batch insert in chunks (avoid very large single statement)
-      const chunkSize = 500;
-      for (let i = 0; i < preparedMeasurements.length; i += chunkSize) {
-        const chunk = preparedMeasurements.slice(i, i + chunkSize);
-        await tx.insert(thicknessMeasurements).values(chunk as any);
+          createdAt: now
+        });
+        measurementsToInsert.push(parsed);
+      } catch (e: any) {
+        skippedMeasurements.push({ measurement: m, error: e.message });
+        warnings.push(`Skipped thickness measurement due to validation error: ${e.message}`);
       }
+    });
+
+    let measurementsCreated = 0;
+    if (measurementsToInsert.length > 0) {
+      const inserted = await tx.insert(thicknessMeasurements).values(measurementsToInsert).returning();
+      measurementsCreated = inserted.length;
     }
 
-    // Prepare checklist
-    const preparedChecklist = rawChecklist
-      .filter(c => c && (c.item || c.description))
-      .map(c => {
-        const base = {
+    // Process checklist items
+    const checklistToInsert: any[] = [];
+    const skippedChecklist: any[] = [];
+    rawChecklist.forEach((c: any) => {
+      try {
+        const parsed = insertInspectionChecklistSchema.parse({
+          ...c,
           reportId: report.id,
-          category: c.category || 'general',
-          item: c.item || c.description,
-          checked: c.checked === true || c.status === 'satisfactory' || c.status === 'acceptable',
-          notes: c.notes || null
-        };
-        return insertInspectionChecklistSchema.parse(base);
-      });
+          createdAt: now
+        });
+        checklistToInsert.push(parsed);
+      } catch (e: any) {
+        skippedChecklist.push({ item: c, error: e.message });
+        warnings.push(`Skipped checklist item due to validation error: ${e.message}`);
+      }
+    });
 
-    if (preparedChecklist.length) {
-      await tx.insert(inspectionChecklists).values(preparedChecklist as any);
+    let checklistCreated = 0;
+    if (checklistToInsert.length > 0) {
+      const inserted = await tx.insert(inspectionChecklists).values(checklistToInsert).returning();
+      checklistCreated = inserted.length;
     }
 
     return {
       report,
-      measurementsCreated: preparedMeasurements.length,
-      checklistCreated: preparedChecklist.length,
-      warnings: [...measurementWarnings, ...checklistWarnings]
+      measurementsCreated,
+      checklistCreated,
+      skipped: {
+        measurements: skippedMeasurements,
+        checklist: skippedChecklist
+      },
+      warnings
     };
   });
 
   return result;
-}
-
-function inferMeasurementType(component: string): string {
-  const c = component.toLowerCase();
-  if (c.includes('bottom') || c.includes('floor') || c.includes('plate')) return 'bottom_plate';
-  if (c.includes('critical')) return 'critical_zone';
-  if (c.includes('roof') || c.includes('top')) return 'roof';
-  if (c.includes('nozzle')) return 'nozzle';
-  if (c.includes('annular') || c.includes('ring')) return 'internal_annular';
-  if (c.includes('repad') || c.includes('reinforcement')) return 'external_repad';
-  if (c.includes('chime') || c.includes('angle')) return 'chime';
-  if (c.includes('shell') || c.includes('course')) return 'shell';
-  return 'shell';
-}
-
-function inferStatusFromRemainingLife(rl: any): string | null {
-  const n = parseFloat(rl);
-  if (isNaN(n)) return null;
-  if (n < 1) return 'critical';
-  if (n < 2) return 'action_required';
-  if (n < 5) return 'monitor';
-  return 'acceptable';
-}
-
-/**
- * Remove orphaned related rows (measurements, checklists, etc.) whose reportId no longer exists.
- */
-export async function cleanupOrphanedReportChildren(dryRun = true) {
-  const reportRows = await db.select({ id: inspectionReports.id }).from(inspectionReports);
-  const reportIdSet = new Set<number>(reportRows.map((r: any) => r.id));
-
-  // Fetch children
-  const measurementRows = await db.select({ id: thicknessMeasurements.id, reportId: thicknessMeasurements.reportId }).from(thicknessMeasurements);
-  const checklistRows = await db.select({ id: inspectionChecklists.id, reportId: inspectionChecklists.reportId }).from(inspectionChecklists);
-
-  const orphanMeasurements = measurementRows.filter((r: any) => r.reportId != null && !reportIdSet.has(r.reportId));
-  const orphanChecklists = checklistRows.filter((r: any) => r.reportId != null && !reportIdSet.has(r.reportId));
-
-  if (!dryRun) {
-    for (const m of orphanMeasurements) {
-      await db.delete(thicknessMeasurements).where(eq(thicknessMeasurements.id, m.id));
-    }
-    for (const c of orphanChecklists) {
-      await db.delete(inspectionChecklists).where(eq(inspectionChecklists.id, c.id));
-    }
-  }
-
-  return {
-    dryRun,
-    orphanCounts: {
-      thicknessMeasurements: orphanMeasurements.length,
-      inspectionChecklists: orphanChecklists.length
-    },
-    deleted: dryRun ? 0 : (orphanMeasurements.length + orphanChecklists.length)
-  };
 }
