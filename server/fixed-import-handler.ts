@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import { analyzeExcelWithManus, analyzePDFWithManus } from "./manus-analyzer";
+import { analyzeExcelWithClaude, analyzePDFWithClaude } from "./claude-analyzer";
 import { analyzeSpreadsheetWithOpenRouter, processSpreadsheetWithAI } from "./openrouter-analyzer";
 import { analyzePDFWithOpenRouter, processPDFWithAI } from "./pdf-analyzer";
 import { parseLegacyExcelData, convertToSystemFormat } from "./legacy-import-mapper";
@@ -122,9 +123,38 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
   let aiAnalysis;
   let usedManus = false;
 
-  // Try Manus AI first if available
-  if (process.env.MANUS_API_KEY) {
-    console.log('Manus API key configured, using Manus AI...');
+  // Try Claude AI first if available
+  if (process.env.ANTHROPIC_API_KEY) {
+    console.log('Claude API key configured, using Claude 3.5 Sonnet...');
+    try {
+      console.log('Calling Claude AI analyzer...');
+      const claudeResult = await analyzeExcelWithClaude(workbook, fileName);
+
+      // Convert Claude format to expected format
+      aiAnalysis = {
+        reportData: claudeResult.reportData || {},
+        thicknessMeasurements: claudeResult.thicknessMeasurements || [],
+        checklistItems: claudeResult.checklistItems || [],
+        confidence: claudeResult.confidence,
+        mappingSuggestions: claudeResult.mappingSuggestions || {},
+        detectedColumns: claudeResult.detectedFields || []
+      };
+
+      console.log('Claude AI analysis completed');
+      console.log('AI Confidence:', aiAnalysis.confidence);
+      console.log('AI found measurements:', aiAnalysis.thicknessMeasurements?.length || 0);
+      console.log('AI found checklist items:', aiAnalysis.checklistItems?.length || 0);
+      usedManus = false; // Set to false since we're using Claude
+    } catch (error: any) {
+      console.error('=== CLAUDE AI CALL FAILED ===');
+      console.error('Error:', error.message);
+      console.log('Falling back to Manus AI...');
+    }
+  }
+
+  // Try Manus AI if Claude failed or not configured
+  if (!aiAnalysis && process.env.MANUS_API_KEY) {
+    console.log('Manus API key configured, trying Manus AI...');
     try {
       console.log('Calling Manus AI analyzer...');
       const manusResult = await analyzeExcelWithManus(workbook, fileName);
@@ -151,8 +181,8 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     }
   }
 
-  // Fall back to OpenRouter if Manus fails or is not configured
-  if (!usedManus && process.env.OPENROUTER_API_KEY) {
+  // Fall back to OpenRouter if both Claude and Manus fail or not configured
+  if (!aiAnalysis && process.env.OPENROUTER_API_KEY) {
     console.log('API Key configured:', !!process.env.OPENROUTER_API_KEY);
     try {
       console.log('Calling OpenRouter AI analyzer...');
@@ -194,8 +224,8 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
   // Process with AI insights
   let importedData, thicknessMeasurements, checklistItems;
 
-  if (usedManus && aiAnalysis.confidence > 0.3) {
-    // Use Manus AI results directly if confidence is reasonable
+  if (aiAnalysis && aiAnalysis.confidence > 0.5) {
+    // Use AI results directly if confidence is reasonable
     importedData = aiAnalysis.reportData || {};
     thicknessMeasurements = aiAnalysis.thicknessMeasurements || [];
     checklistItems = aiAnalysis.checklistItems || [];
@@ -959,8 +989,44 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
     let pdfAnalysis;
     let usedManus = false;
 
-    // Try Manus AI first if available
-    if (process.env.MANUS_API_KEY) {
+    // Try Claude AI first if available
+    if (process.env.ANTHROPIC_API_KEY) {
+      console.log('Claude API key configured, using Claude 3.5 Sonnet for PDF analysis...');
+      try {
+        console.log('Calling Claude PDF analyzer...');
+
+        // First extract text from PDF for Claude
+        const pdfjs = await import('pdf-parse');
+        const pdfData = await pdfjs.default(buffer);
+        const extractedText = pdfData.text || '';
+
+        // Use Claude AI to analyze the PDF content
+        const claudeResult = await analyzePDFWithClaude(extractedText, fileName);
+
+        // Convert Claude format to expected PDFAnalysis format
+        pdfAnalysis = {
+          reportData: claudeResult.reportData || {},
+          thicknessMeasurements: claudeResult.thicknessMeasurements || [],
+          checklistItems: claudeResult.checklistItems || [],
+          confidence: claudeResult.confidence,
+          mappingSuggestions: claudeResult.mappingSuggestions || {},
+          detectedFields: claudeResult.detectedFields || [],
+          extractedText: claudeResult.extractedText || extractedText || ''
+        };
+
+        console.log('Claude PDF analysis completed');
+        console.log('AI Confidence:', pdfAnalysis.confidence);
+        console.log('AI found measurements:', pdfAnalysis.thicknessMeasurements?.length || 0);
+        console.log('AI found checklist items:', pdfAnalysis.checklistItems?.length || 0);
+      } catch (error: any) {
+        console.error('=== CLAUDE PDF ANALYSIS FAILED ===');
+        console.error('Error:', error.message);
+        console.log('Falling back to Manus AI...');
+      }
+    }
+
+    // Try Manus AI if Claude failed or not configured
+    if (!pdfAnalysis && process.env.MANUS_API_KEY) {
       console.log('Manus API key configured, using Manus AI for PDF analysis...');
       try {
         console.log('Calling Manus PDF analyzer...');
@@ -996,8 +1062,8 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
       }
     }
 
-    // Fall back to OpenRouter if Manus fails or is not configured
-    if (!usedManus && process.env.OPENROUTER_API_KEY) {
+    // Fall back to OpenRouter if both Claude and Manus fail or not configured
+    if (!pdfAnalysis && process.env.OPENROUTER_API_KEY) {
       try {
         console.log('Calling OpenRouter PDF analyzer...');
         pdfAnalysis = await analyzePDFWithOpenRouter(buffer, fileName);

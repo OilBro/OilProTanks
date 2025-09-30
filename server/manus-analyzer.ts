@@ -50,7 +50,7 @@ export async function analyzeDocumentWithManus(
     throw new Error('Manus AI integration requires API key configuration');
   }
 
-  console.log(`🔑 API Key found: ${process.env.MANUS_API_KEY.substring(0, 10)}...`);
+  console.log(`🔑 API Key configured: Yes`);
 
   try {
     // Enhanced prompt for better extraction
