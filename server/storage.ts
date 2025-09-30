@@ -801,13 +801,19 @@ export class DatabaseStorage implements IStorage {
   async createInspectionReport(report: InsertInspectionReport): Promise<InspectionReport> {
     const now = new Date().toISOString();
     const dbi = await ensureDb();
+    
+    // Clean numeric fields to prevent empty string errors
+    const cleanedReport = {
+      ...report,
+      tankDiameter: report.tankDiameter && report.tankDiameter !== '' ? report.tankDiameter : 0,
+      tankHeight: report.tankHeight && report.tankHeight !== '' ? report.tankHeight : 0,
+      createdAt: now,
+      updatedAt: now
+    };
+    
     const [newReport] = await dbi
       .insert(inspectionReports)
-      .values({
-        ...report,
-        createdAt: now,
-        updatedAt: now
-      })
+      .values(cleanedReport)
       .returning();
     return newReport;
   }

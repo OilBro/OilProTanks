@@ -972,9 +972,16 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
         console.log('Calling Claude PDF analyzer...');
 
         // First extract text from PDF for Claude
-        const pdfjs = await import('pdf-parse');
-        const pdfData = await pdfjs.default(buffer);
-        const extractedText = pdfData.text || '';
+        let extractedText = '';
+        try {
+          const pdfjs = await import('pdf-parse');
+          const pdfData = await pdfjs.default(buffer);
+          extractedText = pdfData.text || '';
+        } catch (pdfError) {
+          console.error('PDF parsing error:', pdfError);
+          // Fallback: convert buffer to string if pdf-parse fails
+          extractedText = buffer.toString('utf-8').substring(0, 50000);
+        }
 
         // Use Claude AI to analyze the PDF content
         const claudeResult = await analyzePDFWithClaude(extractedText, fileName);
@@ -1008,9 +1015,16 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
         console.log('Calling Manus PDF analyzer...');
 
         // First extract text from PDF for Manus
-        const pdfjs = await import('pdf-parse');
-        const pdfData = await pdfjs.default(buffer);
-        const extractedText = pdfData.text || '';
+        let extractedText = '';
+        try {
+          const pdfjs = await import('pdf-parse');
+          const pdfData = await pdfjs.default(buffer);
+          extractedText = pdfData.text || '';
+        } catch (pdfError) {
+          console.error('PDF parsing error:', pdfError);
+          // Fallback: convert buffer to string if pdf-parse fails
+          extractedText = buffer.toString('utf-8').substring(0, 50000);
+        }
 
         // Use Manus AI to analyze the PDF content
         const manusResult = await analyzePDFWithManus(extractedText, fileName);
