@@ -60,57 +60,127 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     };
   }
 
-  // Find a sheet with data
-  let worksheet = null;
-  let sheetName = '';
+  // Helper to convert raw row arrays into objects when headers are missing
+  const convertRowsToObjects = (rows: any[][], name: string): any[] => {
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return [];
+    }
+
+    const headerRow = rows[0] || [];
+    const headers = headerRow.map((header: any, index: number) => {
+      const value = header !== undefined && header !== null ? String(header).trim() : '';
+      return value || `Column_${index + 1}`;
+    });
+
+    const objects: any[] = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i] || [];
+      const obj: any = { __sheetName: name };
+      let hasValue = false;
+
+      headers.forEach((header, index) => {
+        const cell = row[index];
+        if (cell !== undefined && cell !== null && String(cell).trim() !== '') {
+          obj[header] = cell;
+          hasValue = true;
+        }
+      });
+
+      // Also handle key/value style rows (e.g., ["Tank ID", "TK-01"])
+      if (!hasValue && row.length >= 2) {
+        const key = String(row[0] || '').trim();
+        const value = row.slice(1).find(cell => cell !== undefined && cell !== null && String(cell).trim() !== '');
+        if (key && value !== undefined) {
+          obj[key] = value;
+          hasValue = true;
+        }
+      }
+
+      if (hasValue) {
+        objects.push(obj);
+      }
+    }
+
+    return objects;
+  };
 
   console.log(`Processing Excel file: ${fileName}`);
   console.log(`Found ${workbook.SheetNames.length} sheets: ${workbook.SheetNames.join(', ')}`);
 
+  const sheetDataByName: Record<string, any[]> = {};
+  const sheetSummaries: { name: string; rowCount: number; dataRows: number }[] = [];
+
   for (const name of workbook.SheetNames) {
     const sheet = workbook.Sheets[name];
-    const range = XLSX.utils.decode_range(sheet['!ref'] || 'A1');
+    if (!sheet) continue;
+
+    const ref = sheet['!ref'];
+    let range;
+    try {
+      range = XLSX.utils.decode_range(ref || 'A1');
+    } catch {
+      range = XLSX.utils.decode_range('A1');
+    }
     const rowCount = range.e.r - range.s.r + 1;
 
-    console.log(`Sheet "${name}" has ${rowCount} rows`);
-
-    if (rowCount > 1) {
-      worksheet = sheet;
-      sheetName = name;
-      break;
+    let rawRows: any[][] = [];
+    try {
+      rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' }) as any[][];
+    } catch {
+      rawRows = [];
     }
+
+    const hasMeaningfulData = rawRows.some(row =>
+      Array.isArray(row) && row.some(cell => cell !== undefined && cell !== null && String(cell).trim() !== '')
+    );
+
+    console.log(`Sheet "${name}" has ${rowCount} rows, meaningful data: ${hasMeaningfulData}`);
+
+    if (!hasMeaningfulData) {
+      continue;
+    }
+
+    let parsedRows: any[] = [];
+    try {
+      parsedRows = XLSX.utils.sheet_to_json(sheet, { defval: '', raw: false });
+    } catch {
+      parsedRows = [];
+    }
+
+    if (parsedRows.length === 0) {
+      parsedRows = convertRowsToObjects(rawRows, name);
+    } else {
+      parsedRows = parsedRows.map(row => ({ ...row, __sheetName: name }));
+    }
+
+    if (parsedRows.length === 0) {
+      // Last resort: try to build objects from raw rows even if there is no header row
+      parsedRows = convertRowsToObjects(rawRows, name);
+    }
+
+    if (parsedRows.length === 0) {
+      console.log(`Skipping sheet "${name}" because no structured rows were detected`);
+      continue;
+    }
+
+    sheetDataByName[name] = parsedRows;
+    sheetSummaries.push({ name, rowCount, dataRows: parsedRows.length });
   }
 
-  if (!worksheet) {
+  if (sheetSummaries.length === 0) {
     throw new Error("No data found in any sheet of the Excel file");
   }
 
-  // Parse sheet data
-  let data: any[] = [];
-  try {
-    data = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false });
-  } catch (e) {
-    data = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-  }
+  const primarySheetName = sheetSummaries[0].name;
+  console.log(`Using sheet "${primarySheetName}" as the primary sheet for initial parsing`);
 
-  // Handle array format data
-  if (data.length > 0 && Array.isArray(data[0])) {
-    const headers = data[0] as string[];
-    const objectData = [];
+  let data: any[] = sheetDataByName[primarySheetName] || [];
+  const combinedData: any[] = sheetSummaries.flatMap(summary => sheetDataByName[summary.name] || []);
+  const totalDataRows = combinedData.length;
+  const rowsForParsing = combinedData.length > 0 ? combinedData : data;
 
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i] as any[];
-      const obj: any = {};
-      headers.forEach((header, index) => {
-        if (header && row[index] !== undefined) {
-          obj[header] = row[index];
-        }
-      });
-      objectData.push(obj);
-    }
-
-    data = objectData;
-  }
+  console.log('Sheet summaries:', sheetSummaries);
+  console.log(`Total parsed rows across all sheets: ${totalDataRows}`);
 
   // Use AI to analyze the ENTIRE workbook
   console.log('=== ATTEMPTING AI ANALYSIS ===');
@@ -202,11 +272,10 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
   } else {
     // Use standard parsing when AI confidence is low
     console.log('AI confidence too low, using standard extraction...');
-    const sheets = workbook.SheetNames;
-    const firstSheet = workbook.Sheets[sheets[0]];
-    const rawData = XLSX.utils.sheet_to_json(firstSheet);
-    
-    importedData = rawData[0] || {};
+    const firstRow = combinedData[0] || data[0] || {};
+    const { __sheetName: _ignoredSheetName, ...sanitizedFirstRow } = firstRow;
+
+    importedData = { ...sanitizedFirstRow };
     thicknessMeasurements = [];
     checklistItems = [];
   }
@@ -217,19 +286,29 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     checklistItems = [...checklistItems, ...extractChecklistFromWorkbook(workbook)];
   }
 
-  // If AI analysis has low confidence, enhance with standard parsing from ALL sheets
-  if (aiAnalysis.confidence < 0.5) {
-    console.log('=== AI ANALYSIS FAILED OR LOW CONFIDENCE ===');
+  const needsStandardAugmentation =
+    !aiAnalysis ||
+    aiAnalysis.confidence < 0.5 ||
+    !importedData ||
+    Object.keys(importedData).length === 0 ||
+    (thicknessMeasurements?.length || 0) === 0 ||
+    sheetSummaries.length > 1;
+
+  // If AI analysis has low confidence or data gaps, enhance with standard parsing from ALL sheets
+  if (needsStandardAugmentation) {
+    console.log('=== STANDARD PARSING AUGMENTATION TRIGGERED ===');
     console.log('AI confidence:', aiAnalysis.confidence);
-    console.log('Falling back to standard parsing from all sheets...');
+    console.log('Existing importedData keys:', importedData ? Object.keys(importedData) : []);
+    console.log('Existing thickness measurements:', thicknessMeasurements?.length || 0);
+    console.log('Sheet count considered:', sheetSummaries.length);
+    console.log('Running comprehensive workbook parsing to supplement AI results...');
 
     // Process ALL sheets for additional data and multi-tank detection
     const allSheetData: { [sheetName: string]: any[] } = {};
     const potentialTanks: { [tankId: string]: any } = {};
 
-    for (const sheetName of workbook.SheetNames) {
-      const sheetWorksheet = workbook.Sheets[sheetName];
-      const sheetData = XLSX.utils.sheet_to_json(sheetWorksheet, { defval: '', raw: false });
+    for (const { name: sheetName } of sheetSummaries) {
+      const sheetData = sheetDataByName[sheetName] || [];
 
       if (sheetData.length === 0) continue;
       console.log(`Standard parsing sheet "${sheetName}" with ${sheetData.length} rows`);
@@ -343,210 +422,199 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
       return {
         multiTankImports,
         aiAnalysis,
-        totalRows: data.length,
-        preview: data.slice(0, 5)
+        totalRows: rowsForParsing.length,
+        preview: rowsForParsing.slice(0, 5)
       };
     }
 
-    // Process first sheet for main report data
-    if (data.length > 0) {
-    const fieldPatterns = {
-      tankId: ['Tank ID', 'Tank Id', 'TankID', 'Tank Number', 'Tank No', 'Vessel ID', 'Equipment ID', 'Equip ID', 'EQUIP ID'],
-      reportNumber: ['Report Number', 'Report No', 'ReportNumber', 'Inspection Report No', 'IR No'],
-      service: ['Service', 'Product', 'Contents', 'Stored Product', 'Tank Service'],
-      inspector: ['Inspector', 'Inspector Name', 'Inspected By', 'API Inspector', 'Certified Inspector'],
-      inspectionDate: ['Date', 'Inspection Date', 'Date of Inspection', 'Inspection Performed'],
-      diameter: ['Diameter', 'Tank Diameter', 'Shell Diameter', 'Nominal Diameter'],
-      height: ['Height', 'Tank Height', 'Shell Height', 'Overall Height'],
-      originalThickness: ['Original Thickness', 'Nominal Thickness', 'Design Thickness', 'Min Thickness'],
-      location: ['Location', 'Site', 'Facility', 'Plant Location'],
-      owner: ['Owner', 'Client', 'Company', 'Facility Owner'],
-      lastInspection: ['Last Inspection', 'Previous Inspection', 'Last Internal Inspection'],
-      findings: ['Findings', 'Report Write Up', 'Write Up', 'Report Summary', 'Inspection Findings'],
-      reportWriteUp: ['Report Write Up', 'REPORT WRITE UP', 'Report Writeup', 'Write Up'],
-      executiveSummary: ['Executive Summary', 'EXECUTIVE SUMMARY', 'Summary'],
-      repairRecommendations: ['Repair Recommendations', 'REPAIR RECOMMENDATIONS', 'Recommendations'],
-      nextInspectionDate: ['Next Inspection Date', 'NEXT INSPECTION DATE', 'Next Inspection']
-    };
+    // Process parsed workbook rows for main report data and measurements
+    if (rowsForParsing.length > 0) {
+      const fieldPatterns = {
+        tankId: ['Tank ID', 'Tank Id', 'TankID', 'Tank Number', 'Tank No', 'Vessel ID', 'Equipment ID', 'Equip ID', 'EQUIP ID'],
+        reportNumber: ['Report Number', 'Report No', 'ReportNumber', 'Inspection Report No', 'IR No'],
+        service: ['Service', 'Product', 'Contents', 'Stored Product', 'Tank Service'],
+        inspector: ['Inspector', 'Inspector Name', 'Inspected By', 'API Inspector', 'Certified Inspector'],
+        inspectionDate: ['Date', 'Inspection Date', 'Date of Inspection', 'Inspection Performed'],
+        diameter: ['Diameter', 'Tank Diameter', 'Shell Diameter', 'Nominal Diameter'],
+        height: ['Height', 'Tank Height', 'Shell Height', 'Overall Height'],
+        originalThickness: ['Original Thickness', 'Nominal Thickness', 'Design Thickness', 'Min Thickness'],
+        location: ['Location', 'Site', 'Facility', 'Plant Location'],
+        owner: ['Owner', 'Client', 'Company', 'Facility Owner'],
+        lastInspection: ['Last Inspection', 'Previous Inspection', 'Last Internal Inspection'],
+        findings: ['Findings', 'Report Write Up', 'Write Up', 'Report Summary', 'Inspection Findings'],
+        reportWriteUp: ['Report Write Up', 'REPORT WRITE UP', 'Report Writeup', 'Write Up'],
+        executiveSummary: ['Executive Summary', 'EXECUTIVE SUMMARY', 'Summary'],
+        repairRecommendations: ['Repair Recommendations', 'REPAIR RECOMMENDATIONS', 'Recommendations'],
+        nextInspectionDate: ['Next Inspection Date', 'NEXT INSPECTION DATE', 'Next Inspection']
+      };
 
-    const findFieldValue = (rowObj: any, patterns: string[]) => {
-      for (const pattern of patterns) {
-        if (rowObj[pattern] !== undefined && rowObj[pattern] !== null && rowObj[pattern] !== '') {
-          return rowObj[pattern];
-        }
-      }
-      return null;
-    };
-
-    // Enhance data with standard parsing
-    for (const row of data) {
-      const rowObj = row as any;
-
-      // Extract main report fields
-      for (const [field, patterns] of Object.entries(fieldPatterns)) {
-        const value = findFieldValue(rowObj, patterns);
-        if (value && !importedData[field]) {
-          if (field === 'inspectionDate' || field === 'lastInspection') {
-            const date = new Date(value);
-            if (!isNaN(date.getTime())) {
-              importedData[field] = date.toISOString().split('T')[0];
-            }
-          } else if (field === 'service') {
-            importedData[field] = String(value).toLowerCase();
-          } else if (field === 'findings') {
-            // Store findings but don't overwrite if already found
-            if (!importedData.findings) {
-              importedData.findings = String(value);
-            }
-          } else if (field === 'reportWriteUp') {
-            // Store the comprehensive report write up
-            importedData.reportWriteUp = String(value);
-            // Also use it as findings if findings not already set
-            if (!importedData.findings) {
-              importedData.findings = String(value);
-            }
-          } else {
-            importedData[field] = String(value);
+      const findFieldValue = (rowObj: any, patterns: string[]) => {
+        for (const pattern of patterns) {
+          if (rowObj[pattern] !== undefined && rowObj[pattern] !== null && rowObj[pattern] !== '') {
+            return rowObj[pattern];
           }
         }
-      }
+        return null;
+      };
 
-      // Look for additional thickness measurements - expanded patterns
-      const thicknessFields = [
-        'Thickness', 'Current Thickness', 'Measured Thickness', 'Reading',
-        'Shell Thickness', 'Actual Thickness', 'UT Reading', 'Minimum Thickness',
-        'Course 1', 'Course 2', 'Course 3', 'Course 4', 'Course 5', 
-        'Course 6', 'Course 7', 'Course 8', 'Course 9', 'Course 10'
-      ];
-      const locationFields = ['Location', 'Position', 'Point', 'Measurement Point', 'Course', 'Elevation'];
+      for (const row of rowsForParsing) {
+        const rowObj = row as any;
 
-      // Check each potential thickness field
-      for (const key of Object.keys(rowObj)) {
-        const value = rowObj[key];
-        const keyLower = key.toLowerCase();
+        // Extract main report fields
+        for (const [field, patterns] of Object.entries(fieldPatterns)) {
+          const value = findFieldValue(rowObj, patterns);
+          if (value && !importedData[field]) {
+            if (field === 'inspectionDate' || field === 'lastInspection') {
+              const date = new Date(value);
+              if (!isNaN(date.getTime())) {
+                importedData[field] = date.toISOString().split('T')[0];
+              }
+            } else if (field === 'service') {
+              importedData[field] = String(value).toLowerCase();
+            } else if (field === 'findings') {
+              if (!importedData.findings) {
+                importedData.findings = String(value);
+              }
+            } else if (field === 'reportWriteUp') {
+              importedData.reportWriteUp = String(value);
+              if (!importedData.findings) {
+                importedData.findings = String(value);
+              }
+            } else {
+              importedData[field] = String(value);
+            }
+          }
+        }
 
-        // Check if this is a thickness value
-        if (value && !isNaN(parseFloat(value))) {
-          const numValue = parseFloat(value);
+        // Look for additional thickness measurements - expanded patterns
+        const thicknessFields = [
+          'Thickness', 'Current Thickness', 'Measured Thickness', 'Reading',
+          'Shell Thickness', 'Actual Thickness', 'UT Reading', 'Minimum Thickness',
+          'Course 1', 'Course 2', 'Course 3', 'Course 4', 'Course 5',
+          'Course 6', 'Course 7', 'Course 8', 'Course 9', 'Course 10'
+        ];
+        const locationFields = ['Location', 'Position', 'Point', 'Measurement Point', 'Course', 'Elevation'];
 
-          // Typical thickness range for steel tanks (0.1 to 2 inches)
-          if (numValue > 0.05 && numValue < 3) {
-            let isThickness = false;
-            let component = 'Shell';
-            let measurementType = 'shell';
+        for (const key of Object.keys(rowObj)) {
+          const value = rowObj[key];
+          const keyLower = key.toLowerCase();
 
-            // Check if column name indicates thickness
-            for (const field of thicknessFields) {
-              if (keyLower.includes(field.toLowerCase())) {
+          if (value && !isNaN(parseFloat(value))) {
+            const numValue = parseFloat(value);
+
+            if (numValue > 0.05 && numValue < 3) {
+              let isThickness = false;
+              let component = 'Shell';
+              let measurementType = 'shell';
+
+              for (const field of thicknessFields) {
+                if (keyLower.includes(field.toLowerCase())) {
+                  isThickness = true;
+                  break;
+                }
+              }
+
+              if (keyLower.includes('bottom')) {
+                component = 'Bottom Plate';
+                measurementType = 'bottom_plate';
                 isThickness = true;
-                break;
+              } else if (keyLower.includes('critical')) {
+                component = 'Critical Zone';
+                measurementType = 'critical_zone';
+                isThickness = true;
+              } else if (keyLower.includes('appurtenance')) {
+                component = 'Appurtenance';
+                measurementType = 'appurtenance';
+                isThickness = true;
+              } else if (keyLower.includes('roof')) {
+                component = 'Roof';
+                measurementType = 'roof';
+                isThickness = true;
               }
-            }
 
-            // Detect component type from column name
-            if (keyLower.includes('bottom')) {
-              component = 'Bottom Plate';
-              measurementType = 'bottom_plate';
-              isThickness = true;
-            } else if (keyLower.includes('critical')) {
-              component = 'Critical Zone';
-              measurementType = 'critical_zone';
-              isThickness = true;
-            } else if (keyLower.includes('appurtenance')) {
-              component = 'Appurtenance';
-              measurementType = 'appurtenance';
-              isThickness = true;
-            } else if (keyLower.includes('roof')) {
-              component = 'Roof';
-              measurementType = 'roof';
-              isThickness = true;
-            }
+              if (!isThickness && (keyLower.includes('course') || keyLower.match(/^\d+$/))) {
+                isThickness = true;
+              }
 
-            // Also check for patterns like "Course 1: 0.375" or numeric columns
-            if (!isThickness && (keyLower.includes('course') || keyLower.match(/^\d+$/))) {
-              isThickness = true;
-            }
-
-            if (isThickness) {
-              const measurement = {
-                location: findFieldValue(rowObj, locationFields) || key || `Point ${thicknessMeasurements.length + 1}`,
-                elevation: rowObj['Elevation'] || rowObj['Course'] || '0',
-                currentThickness: String(numValue),
-                component,
-                measurementType,
-                originalThickness: String(rowObj['Original Thickness'] || rowObj['Nominal Thickness'] || '0.375'),
-                createdAt: new Date().toISOString()
-              };
-
-              // Check if this measurement already exists
-              const exists = thicknessMeasurements.some(m =>
-                m.location === measurement.location &&
-                Math.abs(parseFloat(m.currentThickness) - parseFloat(measurement.currentThickness)) < 0.001 &&
-                m.component === measurement.component
-              );
-
-              if (!exists) {
-                // Calculate corrosion rate, remaining life, and status
-                const originalThicknessNum = typeof measurement.originalThickness === 'number' ? measurement.originalThickness : parseFloat(measurement.originalThickness) || 0;
-                const currentThicknessNum = typeof measurement.currentThickness === 'number' ? measurement.currentThickness : parseFloat(measurement.currentThickness) || 0;
-                // Estimate age from inspection date if available
-                let ageInYears = 1;
-                if (importedData.inspectionDate && importedData.lastInspection) {
-                  const last = new Date(importedData.lastInspection);
-                  const current = new Date(importedData.inspectionDate);
-                  if (!isNaN(last.getTime()) && !isNaN(current.getTime())) {
-                    ageInYears = Math.max(1, (current.getTime() - last.getTime()) / (1000 * 60 * 60 * 24 * 365));
-                  }
-                }
-                // Minimum required thickness (default to 0.1 if not available)
-                let minimumRequired = 0.1;
-                if (measurement.component === 'Shell' && importedData.diameter) {
-                  try {
-                    const { calculateMinimumRequiredThickness } = require('./api653-calculations');
-                    minimumRequired = calculateMinimumRequiredThickness(
-                      1,
-                      parseFloat(importedData.diameter) || 10,
-                      1,
-                      parseFloat(importedData.height) || 10
-                    );
-                  } catch {}
-                }
-                // Calculate corrosion rate
-                let corrosionRate = 0, corrosionRateMPY = 0;
-                try {
-                  const { calculateCorrosionRate } = require('./api653-calculations');
-                  const rates = calculateCorrosionRate(originalThicknessNum, currentThicknessNum, ageInYears);
-                  corrosionRate = rates.rateInchesPerYear;
-                  corrosionRateMPY = rates.rateMPY;
-                } catch {}
-                // Calculate remaining life
-                let remainingLife = 999;
-                try {
-                  const { calculateRemainingLife } = require('./api653-calculations');
-                  remainingLife = calculateRemainingLife(currentThicknessNum, minimumRequired, corrosionRate);
-                } catch {}
-                // Determine status
-                let status = 'acceptable';
-                try {
-                  const { determineInspectionStatus } = require('./api653-calculations');
-                  status = determineInspectionStatus(remainingLife, currentThicknessNum, minimumRequired);
-                } catch {}
-                const measurementWithCalc = {
-                  ...measurement,
-                  thicknessLoss: String(originalThicknessNum - currentThicknessNum),
-                  corrosionRate: String(corrosionRate),
-                  corrosionRateMPY: String(corrosionRateMPY),
-                  remainingLife: String(remainingLife),
-                  status
+              if (isThickness) {
+                const measurement = {
+                  location: findFieldValue(rowObj, locationFields) || key || `Point ${thicknessMeasurements.length + 1}`,
+                  elevation: rowObj['Elevation'] || rowObj['Course'] || '0',
+                  currentThickness: String(numValue),
+                  component,
+                  measurementType,
+                  originalThickness: String(rowObj['Original Thickness'] || rowObj['Nominal Thickness'] || '0.375'),
+                  createdAt: new Date().toISOString()
                 };
-                thicknessMeasurements.push(measurementWithCalc);
-                console.log(`Found thickness measurement: [${measurement.component}] ${measurement.location} = ${measurement.currentThickness} | corrosionRate=${corrosionRate}, remainingLife=${remainingLife}, status=${status}`);
+
+                const exists = thicknessMeasurements.some(m =>
+                  m.location === measurement.location &&
+                  Math.abs(parseFloat(m.currentThickness) - parseFloat(measurement.currentThickness)) < 0.001 &&
+                  m.component === measurement.component
+                );
+
+                if (!exists) {
+                  const originalThicknessNum = typeof measurement.originalThickness === 'number' ? measurement.originalThickness : parseFloat(measurement.originalThickness) || 0;
+                  const currentThicknessNum = typeof measurement.currentThickness === 'number' ? measurement.currentThickness : parseFloat(measurement.currentThickness) || 0;
+
+                  let ageInYears = 1;
+                  if (importedData.inspectionDate && importedData.lastInspection) {
+                    const last = new Date(importedData.lastInspection);
+                    const current = new Date(importedData.inspectionDate);
+                    if (!isNaN(last.getTime()) && !isNaN(current.getTime())) {
+                      ageInYears = Math.max(1, (current.getTime() - last.getTime()) / (1000 * 60 * 60 * 24 * 365));
+                    }
+                  }
+
+                  let minimumRequired = 0.1;
+                  if (measurement.component === 'Shell' && importedData.diameter) {
+                    try {
+                      const { calculateMinimumRequiredThickness } = require('./api653-calculations');
+                      minimumRequired = calculateMinimumRequiredThickness(
+                        1,
+                        parseFloat(importedData.diameter) || 10,
+                        1,
+                        parseFloat(importedData.height) || 10
+                      );
+                    } catch {}
+                  }
+
+                  let corrosionRate = 0, corrosionRateMPY = 0;
+                  try {
+                    const { calculateCorrosionRate } = require('./api653-calculations');
+                    const rates = calculateCorrosionRate(originalThicknessNum, currentThicknessNum, ageInYears);
+                    corrosionRate = rates.rateInchesPerYear;
+                    corrosionRateMPY = rates.rateMPY;
+                  } catch {}
+
+                  let remainingLife = 999;
+                  try {
+                    const { calculateRemainingLife } = require('./api653-calculations');
+                    remainingLife = calculateRemainingLife(currentThicknessNum, minimumRequired, corrosionRate);
+                  } catch {}
+
+                  let status = 'acceptable';
+                  try {
+                    const { determineInspectionStatus } = require('./api653-calculations');
+                    status = determineInspectionStatus(remainingLife, currentThicknessNum, minimumRequired);
+                  } catch {}
+
+                  const measurementWithCalc = {
+                    ...measurement,
+                    thicknessLoss: String(originalThicknessNum - currentThicknessNum),
+                    corrosionRate: String(corrosionRate),
+                    corrosionRateMPY: String(corrosionRateMPY),
+                    remainingLife: String(remainingLife),
+                    status
+                  };
+                  thicknessMeasurements.push(measurementWithCalc);
+                  console.log(`Found thickness measurement: [${measurement.component}] ${measurement.location} = ${measurement.currentThickness} | corrosionRate=${corrosionRate}, remainingLife=${remainingLife}, status=${status}`);
+                }
               }
             }
           }
         }
       }
-    }
     }
   }
 
@@ -810,8 +878,8 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     thicknessMeasurements: Array.isArray(processedMeasurements) ? processedMeasurements : [],
     checklistItems: Array.isArray(checklistItems) ? checklistItems : [],
     aiAnalysis,
-    totalRows: data.length,
-    preview: data.slice(0, 5)
+    totalRows: rowsForParsing.length,
+    preview: rowsForParsing.slice(0, 5)
   };
 }
 

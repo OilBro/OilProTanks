@@ -382,5 +382,60 @@ export async function analyzePDFWithManus(pdfData: any, filename: string): Promi
 }
 
 export async function analyzeExcelWithManus(excelData: any, filename: string): Promise<ManusAnalysisResponse> {
-  return analyzeDocumentWithManus(excelData, filename, "excel");
+  let workbook: XLSX.WorkBook | null = null;
+
+  if (excelData && typeof excelData === 'object' && 'SheetNames' in excelData && 'Sheets' in excelData) {
+    workbook = excelData as XLSX.WorkBook;
+  } else {
+    try {
+      if (Buffer.isBuffer(excelData)) {
+        workbook = XLSX.read(excelData, { type: 'buffer', sheetStubs: true });
+      } else if (excelData instanceof ArrayBuffer) {
+        const buffer = Buffer.from(excelData);
+        workbook = XLSX.read(buffer, { type: 'buffer', sheetStubs: true });
+      } else if (excelData instanceof Uint8Array) {
+        const buffer = Buffer.from(excelData);
+        workbook = XLSX.read(buffer, { type: 'buffer', sheetStubs: true });
+      }
+    } catch (error) {
+      console.error('Failed to convert excel data to workbook for Manus analysis:', error);
+    }
+  }
+
+  let content = '';
+
+  if (workbook) {
+    for (const sheetName of workbook.SheetNames) {
+      const worksheet = workbook.Sheets[sheetName];
+      if (!worksheet) continue;
+
+      content += `\n=== SHEET: ${sheetName} ===\n`;
+
+      try {
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: '' }) as any[][];
+        rows.slice(0, 200).forEach((row, index) => {
+          if (Array.isArray(row)) {
+            content += `Row ${index + 1}: ${row.join(' | ')}\n`;
+          }
+        });
+
+        const structured = XLSX.utils.sheet_to_json(worksheet, { defval: '', raw: false });
+        if (structured.length > 0) {
+          content += '\n--- Structured Data ---\n';
+          content += JSON.stringify(structured.slice(0, 100), null, 2);
+          content += '\n';
+        }
+      } catch (error) {
+        console.error(`Failed to serialize sheet "${sheetName}" for Manus analysis:`, error);
+      }
+    }
+  }
+
+  if (!content.trim()) {
+    content = typeof excelData === 'string'
+      ? excelData
+      : JSON.stringify(excelData ?? {});
+  }
+
+  return analyzeDocumentWithManus(content, filename, "excel");
 }
