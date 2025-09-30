@@ -1,8 +1,6 @@
 import * as XLSX from "xlsx";
 import { analyzeExcelWithManus, analyzePDFWithManus } from "./manus-analyzer";
 import { analyzeExcelWithClaude, analyzePDFWithClaude } from "./claude-analyzer";
-import { analyzeSpreadsheetWithOpenRouter, processSpreadsheetWithAI } from "./openrouter-analyzer";
-import { analyzePDFWithOpenRouter, processPDFWithAI } from "./pdf-analyzer";
 import { parseLegacyExcelData, convertToSystemFormat } from "./legacy-import-mapper";
 
 export async function handleExcelImport(buffer: Buffer, fileName: string) {
@@ -177,34 +175,6 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     } catch (error: any) {
       console.error('=== MANUS AI CALL FAILED ===');
       console.error('Error:', error.message);
-      console.log('Falling back to OpenRouter...');
-    }
-  }
-
-  // Fall back to OpenRouter if both Claude and Manus fail or not configured
-  if (!aiAnalysis && process.env.OPENROUTER_API_KEY) {
-    console.log('API Key configured:', !!process.env.OPENROUTER_API_KEY);
-    try {
-      console.log('Calling OpenRouter AI analyzer...');
-      aiAnalysis = await analyzeSpreadsheetWithOpenRouter(workbook, fileName);
-      console.log('OpenRouter AI analysis completed');
-      console.log('AI Confidence:', aiAnalysis.confidence);
-      console.log('AI found measurements:', aiAnalysis.thicknessMeasurements?.length || 0);
-    } catch (error: any) {
-      console.error('=== OPENROUTER CALL FAILED ===');
-      console.error('Error type:', error.name);
-      console.error('Error message:', error.message);
-      console.error('Full error:', error);
-      console.error('Stack trace:', error.stack);
-
-      // Provide more helpful error message
-      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-        console.error('AUTHENTICATION ERROR: OpenRouter API key may be invalid or expired');
-      } else if (error.message?.includes('429')) {
-        console.error('RATE LIMIT ERROR: Too many requests to OpenRouter API');
-      } else if (error.message?.includes('timeout')) {
-        console.error('TIMEOUT ERROR: OpenRouter API took too long to respond');
-      }
     }
   }
 
@@ -230,8 +200,15 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
     thicknessMeasurements = aiAnalysis.thicknessMeasurements || [];
     checklistItems = aiAnalysis.checklistItems || [];
   } else {
-    // Use OpenRouter processing or standard parsing
-    ({ importedData, thicknessMeasurements, checklistItems } = await processSpreadsheetWithAI(workbook, aiAnalysis));
+    // Use standard parsing when AI confidence is low
+    console.log('AI confidence too low, using standard extraction...');
+    const sheets = workbook.SheetNames;
+    const firstSheet = workbook.Sheets[sheets[0]];
+    const rawData = XLSX.utils.sheet_to_json(firstSheet);
+    
+    importedData = rawData[0] || {};
+    thicknessMeasurements = [];
+    checklistItems = [];
   }
 
   // Enhanced checklist extraction if AI didn't find many
@@ -244,7 +221,6 @@ export async function handleExcelImport(buffer: Buffer, fileName: string) {
   if (aiAnalysis.confidence < 0.5) {
     console.log('=== AI ANALYSIS FAILED OR LOW CONFIDENCE ===');
     console.log('AI confidence:', aiAnalysis.confidence);
-    console.log('This means your OpenRouter AI is not working properly!');
     console.log('Falling back to standard parsing from all sheets...');
 
     // Process ALL sheets for additional data and multi-tank detection
@@ -1058,19 +1034,7 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
       } catch (error: any) {
         console.error('=== MANUS PDF ANALYSIS FAILED ===');
         console.error('Error:', error.message);
-        console.log('Falling back to OpenRouter...');
-      }
-    }
-
-    // Fall back to OpenRouter if both Claude and Manus fail or not configured
-    if (!pdfAnalysis && process.env.OPENROUTER_API_KEY) {
-      try {
-        console.log('Calling OpenRouter PDF analyzer...');
-        pdfAnalysis = await analyzePDFWithOpenRouter(buffer, fileName);
-        console.log('OpenRouter PDF analysis completed');
-      } catch (error) {
-        console.error('=== OPENROUTER PDF ANALYSIS FAILED ===');
-        console.error('Error calling analyzePDFWithOpenRouter:', error);
+        console.log('Both AI parsers failed, will use standard parsing...');
       }
     }
 
@@ -1100,8 +1064,14 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
       preview = pdfAnalysis.extractedText?.substring(0, 1000) || '';
       aiAnalysis = pdfAnalysis;
     } else {
-      // Use OpenRouter processing or standard parsing
-      ({ importedData, thicknessMeasurements, checklistItems, totalPages, preview, aiAnalysis } = await processPDFWithAI(pdfAnalysis));
+      // Use standard PDF parsing when AI confidence is low
+      console.log('Using standard PDF extraction...');
+      importedData = pdfAnalysis.reportData || {};
+      thicknessMeasurements = pdfAnalysis.thicknessMeasurements || [];
+      checklistItems = pdfAnalysis.checklistItems || [];
+      totalPages = 1;
+      preview = pdfAnalysis.extractedText?.substring(0, 1000) || '';
+      aiAnalysis = pdfAnalysis;
     }
 
     console.log('=== FINAL PDF IMPORT DATA VALIDATION ===');
@@ -1115,7 +1085,7 @@ export async function handlePDFImport(buffer: Buffer, fileName: string) {
     if (aiAnalysis.confidence >= 0.3) {
       console.log('=== AI ANALYSIS SUCCESSFUL ===');
       console.log('AI confidence:', aiAnalysis.confidence);
-      console.log(usedManus ? 'Manus AI successfully analyzed the PDF!' : 'OpenRouter AI successfully analyzed the PDF!');
+      console.log(usedManus ? 'Manus AI successfully analyzed the PDF!' : 'Claude 3.5 Sonnet successfully analyzed the PDF!');
     } else {
       console.log('=== AI ANALYSIS FAILED OR LOW CONFIDENCE ===');
       console.log('AI confidence:', aiAnalysis.confidence);
