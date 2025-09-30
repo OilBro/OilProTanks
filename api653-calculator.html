@@ -523,6 +523,15 @@
 
         // Export results to PDF
         function exportToPDF() {
+            // Helper function to escape HTML special characters
+            function escapeHTML(str) {
+                return String(str)
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#39;");
+            }
             // Create a simple PDF export using browser's print function
             const originalContent = document.body.innerHTML;
             const printContent = document.querySelector('.results-section').innerHTML;
@@ -549,14 +558,14 @@
                     </div>
                     <div class="input-summary">
                         <h3>Input Parameters:</h3>
-                        <p>Tank Diameter: ${inputs.diameter} ft</p>
-                        <p>Tank Height: ${inputs.height} ft</p>
-                        <p>Specific Gravity: ${inputs.specificGravity}</p>
-                        <p>Joint Efficiency: ${inputs.jointEfficiency}</p>
-                        <p>Allowable Stress: ${inputs.allowableStress} psi</p>
-                        <p>Original Thickness: ${inputs.originalThickness} inches</p>
-                        <p>Current Thickness: ${inputs.currentThickness} inches</p>
-                        <p>Years Since Inspection: ${inputs.yearsSinceInspection}</p>
+                        <p>Tank Diameter: ${escapeHTML(inputs.diameter)} ft</p>
+                        <p>Tank Height: ${escapeHTML(inputs.height)} ft</p>
+                        <p>Specific Gravity: ${escapeHTML(inputs.specificGravity)}</p>
+                        <p>Joint Efficiency: ${escapeHTML(inputs.jointEfficiency)}</p>
+                        <p>Allowable Stress: ${escapeHTML(inputs.allowableStress)} psi</p>
+                        <p>Original Thickness: ${escapeHTML(inputs.originalThickness)} inches</p>
+                        <p>Current Thickness: ${escapeHTML(inputs.currentThickness)} inches</p>
+                        <p>Years Since Inspection: ${escapeHTML(inputs.yearsSinceInspection)}</p>
                     </div>
                     <div>${printContent}</div>
                 </body>
