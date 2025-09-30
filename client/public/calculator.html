@@ -522,6 +522,15 @@
         }
 
         // Export results to PDF
+        function escapeHtml(text) {
+            return String(text)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
         function exportToPDF() {
             // Create a simple PDF export using browser's print function
             const originalContent = document.body.innerHTML;
@@ -549,14 +558,14 @@
                     </div>
                     <div class="input-summary">
                         <h3>Input Parameters:</h3>
-                        <p>Tank Diameter: ${inputs.diameter} ft</p>
-                        <p>Tank Height: ${inputs.height} ft</p>
-                        <p>Specific Gravity: ${inputs.specificGravity}</p>
-                        <p>Joint Efficiency: ${inputs.jointEfficiency}</p>
-                        <p>Allowable Stress: ${inputs.allowableStress} psi</p>
-                        <p>Original Thickness: ${inputs.originalThickness} inches</p>
-                        <p>Current Thickness: ${inputs.currentThickness} inches</p>
-                        <p>Years Since Inspection: ${inputs.yearsSinceInspection}</p>
+                        <p>Tank Diameter: ${escapeHtml(inputs.diameter)} ft</p>
+                        <p>Tank Height: ${escapeHtml(inputs.height)} ft</p>
+                        <p>Specific Gravity: ${escapeHtml(inputs.specificGravity)}</p>
+                        <p>Joint Efficiency: ${escapeHtml(inputs.jointEfficiency)}</p>
+                        <p>Allowable Stress: ${escapeHtml(inputs.allowableStress)} psi</p>
+                        <p>Original Thickness: ${escapeHtml(inputs.originalThickness)} inches</p>
+                        <p>Current Thickness: ${escapeHtml(inputs.currentThickness)} inches</p>
+                        <p>Years Since Inspection: ${escapeHtml(inputs.yearsSinceInspection)}</p>
                     </div>
                     <div>${printContent}</div>
                 </body>
