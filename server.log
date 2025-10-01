@@ -1,0 +1,31 @@
+
+> rest-express@1.0.0 dev
+> PORT=${PORT:-5000} NODE_ENV=development tsx server/index.ts
+
+[db] DATABASE_URL not set – using mock database (MemStorage expected for tests)
+[dotenv@17.2.2] injecting env (6) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[bootstrap] starting server bootstrap...
+[bootstrap] express app created, NODE_ENV=development
+[image-analysis] Worker initialized
+[startup] DATABASE_URL not set; running in in-memory mode (templates ephemeral).
+[startup] resolving port for environment: development
+[startup] dev port candidates: PORT=5000 NODE_PORT= SERVER_PORT= VITE_PORT= APP_PORT=
+[startup] binding server on 0.0.0.0:5000 (source=PORT)
+10:58:25 PM [express] serving on 0.0.0.0:5000 (pid 23721) (source=PORT)
+[REQ] GET /api/test-manus -> 200 3.7ms
+[REQ] GET /api/test-manus -> 200 0.7ms
+[heartbeat] up seedInProgress=false seeded=true
+[heartbeat] up seedInProgress=false seeded=true
+[heartbeat] up seedInProgress=false seeded=true
+[heartbeat] up seedInProgress=false seeded=true
+[heartbeat] up seedInProgress=false seeded=true
+[heartbeat] up seedInProgress=false seeded=true
+[heartbeat] up seedInProgress=false seeded=true
+[heartbeat] up seedInProgress=false seeded=true
+[heartbeat] up seedInProgress=false seeded=true
+[heartbeat] up seedInProgress=false seeded=true
+[heartbeat] up seedInProgress=false seeded=true
+[heartbeat] up seedInProgress=false seeded=true
+[heartbeat] up seedInProgress=false seeded=true
+[heartbeat] up seedInProgress=false seeded=true
+[heartbeat] up seedInProgress=false seeded=true

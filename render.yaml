@@ -1,0 +1,17 @@
+version: "1"
+services:
+  - type: web
+    name: oilpro-tanks
+    env: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        fromService:
+          type: web
+          name: oilpro-tanks
+          property: port

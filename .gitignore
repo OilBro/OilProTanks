@@ -6,4 +6,5 @@ vite.config.ts.*
 *.tar.gz
 .env
 .env.local
-.env.production
+# Allow .env.production template to be committed
+# .env.production
