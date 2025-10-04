@@ -164,7 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create the main report
       const createdReport = await storage.createInspectionReport(reportData);
-      reportNumber = createdReport.reportNumber;
+      reportNumber = createdReport.reportNumber ?? undefined;
       
       // Create thickness measurements
       const thicknessList = Array.isArray(tms) ? tms : [];
