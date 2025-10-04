@@ -7,4 +7,4 @@ vite.config.ts.*
 .env
 .env.local
 # Allow .env.production template to be committed
-# .env.production
+# .env.productionserver.log
