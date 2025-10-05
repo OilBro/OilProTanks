@@ -410,12 +410,63 @@ class ProfessionalPDFGenerator {
 
   // Layout engine helper methods
   private ensurePageBreak(requiredHeight: number = 50): void {
-    if (this.currentY + requiredHeight > this.pageHeight - this.bottomMargin) {
+    // Add safety buffer to prevent overlaps
+    const safetyBuffer = 25;
+    if (this.currentY + requiredHeight + safetyBuffer > this.pageHeight - this.bottomMargin) {
       this.pdf.addPage();
       this.currentPage = this.pdf.getNumberOfPages();
       this.pdf.setPage(this.currentPage);
       this.currentY = this.defaultTopMargin;
     }
+  }
+
+  private ensureSafeSpacing(beforeContent: number = 15): void {
+    // Ensure minimum spacing between content elements
+    this.currentY += beforeContent;
+    this.ensurePageBreak(40); // Ensure we have room for content
+  }
+
+  private addSpacer(height: number = 10): void {
+    this.currentY += height;
+  }
+
+  private addLargeTableFlow(config: any, maxRowsPerPage: number = 25, spacing: number = 15): void {
+    const bodyData = config.body || [];
+    
+    if (bodyData.length <= maxRowsPerPage) {
+      // Small table - use regular flow
+      this.addTableFlow(config, spacing);
+      return;
+    }
+    
+    // Large table - chunk it
+    const chunks = [];
+    for (let i = 0; i < bodyData.length; i += maxRowsPerPage) {
+      chunks.push(bodyData.slice(i, i + maxRowsPerPage));
+    }
+    
+    chunks.forEach((chunk, index) => {
+      if (index > 0) {
+        this.ensureSafeSpacing(15);
+      }
+      
+      const chunkConfig = {
+        ...config,
+        body: chunk
+      };
+      
+      this.addTableFlow(chunkConfig, spacing);
+      
+      // Add continuation note if not last chunk
+      if (index < chunks.length - 1) {
+        this.addSpacer(5);
+        this.pdf.setFont('helvetica', 'italic');
+        this.pdf.setFontSize(9);
+        this.pdf.setTextColor(100, 100, 100);
+        this.pdf.text('(continued on next section)', this.pageWidth - this.margin - 60, this.currentY);
+        this.pdf.setTextColor(0, 0, 0);
+      }
+    });
   }
 
   private addTextFlow(text: string, options?: {
@@ -445,20 +496,35 @@ class ProfessionalPDFGenerator {
     this.currentY += opts.lineHeight;
   }
 
-  private addTableFlow(config: any, spacing: number = 10): void {
-    // Ensure we have space for at least the header
-    this.ensurePageBreak(30);
+  private addTableFlow(config: any, spacing: number = 15): void {
+    // Ensure we have adequate space for the table
+    const estimatedRows = config.body ? config.body.length : 5;
+    const estimatedHeight = Math.max(60, estimatedRows * 15 + 30);
+    this.ensurePageBreak(estimatedHeight);
 
     const tableConfig = {
       ...config,
       startY: this.currentY,
       margin: {
         top: this.defaultTopMargin,
-        bottom: this.bottomMargin,
+        bottom: this.bottomMargin + 10, // Extra bottom margin
         left: this.margin,
         right: this.margin,
         ...(config.margin || {})
-      }
+      },
+      // Add better styling defaults
+      styles: {
+        overflow: 'linebreak',
+        cellPadding: 3,
+        fontSize: 9,
+        minCellHeight: 8,
+        lineColor: [200, 200, 200],
+        lineWidth: 0.1,
+        ...(config.styles || {})
+      },
+      // Improve table width management
+      tableWidth: 'auto',
+      showHead: config.head ? 'everyPage' : 'never'
     };
 
     (this.pdf as any).autoTable(tableConfig);
@@ -470,6 +536,7 @@ class ProfessionalPDFGenerator {
       this.currentY += spacing;
     }
 
+    // Ensure we're on the correct page after table rendering
     this.currentPage = this.pdf.getNumberOfPages();
     this.pdf.setPage(this.currentPage);
   }
@@ -1364,6 +1431,8 @@ class ProfessionalPDFGenerator {
   private addAPI653CalculationAnalysis(analysisData: AnalysisData, measurements: ExtendedThicknessMeasurement[]) {
     this.addSectionHeader('3.0 API 653 CALCULATION ANALYSIS', true, true);
     
+    this.ensureSafeSpacing(5);
+    
     // Summary of calculations
     this.pdf.setFont('helvetica', 'normal');
     this.pdf.setFontSize(10);
@@ -1382,11 +1451,13 @@ class ProfessionalPDFGenerator {
       );
       
       if (shellMeasurements.length > 0) {
+        this.ensureSafeSpacing(10);
+        
         this.pdf.setFont('helvetica', 'bold');
         this.pdf.setFontSize(11);
         this.pdf.setTextColor(0, 0, 0);
         this.pdf.text('SHELL THICKNESS MEASUREMENTS (WITHOUT ANALYSIS)', this.margin, this.currentY);
-        this.currentY += 8;
+        this.currentY += 12;
         
         // Show raw measurements only
         const shellData = shellMeasurements.map(m => [
@@ -1427,10 +1498,12 @@ class ProfessionalPDFGenerator {
     );
     
     // Shell Course Analysis Table
+    this.ensureSafeSpacing(10);
+    
     this.pdf.setFont('helvetica', 'bold');
     this.pdf.setFontSize(11);
     this.pdf.text('SHELL COURSE ANALYSIS', this.margin, this.currentY);
-    this.currentY += 8;
+    this.currentY += 12;
     
     const shellData = analysisData.shellCourses && analysisData.shellCourses.length > 0
       ? analysisData.shellCourses.map(course => {
@@ -1630,6 +1703,8 @@ class ProfessionalPDFGenerator {
   private addEnhancedThicknessMeasurements(measurements: ExtendedThicknessMeasurement[], analysisData: AnalysisData) {
     this.addSectionHeader('5.0 THICKNESS MEASUREMENTS', true, true);
     
+    this.ensureSafeSpacing(5);
+    
     // Group measurements by component - use measurementType for better filtering
     const shellMeasurements = measurements.filter(m => 
       m.measurementType === 'shell' || m.component?.toLowerCase().includes('shell')
@@ -1643,10 +1718,12 @@ class ProfessionalPDFGenerator {
     
     // Shell Measurements with full data
     if (shellMeasurements.length > 0) {
+      this.ensureSafeSpacing(10);
+      
       this.pdf.setFont('helvetica', 'bold');
       this.pdf.setFontSize(11);
       this.pdf.text('SHELL MEASUREMENTS', this.margin, this.currentY);
-      this.currentY += 8;
+      this.currentY += 12;
       
       const shellData = shellMeasurements.map(m => {
         const corrosionRate = this.getMeasurementCorrosionRate(m);
@@ -1665,7 +1742,7 @@ class ProfessionalPDFGenerator {
         ];
       });
       
-      this.addTableFlow({
+      this.addLargeTableFlow({
         head: [['Location', 'Component', 'Original\n(in)', 'Current\n(in)', 't-min\n(in)', 'CR\n(mpy)', 'RL\n(yrs)', 'Status']],
         body: shellData,
         theme: 'striped',
@@ -1674,17 +1751,24 @@ class ProfessionalPDFGenerator {
           fontSize: 8,
           fontStyle: 'bold',
           halign: 'center',
-          cellPadding: 3
+          cellPadding: 3,
+          minCellHeight: 12
         },
         bodyStyles: {
           fontSize: 8,
           halign: 'center',
-          cellPadding: 2
+          cellPadding: 3,
+          minCellHeight: 10
         },
         columnStyles: {
-          0: { cellWidth: 25 },
-          1: { cellWidth: 25 },
-          7: { fontStyle: 'bold' }
+          0: { cellWidth: 35, halign: 'left' },    // Location - wider, left-aligned
+          1: { cellWidth: 35, halign: 'left' },    // Component - wider, left-aligned  
+          2: { cellWidth: 20, halign: 'right' },   // Original thickness
+          3: { cellWidth: 20, halign: 'right' },   // Current thickness
+          4: { cellWidth: 20, halign: 'right' },   // Min required
+          5: { cellWidth: 18, halign: 'right' },   // Corrosion rate
+          6: { cellWidth: 18, halign: 'right' },   // Remaining life
+          7: { cellWidth: 'auto', fontStyle: 'bold', halign: 'center' }  // Status
         },
         didDrawCell: (data: any) => {
           if (data.column.index === 7 && data.row.section === 'body') {
@@ -1711,13 +1795,12 @@ class ProfessionalPDFGenerator {
     
     // Bottom Measurements - skip section entirely if no data exists (as requested)
     if (bottomMeasurements.length > 0) {
-      // Ensure space for bottom measurements section
-      this.ensurePageBreak(50);
+      this.ensureSafeSpacing(15);
       
       this.pdf.setFont('helvetica', 'bold');
       this.pdf.setFontSize(11);
       this.pdf.text('BOTTOM PLATE MEASUREMENTS', this.margin, this.currentY);
-      this.currentY += 8;
+      this.currentY += 12;
       
       const bottomData = bottomMeasurements.map(m => {
         const corrosionRate = this.getMeasurementCorrosionRate(m);
@@ -1743,14 +1826,27 @@ class ProfessionalPDFGenerator {
           fillColor: this.primaryColor,
           fontSize: 8,
           fontStyle: 'bold',
-          halign: 'center'
+          halign: 'center',
+          cellPadding: 3,
+          minCellHeight: 12
         },
         bodyStyles: {
           fontSize: 8,
-          halign: 'center'
+          halign: 'center',
+          cellPadding: 3,
+          minCellHeight: 10
+        },
+        columnStyles: {
+          0: { cellWidth: 40, halign: 'left' },    // Location - wider, left-aligned
+          1: { cellWidth: 25, halign: 'right' },   // Current thickness
+          2: { cellWidth: 25, halign: 'right' },   // Original thickness
+          3: { cellWidth: 25, halign: 'right' },   // Min required
+          4: { cellWidth: 20, halign: 'right' },   // Corrosion rate
+          5: { cellWidth: 20, halign: 'right' },   // Remaining life
+          6: { cellWidth: 'auto', fontStyle: 'bold', halign: 'center' }  // Status
         },
         margin: { left: this.margin }
-      }, 10);
+      }, 15);
     }
   }
 
@@ -2123,11 +2219,13 @@ class ProfessionalPDFGenerator {
   private addEnhancedSettlementAnalysis(survey: ExtendedAdvancedSettlementSurvey) {
     this.addSectionHeader('12.0 SETTLEMENT ANALYSIS', true, true);
     
+    this.ensureSafeSpacing(5);
+    
     // Settlement Summary
     this.pdf.setFont('helvetica', 'bold');
     this.pdf.setFontSize(11);
     this.pdf.text('SETTLEMENT SURVEY RESULTS', this.margin, this.currentY);
-    this.currentY += 8;
+    this.currentY += 10;
     
     // Use actual values from the database
     const maxOutOfPlane = parseFloat(String(survey.maxOutOfPlane || 0));
@@ -2166,10 +2264,12 @@ class ProfessionalPDFGenerator {
     
     // Individual Measurement Points Table
     if (survey.measurements && survey.measurements.length > 0) {
+      this.ensureSafeSpacing(10);
+      
       this.pdf.setFont('helvetica', 'bold');
       this.pdf.setFontSize(11);
       this.pdf.text('ELEVATION MEASUREMENT POINTS', this.margin, this.currentY);
-      this.currentY += 8;
+      this.currentY += 12;
       
       const measurementData = survey.measurements.map(m => [
         m.pointNumber?.toString() || '',
@@ -2186,17 +2286,21 @@ class ProfessionalPDFGenerator {
         headStyles: {
           fillColor: this.primaryColor,
           fontSize: 9,
-          fontStyle: 'bold'
+          fontStyle: 'bold',
+          cellPadding: 3,
+          minCellHeight: 12
         },
         bodyStyles: {
-          fontSize: 8
+          fontSize: 8,
+          cellPadding: 2,
+          minCellHeight: 8
         },
         columnStyles: {
-          0: { halign: 'center', cellWidth: 20 },
-          1: { halign: 'right', cellWidth: 25 },
-          2: { halign: 'right', cellWidth: 35 },
-          3: { halign: 'right', cellWidth: 35 },
-          4: { halign: 'right', cellWidth: 35 }
+          0: { halign: 'center', cellWidth: 22 },
+          1: { halign: 'right', cellWidth: 28 },
+          2: { halign: 'right', cellWidth: 38 },
+          3: { halign: 'right', cellWidth: 38 },
+          4: { halign: 'right', cellWidth: 38 }
         },
         margin: { left: this.margin }
       }, 10);
@@ -2204,10 +2308,12 @@ class ProfessionalPDFGenerator {
     
     // Cosine Fit Analysis
     if (rSquared > 0) {
+      this.ensureSafeSpacing(10);
+      
       this.pdf.setFont('helvetica', 'bold');
       this.pdf.setFontSize(11);
       this.pdf.text('COSINE FIT ANALYSIS', this.margin, this.currentY);
-      this.currentY += 8;
+      this.currentY += 12;
       
       // Cosine fit equation
       this.pdf.setFont('helvetica', 'normal');
@@ -2251,10 +2357,12 @@ class ProfessionalPDFGenerator {
     }
     
     // API 653 Compliance
+    this.ensureSafeSpacing(10);
+    
     this.pdf.setFont('helvetica', 'bold');
     this.pdf.setFontSize(11);
     this.pdf.text('API 653 APPENDIX B COMPLIANCE', this.margin, this.currentY);
-    this.currentY += 8;
+    this.currentY += 12;
     
     const complianceData = [
       ['Criteria', 'Measured', 'Allowable', 'Status'],
@@ -2295,10 +2403,12 @@ class ProfessionalPDFGenerator {
     
     // Recommendations
     if (survey.settlementRecommendations) {
+      this.ensureSafeSpacing(10);
+      
       this.pdf.setFont('helvetica', 'bold');
       this.pdf.setFontSize(11);
       this.pdf.text('RECOMMENDATIONS', this.margin, this.currentY);
-      this.currentY += 8;
+      this.currentY += 12;
       
       this.pdf.setFont('helvetica', 'normal');
       this.pdf.setFontSize(10);
@@ -2876,7 +2986,8 @@ class ProfessionalPDFGenerator {
   }
 
   private addSectionHeader(title: string, withBackground: boolean = true, addToTOC: boolean = false) {
-    this.ensurePageBreak(withBackground ? 35 : 25);
+    // Ensure adequate space for header plus some content
+    this.ensurePageBreak(withBackground ? 60 : 45);
 
     // Add to table of contents if requested
     if (addToTOC) {
