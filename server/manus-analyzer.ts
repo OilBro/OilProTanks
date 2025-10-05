@@ -4,6 +4,9 @@
 import * as XLSX from 'xlsx';
 
 interface ManusAnalysisResponse {
+  reportData: {};
+  checklistItems: never[];
+  mappingSuggestions: {};
   rawData: Record<string, any>;
   thicknessMeasurements: any[];
   confidence: number;
@@ -53,7 +56,7 @@ export async function analyzeDocumentWithManus(
   console.log(`🔑 API Key found: ${process.env.MANUS_API_KEY.substring(0, 10)}...`);
 
   try {
-    // Enhanced prompt for better extraction
+    // Enhanced prompt for better extraction with focus on shell thickness data
     const systemContext = `You are an expert API 653 tank inspection data extraction specialist. Extract comprehensive data from this tank inspection document and return it in structured JSON format.
 
 CRITICAL INSTRUCTIONS:
@@ -61,6 +64,10 @@ CRITICAL INSTRUCTIONS:
 - Be precise with numeric values and preserve all decimal places
 - Extract ALL thickness measurements with their exact locations
 - Include all tank specifications, dates, and personnel information
+- Pay special attention to SHELL THICKNESS CALCULATIONS tables
+- Extract settlement analysis data points
+- Include bottom assessment measurements
+- Extract CML (Corrosion Monitoring Location) data if present
 
 REQUIRED DATA TO EXTRACT:
 
@@ -85,23 +92,49 @@ REQUIRED DATA TO EXTRACT:
    - Design pressure/temperature
 
 4. THICKNESS MEASUREMENTS (CRITICAL):
-   - Extract ALL thickness readings from tables/appendices
-   - Include location (shell course, position, component)
-   - Current thickness values with units
+   - Extract ALL thickness readings from SHELL THICKNESS CALCULATIONS table
+   - Look for Course, Height, Nominal, Measured, Required, CR (mpy), RL (yrs) columns
+   - Extract shell course data (Course 1, 2, 3, etc.)
+   - Current thickness values with units (inches)
    - Original/nominal thickness if available
    - Minimum required thickness
-   - Any corrosion rates
+   - Corrosion rates (mpy = mils per year)
+   - Remaining life calculations (years)
+   - Status assessments (ACCEPTABLE, etc.)
 
-5. INSPECTION FINDINGS:
+5. SETTLEMENT ANALYSIS:
+   - Peak-to-Peak Settlement measurements
+   - Cosine Amplitude and Phase Angle
+   - R² Value for settlement analysis
+   - Settlement measurement points with angles and elevations
+   - Settlement status (ACTION_REQUIRED, etc.)
+
+6. BOTTOM ASSESSMENT:
+   - Bottom plate thickness measurements
+   - Nominal vs measured thickness
+   - Corrosion rate for bottom
+   - Remaining life calculations
+   - Bottom condition status
+
+7. CML DATA (if present):
+   - Corrosion Monitoring Location readings
+   - CML point identifications
+   - Thickness trends over time
+
+8. INSPECTION FINDINGS:
+   - Overall tank status (ACCEPTABLE, etc.)
+   - Governing shell course identification
+   - Minimum shell remaining life
+   - Critical items requiring attention
    - Condition assessments
    - Defects or anomalies found
    - Recommendations for repairs/maintenance
-   - Next inspection dates
 
-6. DATES AND SCHEDULING:
+9. DATES AND SCHEDULING:
    - Next external inspection date
-   - Next internal inspection date
+   - Next internal inspection date  
    - Next UT thickness inspection date
+   - Recommended inspection intervals
 
 RETURN FORMAT - JSON structure:
 {
@@ -121,17 +154,44 @@ RETURN FORMAT - JSON structure:
   "nextExternalDate": "YYYY-MM-DD",
   "nextInternalDate": "YYYY-MM-DD",
   "nextUTDate": "YYYY-MM-DD",
-  "thicknessMeasurements": [
+  "shellThickness": [
     {
-      "component": "shell course 1",
-      "location": "position 1",
-      "currentThickness": 0.500,
-      "originalThickness": 0.250,
-      "minimumRequired": 0.250,
-      "units": "inches",
-      "condition": "acceptable"
+      "course": 1,
+      "height": 32.0,
+      "nominalThickness": 0.500,
+      "measuredThickness": 0.485,
+      "requiredThickness": 0.250,
+      "corrosionRate": 2.5,
+      "remainingLife": 45.2,
+      "status": "acceptable",
+      "units": "inches"
     }
   ],
+  "bottomAssessment": {
+    "nominalThickness": 0.250,
+    "minimumMeasured": 0.240,
+    "requiredThickness": 0.100,
+    "corrosionRate": 0.0,
+    "remainingLife": 999.0,
+    "status": "acceptable"
+  },
+  "settlementAnalysis": {
+    "peakToPeak": 0.878,
+    "cosineAmplitude": 0.4388,
+    "phaseAngle": -3.1,
+    "rSquaredValue": 0.8814,
+    "maxOutOfPlane": 0.2265,
+    "status": "ACTION_REQUIRED",
+    "measurementPoints": [
+      {
+        "point": 1,
+        "angle": 0,
+        "measured": 1.0000,
+        "cosineFit": -0.4386,
+        "deviation": 1.4386
+      }
+    ]
+  },
   "findings": ["list of actual findings"],
   "recommendations": ["list of actual recommendations"],
   "extractedData": {
@@ -288,6 +348,9 @@ function processManusResults(completedResult: any, filename: string, documentTyp
 
     // Map the extracted data to our response format
     const response: ManusAnalysisResponse = {
+      reportData: extractedData.reportData || {},
+      checklistItems: extractedData.checklistItems || [],
+      mappingSuggestions: extractedData.mappingSuggestions || {},
       rawData: {
         tankId: extractedData.tankId || extractedData.tank_id || "Unknown",
         customer: extractedData.customer || extractedData.owner || "Not found",
@@ -303,9 +366,26 @@ function processManusResults(completedResult: any, filename: string, documentTyp
         capacity: extractedData.capacity || "Not found",
         nextExternalDate: extractedData.nextExternalDate || "Not found",
         nextInternalDate: extractedData.nextInternalDate || "Not found",
-        nextUTDate: extractedData.nextUTDate || "Not found"
+        nextUTDate: extractedData.nextUTDate || "Not found",
+        
+        // Additional extracted data
+        overallStatus: extractedData.overallStatus || extractedData.tankStatus || "Not found",
+        governingCourse: extractedData.governingCourse || "Not found",
+        shellRemainingLife: extractedData.shellRemainingLife || extractedData.minimumShellRemainingLife || "Not found",
+        bottomRemainingLife: extractedData.bottomRemainingLife || "Not found",
+        settlementStatus: extractedData.settlementStatus || (extractedData.settlementAnalysis && extractedData.settlementAnalysis.status) || "Not found",
+        
+        // Shell thickness data
+        shellThickness: extractedData.shellThickness || [],
+        bottomAssessment: extractedData.bottomAssessment || {},
+        settlementAnalysis: extractedData.settlementAnalysis || {},
+        
+        // Material and design info
+        material: extractedData.material || extractedData.constructionMaterial || "Not found",
+        designCode: extractedData.designCode || "Not found",
+        yearBuilt: extractedData.yearBuilt || "Not found"
       },
-      thicknessMeasurements: extractedData.thicknessMeasurements || [],
+      thicknessMeasurements: extractedData.shellThickness || extractedData.thicknessMeasurements || [],
       confidence: extractedData.extractedData ? 85 : 60,
       completionStatus: {
         status: "completed",
@@ -314,9 +394,19 @@ function processManusResults(completedResult: any, filename: string, documentTyp
       samplingInspections: {},
       detectedFields: Object.keys(extractedData).filter(key => extractedData[key] && extractedData[key] !== "Not found"),
       extractedText: extractedData.extractedText || JSON.stringify(extractedData),
-      sections: {},
+      sections: {
+        shellThickness: extractedData.shellThickness || {},
+        bottomAssessment: extractedData.bottomAssessment || {},
+        settlementAnalysis: extractedData.settlementAnalysis || {},
+        findings: extractedData.findings || [],
+        recommendations: extractedData.recommendations || [],
+        cmlData: extractedData.cmlData || [],
+        appurtenances: extractedData.appurtenances || [],
+        inspectionChecklist: extractedData.inspectionChecklist || []
+      },
       extractionDetails: {
-        tableFound: Array.isArray(extractedData.thicknessMeasurements) && extractedData.thicknessMeasurements.length > 0,
+        tableFound: (Array.isArray(extractedData.shellThickness) && extractedData.shellThickness.length > 0) || 
+                   (Array.isArray(extractedData.thicknessMeasurements) && extractedData.thicknessMeasurements.length > 0),
         patternsMatched: {},
         detectedFields: Object.keys(extractedData),
         warnings: [],
@@ -332,7 +422,11 @@ function processManusResults(completedResult: any, filename: string, documentTyp
     console.log("📍 Location:", response.rawData.location);
     console.log("🔧 Service:", response.rawData.service);
     console.log("📏 Thickness measurements:", response.thicknessMeasurements.length);
-    console.log("🎯 Confidence:", response.confidence + "%");
+    console.log("�️ Shell thickness data:", extractedData.shellThickness ? extractedData.shellThickness.length : 0);
+    console.log("🔍 Bottom assessment:", extractedData.bottomAssessment ? "Found" : "Not found");
+    console.log("📐 Settlement analysis:", extractedData.settlementAnalysis ? "Found" : "Not found");
+    console.log("📋 Overall status:", response.rawData.overallStatus);
+    console.log("�🎯 Confidence:", response.confidence + "%");
 
     return response;
   } catch (error: any) {
@@ -340,6 +434,9 @@ function processManusResults(completedResult: any, filename: string, documentTyp
     
     // Return a basic response with error info
     return {
+      reportData: {},
+      checklistItems: [],
+      mappingSuggestions: {},
       rawData: {
         tankId: "Processing Error",
         customer: "Processing Error",
